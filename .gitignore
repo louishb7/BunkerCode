@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+.backendlab/workspaces/*
+.backendlab/state/*
+!.backendlab/workspaces/.gitkeep
+!.backendlab/state/.gitkeep
