@@ -39,5 +39,6 @@ export const api = {
   }),
   abandonRun: (id: string) => getJson<LabRun>(`/labs/${lifecycleId}/runs/${id}/abandon`, { method: 'POST' }),
   run: (id: string) => getJson<RunDetail>(`/labs/${lifecycleId}/runs/${id}`),
+  runs: () => getJson<LabRun[]>(`/labs/${lifecycleId}/runs`),
   eventsUrl: (id: string) => `/api/labs/${lifecycleId}/runs/${id}/events`,
 };

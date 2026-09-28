@@ -25,6 +25,11 @@ export class LabsController {
     return this.runs.createRun(labId);
   }
 
+  @Get(':labId/runs')
+  listRuns(@Param('labId') labId: string): LabRun[] {
+    return this.runs.listRuns(labId);
+  }
+
   @Post(':labId/runs/:runId/abandon')
   abandonRun(@Param('labId') labId: string, @Param('runId') runId: string): LabRun {
     return this.runs.abandonRun(labId, runId);

@@ -1,8 +1,15 @@
 # BunkerLab
 
-Laboratório visual para usar, inspecionar e evoluir sistemas backend reais. A entrada agora é um **Reference System** mínimo de pedidos e estoque: um Mechanical Keyboard, estoque inicial de 3 e criação de pedidos de uma unidade. Estado e operações vivem no backend NestJS.
+Laboratório visual para usar, inspecionar e evoluir sistemas backend reais. **BunkerLab é o ambiente de engenharia; OrderDesk é o sistema sob teste dentro dele.** O domínio permanece mínimo: um Mechanical Keyboard, estoque inicial de 3 e pedidos de uma unidade, executados pelo backend NestJS.
 
-O **Workbench** é a interface onde o sistema é usado. Após criar um pedido, **Inspecionar última execução** revela a request, as chamadas de funções, os eventos e o runtime. Request Lifecycle é observado como consequência da ação; não há uma etapa separada de demonstração.
+A application shell organiza quatro superfícies:
+
+- **Workbench** (`/`): uso do OrderDesk e resumo da última execução.
+- **Execuções** (`/runs`): histórico real em memória.
+- **Inspector** (`/runs/:runId`): request, fluxo, mudanças de estado, eventos e runtime da execução selecionada.
+- **Experimentos** (`/experiments`): espaço explicitamente indisponível nesta versão.
+
+Criar pedido pertence ao OrderDesk. Resetar ambiente pertence ao BunkerLab. A investigação começa na consequência de uma ação real.
 
 ## Executar
 
@@ -29,15 +36,15 @@ pnpm build
 - `POST /system/orders`: cria pedido com `{ "productId": "mechanical-keyboard", "quantity": 1 }`.
 - `POST /system/reset`: limpa pedidos e restaura estoque inicial.
 
-O navegador prepara uma run, abre SSE e envia a criação de pedido diretamente à API. A API também aceita `POST /system/orders` sem preparação e devolve o ID da run no header `x-bunkerlab-run-id`. O inspector mostra eventos dessa operação real, sem loopback.
+A lista de runs está em `GET /labs/001-request-lifecycle/runs`; snapshots e SSE mantêm os endpoints existentes. O navegador prepara uma run, abre SSE e envia a criação de pedido diretamente à API. A API também aceita `POST /system/orders` sem preparação e devolve o ID da run no header `x-bunkerlab-run-id`. O inspector mostra eventos dessa operação real, sem loopback.
 
-Produto, pedidos, estoque, runs e eventos ficam em memória. Reiniciar a API restaura o estado inicial e perde pedidos e telemetria. Reset limpa o domínio e a última inspeção na UI, mas conserva runs anteriores no backend até o restart. Ainda não há persistência ou workspace de edição.
+Produto, pedidos, estoque, runs e eventos ficam em memória. Reiniciar a API restaura o estado inicial e perde pedidos e telemetria. Reset restaura o domínio e preserva o histórico e a inspeção selecionada até o restart. Mudanças de estado exibidas no Inspector são evidências históricas da ação. Ainda não há persistência ou workspace de edição.
 
 ## Estrutura
 
 - `apps/api/src/system`: domínio mínimo do Reference System.
 - `apps/api`: infraestrutura do laboratório, correlação, runs e SSE.
-- `apps/web`: Workbench e inspector secundário.
+- `apps/web`: shell React Router, Workbench, Execuções e Inspector; estilos em Tailwind CSS.
 - `packages/protocol`: contratos compartilhados de domínio e telemetria.
 - `packages/lab-sdk`: contexto mínimo para emitir evidências.
 - `labs/001-request-lifecycle`: identidade interna da observação; não contém mais a request de demonstração.

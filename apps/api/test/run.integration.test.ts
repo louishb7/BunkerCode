@@ -171,3 +171,43 @@ test('a prepared run is claimed only once and invalid capabilities cannot create
   assert.equal((await createOrder(input, abandoned)).status, 409);
   assert.equal((await orders()).length, 1);
 });
+
+test('run listing exposes recent summaries without capabilities and supports opening older evidence after reset', async () => {
+  const first = await createOrder();
+  const firstId = first.headers.get('x-bunkerlab-run-id')!;
+  const second = await createOrder();
+  const secondId = second.headers.get('x-bunkerlab-run-id')!;
+  const prepared = await prepare();
+  const response = await fetch(`${baseUrl}/labs/${labId}/runs`);
+  assert.equal(response.status, 200);
+  const runs = await response.json() as import('@backendlab/protocol').LabRun[];
+  assert.deepEqual(runs.slice(0, 3).map((run) => run.id), [prepared.run.id, secondId, firstId]);
+  assert.equal(runs[0]!.status, 'pending');
+  assert.equal(runs[0]!.request, undefined);
+  assert.equal(runs[1]!.action, 'create-order');
+  assert.equal(runs[1]!.httpStatus, 201);
+  assert.deepEqual(runs[1]!.request, { method: 'POST', path: '/system/orders' });
+  assert.ok(runs.every((run) => !('token' in run) && !('requestToken' in run) && !('events' in run)));
+  assert.ok(!JSON.stringify(runs).includes(prepared.requestToken));
+  const older = await detail(firstId);
+  assert.equal(older.run.id, firstId);
+  assert.deepEqual(older.run.request, runs[2]!.request);
+  for (const [id, before, after] of [[firstId, 0, 1], [secondId, 1, 2]] as const) {
+    const snapshot = await detail(id);
+    const created = snapshot.events.find((event) => event.type === 'order.created')!;
+    const stock = snapshot.events.find((event) => event.type === 'stock.updated')!;
+    assert.equal(created.runId, id);
+    assert.equal(stock.runId, id);
+    assert.equal(created.payload?.previousOrderCount, before);
+    assert.equal(created.payload?.orderCount, after);
+    assert.equal(stock.payload?.previousStock, 3 - before);
+    assert.equal(stock.payload?.stock, 3 - after);
+  }
+  await fetch(`${baseUrl}/system/reset`, { method: 'POST' });
+  assert.deepEqual((await detail(firstId)).events, older.events);
+  const afterReset = await (await fetch(`${baseUrl}/labs/${labId}/runs`)).json() as { id: string }[];
+  assert.ok(afterReset.some((run) => run.id === firstId));
+  assert.equal((await fetch(`${baseUrl}/labs/unknown/runs`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}/labs/${labId}/runs/missing`)).status, 404);
+  await fetch(`${baseUrl}/labs/${labId}/runs/${prepared.run.id}/abandon`, { method: 'POST' });
+});

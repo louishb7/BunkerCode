@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { LabContext } from '@backendlab/lab-sdk';
-import type { CreateOrderInput, Order, Product, SystemState } from '@backendlab/protocol';
+import type { CreateOrderInput, Order, OrderCreatedPayload, Product, SystemState } from '@backendlab/protocol';
 
 @Injectable()
 export class OrdersService {
@@ -24,8 +24,12 @@ export class OrdersService {
       if (productId !== this.product.id) throw new NotFoundException('Product not found');
       if (quantity > this.product.stock) throw new ConflictException('Insufficient stock');
       const order: Order = { id: randomUUID(), productId, quantity, createdAt: Date.now() };
+      const previousOrderCount = this.orders.length;
       this.orders.push(order);
-      ctx.emit({ source: 'domain', type: 'order.created', payload: { order } });
+      ctx.emit({
+        source: 'domain', type: 'order.created',
+        payload: { order, previousOrderCount, orderCount: this.orders.length } satisfies OrderCreatedPayload,
+      });
       const previousStock = this.product.stock;
       this.product.stock -= quantity;
       ctx.emit({

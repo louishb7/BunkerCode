@@ -2,6 +2,8 @@
 
 Referência interna do laboratório. A hipótese atual é aprofundar um único sistema pequeno de pedidos e estoque conforme problemas backend aparecerem, em vez de construir uma mini aplicação por conceito. Não é uma sequência de aulas visível na interface.
 
+OrderDesk é esse Reference System, e não o produto principal. A shell do BunkerLab separa uso (Workbench), histórico (Execuções), investigação (Inspector) e futura manipulação controlada (Experimentos), para continuar válida durante essa evolução.
+
 Hoje o sistema usa memória e executa a criação de pedido de forma síncrona em uma API NestJS. Request Lifecycle pode ser investigado ao usar essa operação real.
 
 | Problema a investigar | Conceito | Possível evolução |

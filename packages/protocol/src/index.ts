@@ -29,6 +29,12 @@ export interface LabRun {
   durationMs?: number;
   error?: string;
   eventCount: number;
+  request?: RunRequest;
+}
+
+export interface RunRequest {
+  method: string;
+  path: string;
 }
 
 export interface LabEvent {
@@ -71,6 +77,12 @@ export interface Order {
   productId: string;
   quantity: number;
   createdAt: number;
+}
+
+export interface OrderCreatedPayload {
+  order: Order;
+  previousOrderCount: number;
+  orderCount: number;
 }
 
 export interface CreateOrderInput {

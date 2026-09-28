@@ -68,6 +68,14 @@ export class RunsService {
     return { run: { ...stored.run }, events: [...stored.events], runtime: this.getRuntime() };
   }
 
+  listRuns(labId: string): LabRun[] {
+    if (labId !== lab001Definition.id) throw new NotFoundException('Lab unavailable');
+    return [...this.runs.values()]
+      .filter((stored) => stored.run.labId === labId)
+      .reverse()
+      .map(({ run }) => ({ ...run, ...(run.request ? { request: { ...run.request } } : {}) }));
+  }
+
   private getRuntime(): RunRuntime {
     if (this.apiPort === undefined) throw new Error('HTTP address is not configured');
     return { engine: 'Node.js', nodeVersion: process.version, pid: process.pid, apiPort: this.apiPort };
@@ -100,6 +108,9 @@ export class RunsService {
     const stored = this.runs.get(runId);
     if (!stored) throw new Error('Run not found');
     if (stored.run.status === 'abandoned' && input.type !== 'run.abandoned') return;
+    if (input.type === 'request.received' && typeof input.payload?.method === 'string' && typeof input.payload.path === 'string') {
+      stored.run.request = { method: input.payload.method, path: input.payload.path };
+    }
     const event: LabEvent = {
       id: randomUUID(), labId: stored.run.labId, runId,
       timestamp: Date.now(), source: input.source, type: input.type,
