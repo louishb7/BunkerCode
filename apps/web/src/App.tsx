@@ -1,155 +1,94 @@
-import { useEffect, useState } from "react";
-import { BookOpen, ChevronRight } from "lucide-react";
-import type { LabDefinition, LabSummary } from "@backendlab/protocol";
-import { api } from "./api";
-import { areas } from "./areas";
-import { Curriculum } from "./Curriculum";
-import { LabScreen } from "./LabScreen";
-
-function useRoute(): [string | null, (labId: string | null) => void] {
-  const read = () =>
-    window.location.hash.startsWith("#/labs/")
-      ? window.location.hash.slice(7)
-      : null;
-  const [labId, setLabId] = useState<string | null>(read);
-  useEffect(() => {
-    const onHash = () => setLabId(read());
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-  return [
-    labId,
-    (id) => {
-      window.location.hash = id ? `/labs/${id}` : "/";
-      setLabId(id);
-    },
-  ];
-}
+import { useEffect, useState } from 'react';
+import type { SystemState } from '@backendlab/protocol';
+import { api } from './api';
+import { useOrderExecution } from './useOrderExecution';
+import { ExecutionInspector } from './ExecutionInspector';
 
 export function App() {
-  const [labId, navigate] = useRoute();
-  const [labs, setLabs] = useState<LabSummary[]>([]);
-  const [lab, setLab] = useState<LabDefinition | null>(null);
+  const [state, setState] = useState<SystemState | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const execution = useOrderExecution();
 
   useEffect(() => {
-    api
-      .labs()
-      .then(setLabs)
-      .catch((cause: unknown) =>
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Falha ao carregar currículo",
-        ),
-      );
+    let active = true;
+    api.state().then((next) => { if (active) setState(next); }).catch(() => {
+      if (active) setError('Não foi possível carregar o sistema. Verifique a API e recarregue a página.');
+    });
+    return () => { active = false; };
   }, []);
-  useEffect(() => {
-    if (!labId) {
-      setLab(null);
-      return;
+
+  async function createOrder() {
+    if (!state || busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    setInspectorOpen(false);
+    try {
+      await execution.createOrder({ productId: state.product.id, quantity: 1 });
+      setNotice('Pedido criado.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível confirmar o pedido.');
+    } finally {
+      try { setState(await api.state()); }
+      catch { setError('Não foi possível atualizar o estado. Recarregue antes de tentar novamente.'); }
+      setBusy(false);
     }
-    api
-      .lab(labId)
-      .then(setLab)
-      .catch((cause: unknown) =>
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Falha ao carregar laboratório",
-        ),
-      );
-  }, [labId]);
+  }
+
+  async function reset() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      setState(await api.reset());
+      execution.clear();
+      setInspectorOpen(false);
+      setNotice('Ambiente resetado.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível resetar o ambiente.');
+    } finally { setBusy(false); }
+  }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <button
-          className="brand"
-          onClick={() => navigate(null)}
-          aria-label="Ir para o currículo"
-        >
-          <span className="brand-mark">
-            <span />
-            <span />
-            <span />
-            <span />
-          </span>
-          <span>
-            Backend<span className="brand-light">Lab</span>
-            <small>ENGINEERING OBSERVATORY</small>
-          </span>
-        </button>
-        <div className="sidebar-section-label">WORKSPACE</div>
-        <button
-          className={`sidebar-link ${!labId ? "selected" : ""}`}
-          onClick={() => navigate(null)}
-        >
-          <BookOpen size={17} /> Curriculum <ChevronRight size={15} />
-        </button>
-        <div className="sidebar-section-label sidebar-core-label">
-          BACKEND ENGINEERING CORE
+      <header className="site-header"><strong className="brand">Bunker<span>Lab</span></strong><span>Ambiente local</span></header>
+      <main className="workbench">
+        <div className="workbench-heading"><h1>Pedidos e estoque</h1>
+          <button className="text-button" disabled={busy || !state} onClick={reset}>Resetar ambiente</button>
         </div>
-        <nav className="sidebar-areas" aria-label="Áreas do currículo">
-          {areas.map((area, index) => (
-            <button
-              key={area.name}
-              className={`sidebar-area ${labId && area.name === "Execution" ? "area-current" : ""}`}
-              onClick={() => navigate(null)}
-            >
-              <span className="area-index">0{index}</span>
-              <span>{area.name}</span>
-              {index === 0 && <span className="area-live-dot" />}
+        {error && <p className="error-message" role="alert">{error}</p>}
+        {!state ? <p className="muted">Carregando sistema…</p> : <>
+          <section className="product-row" aria-label="Produto">
+            <div><h2>{state.product.name}</h2><p>Estoque disponível: <strong>{state.product.stock}</strong></p></div>
+            <button className="primary-button" onClick={createOrder} disabled={busy || state.product.stock === 0}>
+              {busy ? 'Aguarde…' : state.product.stock === 0 ? 'Sem estoque' : 'Criar pedido'}
             </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="status-dot" /> SYSTEM READY <span>V0.1</span>
-        </div>
-      </aside>
-
-      <div className="main-column">
-        <header className="topbar">
-          <div className="topbar-path">
-            <span>BACKENDLAB</span>
-            <ChevronRight size={13} />
-            <span>{labId ? "EXECUTION" : "CURRICULUM"}</span>
-            {labId && (
-              <>
-                <ChevronRight size={13} />
-                <strong>LAB 001</strong>
-              </>
-            )}
+          </section>
+          <div className="action-feedback" aria-live="polite">{notice}</div>
+          <section className="orders-section">
+            <div className="orders-heading"><h2>Pedidos</h2><span>{state.orders.length}</span></div>
+            {state.orders.length === 0 ? <p className="empty-orders">Nenhum pedido criado.</p> :
+              <table className="orders-table"><thead><tr><th>Pedido</th><th>Produto</th><th>Quantidade</th></tr></thead>
+                <tbody>{state.orders.map((order, index) => <tr key={order.id}>
+                  <td>#{String(index + 1).padStart(3, '0')}</td><td>{state.product.name}</td>
+                  <td>{order.quantity} {order.quantity === 1 ? 'unidade' : 'unidades'}</td>
+                </tr>)}</tbody>
+              </table>}
+          </section>
+          <div className="inspection-action">
+            {execution.detail && <button className="text-button inspect-toggle" disabled={busy}
+              aria-expanded={inspectorOpen} aria-controls="execution-inspector" onClick={() => setInspectorOpen(!inspectorOpen)}>
+              {inspectorOpen ? 'Fechar inspeção' : 'Inspecionar última execução'} <span aria-hidden="true">{inspectorOpen ? '−' : '+'}</span>
+            </button>}
+            {execution.inspectionError && <p className="muted">{execution.inspectionError}</p>}
           </div>
-          <div className="topbar-right">
-            <span className="topbar-live">
-              <span className="status-dot" /> LOCAL ENVIRONMENT
-            </span>
-            <span className="topbar-separator" />
-            <span>AUTHOR MODE</span>
-          </div>
-        </header>
-        <main className="content">
-          {error && (
-            <div className="error-banner">
-              {error}
-              <button onClick={() => setError(null)}>Fechar</button>
-            </div>
-          )}
-          {labId ? (
-            lab ? (
-              <LabScreen key={lab.id} lab={lab} onBack={() => navigate(null)} />
-            ) : (
-              <div className="loading">Carregando laboratório...</div>
-            )
-          ) : (
-            <Curriculum
-              labs={labs}
-              openLab={() => navigate("001-request-lifecycle")}
-            />
-          )}
-        </main>
-      </div>
+          {inspectorOpen && execution.detail && <ExecutionInspector detail={execution.detail} />}
+        </>}
+      </main>
     </div>
   );
 }

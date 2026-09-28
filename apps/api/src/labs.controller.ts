@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, MessageEvent, Param, Post, Sse, NotFoundException } from '@nestjs/common';
 import { Observable, concat, map, of } from 'rxjs';
-import type { LabDefinition, LabRun, LabSummary, RunDetail } from '@backendlab/protocol';
+import type { LabDefinition, LabRun, LabSummary, PreparedRun, RunDetail } from '@backendlab/protocol';
 import { labDefinitions, labSummaries } from './curriculum';
 import { RunsService } from './runs.service';
 
@@ -21,13 +21,8 @@ export class LabsController {
   }
 
   @Post(':labId/runs')
-  createRun(@Param('labId') labId: string): LabRun {
+  createRun(@Param('labId') labId: string): PreparedRun {
     return this.runs.createRun(labId);
-  }
-
-  @Post(':labId/runs/:runId/start')
-  startRun(@Param('labId') labId: string, @Param('runId') runId: string): LabRun {
-    return this.runs.startRun(labId, runId);
   }
 
   @Post(':labId/runs/:runId/abandon')
