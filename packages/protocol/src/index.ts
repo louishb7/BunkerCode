@@ -1,96 +1,112 @@
-export type LabMode = 'observe' | 'experiment' | 'modify';
-export type LabStatus = 'available' | 'planned';
-export type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'abandoned';
-
-export interface LabSummary {
-  id: string;
-  number: string;
-  title: string;
-  area: string;
-  mode: LabMode;
-  status: LabStatus;
+export interface SystemState {
+  product: { id: string; name: string; stock: number };
+  orders: {
+    id: string;
+    productId: string;
+    quantity: number;
+    createdAt: number;
+  }[];
 }
-
-export interface LabDefinition extends LabSummary {
-  question: string;
+export interface ExperimentConfig {
+  stock: number;
+  clients: number;
+  concurrency: number;
+}
+export interface ExperimentSummary {
+  id: string;
+  systemId: string;
+  name: string;
   description: string;
-  concept: string;
+  defaults: ExperimentConfig;
 }
-
-export interface LabRun {
+export interface CodeVersion {
+  commit: string;
+  digest: string;
+  dirty: boolean;
+  snapshot: string;
+}
+export interface Checkpoint {
   id: string;
-  labId: string;
-  action: 'create-order';
-  status: RunStatus;
+  systemId: string;
+  commit: string;
+  message: string;
   createdAt: number;
-  startedAt?: number;
-  completedAt?: number;
-  httpStatus?: number;
-  durationMs?: number;
-  error?: string;
-  eventCount: number;
-  request?: RunRequest;
+  digest: string;
 }
-
-export interface RunRequest {
-  method: string;
-  path: string;
-}
-
-export interface LabEvent {
-  id: string;
-  labId: string;
-  runId: string;
-  traceId?: string;
+export interface Evidence {
+  sequence: number;
   timestamp: number;
-  source: string;
+  source: "runner" | "system" | "runtime";
   type: string;
-  payload?: Record<string, unknown>;
+  requestId?: string;
+  payload: Record<string, unknown>;
 }
-
+export interface RequestResult {
+  id: string;
+  startedAt: number;
+  durationMs: number;
+  status: number | null;
+  body: unknown;
+  error?: string;
+}
+export interface Assertion {
+  name: string;
+  passed: boolean;
+  expected: unknown;
+  actual: unknown;
+}
+export interface ExperimentResult {
+  accepted: number;
+  rejected: number;
+  errors: number;
+  finalStock: number;
+  orderCount: number;
+  assertions: Assertion[];
+}
+export interface Run {
+  id: string;
+  number: number;
+  workspaceId: string;
+  systemId: string;
+  experimentId: string;
+  status: "running" | "passed" | "failed" | "error" | "interrupted";
+  createdAt: number;
+  completedAt?: number;
+  durationMs?: number;
+  config: ExperimentConfig;
+  code: CodeVersion;
+  checkpoint?: Checkpoint;
+  initialState?: SystemState;
+  finalState?: SystemState;
+  result?: ExperimentResult;
+  error?: string;
+}
 export interface RunDetail {
-  run: LabRun;
-  events: LabEvent[];
-  runtime: RunRuntime;
+  run: Run;
+  requests: RequestResult[];
+  evidence: Evidence[];
 }
-
-export interface RunRuntime {
-  engine: 'Node.js';
-  nodeVersion: string;
-  pid: number;
-  apiPort: number;
-}
-
-export interface PreparedRun {
-  run: LabRun;
-  requestToken: string;
-}
-
-export interface Product {
+export interface SystemSummary {
   id: string;
   name: string;
-  stock: number;
+  description: string;
 }
-
-export interface Order {
-  id: string;
-  productId: string;
-  quantity: number;
-  createdAt: number;
+export interface RuntimeStatus {
+  status: "stopped" | "starting" | "ready" | "crashed";
+  pid?: number;
+  port?: number;
+  code?: CodeVersion;
+  error?: string;
+  logs: string[];
 }
-
-export interface OrderCreatedPayload {
-  order: Order;
-  previousOrderCount: number;
-  orderCount: number;
-}
-
-export interface CreateOrderInput {
-  productId: string;
-  quantity: number;
-}
-
-export interface SystemState {
-  product: Product;
-  orders: Order[];
+export interface Workbench {
+  workspace: { id: string; name: string };
+  system: SystemSummary;
+  experiments: ExperimentSummary[];
+  runtime: RuntimeStatus;
+  codePath: string;
+  workingCode: Omit<CodeVersion, "snapshot">;
+  state: SystemState | null;
+  busy: string | null;
+  checkpoints: Checkpoint[];
 }

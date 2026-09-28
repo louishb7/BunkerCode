@@ -9,3 +9,5 @@ coverage/
 .backendlab/state/*
 !.backendlab/workspaces/.gitkeep
 !.backendlab/state/.gitkeep
+
+.bunkerlab/

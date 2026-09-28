@@ -1,44 +1,38 @@
-import type { CreateOrderInput, LabRun, Order, PreparedRun, Product, RunDetail, SystemState } from '@backendlab/protocol';
-
-export const lifecycleId = '001-request-lifecycle';
-
-export class ApiError extends Error {
-  constructor(readonly status: number, message: string) { super(message); }
+import type {
+  Run,
+  RunDetail,
+  Workbench,
+  ExperimentConfig,
+} from "@backendlab/protocol";
+const base = "/api/workspaces/local/systems/orderdesk";
+async function json<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(
+    base + path,
+    body === undefined
+      ? undefined
+      : {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-bunkerlab-client": "local",
+          },
+          body: JSON.stringify(body),
+        },
+  );
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.message ?? `HTTP ${response.status}`);
+  return value as T;
 }
-
-async function getJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, options);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as { message?: string };
-    const messages: Record<string, string> = {
-      'Insufficient stock': 'Estoque insuficiente para criar o pedido.',
-      'Product not found': 'Produto não encontrado.',
-      'Quantity must be a positive integer': 'A quantidade deve ser um inteiro positivo.',
-    };
-    throw new ApiError(response.status, messages[body.message ?? ''] ?? `A operação retornou HTTP ${response.status}.`);
-  }
-  return response.json() as Promise<T>;
-}
-
 export const api = {
-  state: async (): Promise<SystemState> => {
-    const [product, orders] = await Promise.all([
-      getJson<Product>('/system/product'), getJson<Order[]>('/system/orders'),
-    ]);
-    return { product, orders };
-  },
-  reset: () => getJson<SystemState>('/system/reset', { method: 'POST' }),
-  prepareRun: () => getJson<PreparedRun>(`/labs/${lifecycleId}/runs`, { method: 'POST' }),
-  createOrder: (input: CreateOrderInput, prepared: PreparedRun) => getJson<Order>('/system/orders', {
-    method: 'POST', body: JSON.stringify(input),
-    headers: {
-      'content-type': 'application/json',
-      'x-bunkerlab-run-id': prepared.run.id,
-      'x-bunkerlab-run-token': prepared.requestToken,
-    },
-  }),
-  abandonRun: (id: string) => getJson<LabRun>(`/labs/${lifecycleId}/runs/${id}/abandon`, { method: 'POST' }),
-  run: (id: string) => getJson<RunDetail>(`/labs/${lifecycleId}/runs/${id}`),
-  runs: () => getJson<LabRun[]>(`/labs/${lifecycleId}/runs`),
-  eventsUrl: (id: string) => `/api/labs/${lifecycleId}/runs/${id}/events`,
+  workbench: () => json<Workbench>(""),
+  runs: (before?: number) =>
+    json<Run[]>(`/runs${before ? `?before=${before}` : ""}`),
+  run: (id: string) => json<RunDetail>(`/runs/${encodeURIComponent(id)}`),
+  start: (id: string, config: ExperimentConfig) =>
+    json<Run>(`/experiments/${encodeURIComponent(id)}/runs`, config),
+  restart: () => json("/runtime/restart", {}),
+  reset: () => json("/runtime/reset", {}),
+  checkpoint: (message: string) => json("/checkpoints", { message }),
+  restore: (id: string) =>
+    json(`/checkpoints/${encodeURIComponent(id)}/restore`, {}),
 };
