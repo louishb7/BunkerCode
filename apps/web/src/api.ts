@@ -1,13 +1,22 @@
 import type {
+  Activity,
+  ActivitySummary,
+  SystemSummary,
+  RuntimeStatus,
   Run,
   RunDetail,
   Workbench,
   ExperimentConfig,
 } from "@backendlab/protocol";
-const base = "/api/workspaces/local/systems/orderdesk";
+let selectedSystem = "orderdesk";
+export function selectSystem(id: string) {
+  selectedSystem = id;
+}
+const base = () =>
+  `/api/workspaces/local/systems/${encodeURIComponent(selectedSystem)}`;
 async function json<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(
-    base + path,
+    base() + path,
     body === undefined
       ? undefined
       : {
@@ -24,6 +33,20 @@ async function json<T>(path: string, body?: unknown): Promise<T> {
   return value as T;
 }
 export const api = {
+  systems: async () => {
+    const response = await fetch("/api/workspaces/local/systems");
+    if (!response.ok) throw new Error("Não foi possível listar os sistemas.");
+    return response.json() as Promise<
+      (SystemSummary & { runtime: RuntimeStatus["status"] })[]
+    >;
+  },
+  open: () => json("/runtime/open", {}),
+  surface: () => json<{ html: string }>("/surface"),
+  activities: () => json<ActivitySummary[]>("/activities"),
+  activity: (id: string) =>
+    json<Activity>(`/activities/${encodeURIComponent(id)}`),
+  interact: (operation: { method: string; path: string; body?: unknown }) =>
+    json<Activity>("/activities", operation),
   workbench: () => json<Workbench>(""),
   runs: (before?: number) =>
     json<Run[]>(`/runs${before ? `?before=${before}` : ""}`),

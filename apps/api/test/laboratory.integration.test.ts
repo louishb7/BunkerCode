@@ -8,12 +8,26 @@ import { NestFactory, type INestApplication } from "@nestjs/core";
 import type {
   Checkpoint,
   Run,
-  RunDetail,
-  Workbench,
+  RunDetail as GenericRunDetail,
+  Workbench as GenericWorkbench,
+  OrderDeskState,
 } from "@backendlab/protocol";
 import { AppModule } from "../src/app.module";
 import { projectRoot } from "../src/paths";
 import { LabRepository } from "../src/repository";
+type Workbench = Omit<GenericWorkbench, "state"> & {
+  state: OrderDeskState | null;
+};
+type RunDetail = Omit<GenericRunDetail, "run"> & {
+  run: Omit<Run, "initialState" | "finalState" | "result"> & {
+    initialState?: OrderDeskState;
+    finalState?: OrderDeskState;
+    result?: NonNullable<Run["result"]> & {
+      finalStock: number;
+      orderCount: number;
+    };
+  };
+};
 let app: INestApplication;
 let base: string;
 let root: string;
@@ -324,4 +338,147 @@ test("a blocked event loop times out without blocking the control plane or the f
   assert.equal((await get<Workbench>()).runtime.status, "stopped");
   await writeFile(path, original);
   assert.equal((await run()).run.status, "passed");
+});
+
+test("a system surface is served by its runtime and manual activity never becomes a Run", async () => {
+  await post("/runtime/reset");
+  const before = await get<Run[]>("/runs");
+  const surface = await get<{ html: string }>("/surface");
+  assert.match(surface.html, /Criar pedido/);
+  assert.match(surface.html, /bunkerlab:request/);
+  const response = await post("/activities", {
+    method: "POST",
+    path: "/orders",
+    body: { productId: "keyboard", quantity: 1 },
+  });
+  assert.equal(response.status, 200);
+  const activity =
+    (await response.json()) as import("@backendlab/protocol").Activity;
+  assert.equal(activity.status, 201);
+  assert.ok(activity.durationMs! >= 0);
+  const written = activity.evidence.find(
+    (event) => event.type === "stock.written",
+  );
+  assert.equal(written!.payload.before, 5);
+  assert.equal(written!.payload.stock, 4);
+  assert.ok(
+    activity.evidence.every(
+      (event) => !event.requestId || event.requestId === activity.id,
+    ),
+  );
+  assert.deepEqual(await get(`/activities/${activity.id}`), activity);
+  const state = await post("/activities", { method: "GET", path: "/state" });
+  const read = (await state.json()) as import("@backendlab/protocol").Activity;
+  assert.equal((read.body as OrderDeskState).product.stock, 4);
+  assert.equal((read.body as OrderDeskState).orders.length, 1);
+  assert.equal(
+    (read.body as OrderDeskState).orders[0]!.id,
+    (activity.body as { id: string }).id,
+  );
+  assert.deepEqual(await get("/runs"), before);
+  const list =
+    await get<import("@backendlab/protocol").ActivitySummary[]>("/activities");
+  assert.ok(list.some((item) => item.id === activity.id));
+  assert.ok(list.every((item) => !("body" in item) && !("evidence" in item)));
+  for (const operation of [
+    { method: "POST", path: "/reset" },
+    { method: "GET", path: "http://example.com" },
+    { method: "DELETE", path: "/orders" },
+  ]) {
+    assert.equal((await post("/activities", operation)).status, 400);
+  }
+});
+
+test("manual requests and automated tests cannot mutate the runtime at the same time", async () => {
+  const response = await post("/experiments/overselling/runs", {
+    clients: 100,
+    concurrency: 1,
+  });
+  assert.equal(response.status, 202);
+  const run = (await response.json()) as Run;
+  assert.equal(
+    (
+      await post("/activities", {
+        method: "POST",
+        path: "/orders",
+        body: { productId: "keyboard", quantity: 1 },
+      })
+    ).status,
+    409,
+  );
+  for (let attempt = 0; attempt < 250; attempt++) {
+    if ((await get<RunDetail>(`/runs/${run.id}`)).run.status !== "running")
+      return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.fail("Run did not finish");
+});
+
+test("activity keeps HTTP errors and process failures inspectable without persisting Runs", async () => {
+  const before = await get<Run[]>("/runs");
+  const bench = await get<Workbench>();
+  const path = join(bench.codePath, "inventory.mjs");
+  const original = await readFile(path, "utf8");
+  try {
+    await writeFile(
+      path,
+      original.replace(
+        "export async function createOrder(database, input, emit) {",
+        'export async function createOrder(database, input, emit) { throw new Error("Manual request failure");',
+      ),
+    );
+    await post("/runtime/restart");
+    const response = await post("/activities", {
+      method: "POST",
+      path: "/orders",
+      body: { productId: "keyboard", quantity: 1 },
+    });
+    const failed =
+      (await response.json()) as import("@backendlab/protocol").Activity;
+    assert.equal(failed.status, 500);
+    assert.ok(failed.evidence.some((event) => event.type === "request.error"));
+    assert.equal((await get<Workbench>()).runtime.status, "ready");
+    await writeFile(
+      path,
+      original.replace(
+        "export async function createOrder(database, input, emit) {",
+        "export async function createOrder(database, input, emit) { process.exit(8);",
+      ),
+    );
+    await post("/runtime/restart");
+    const crashed = (await (
+      await post("/activities", {
+        method: "POST",
+        path: "/orders",
+        body: { productId: "keyboard", quantity: 1 },
+      })
+    ).json()) as import("@backendlab/protocol").Activity;
+    assert.equal(crashed.status, null);
+    assert.ok(crashed.error);
+    assert.ok(
+      crashed.evidence.some((event) => event.type === "runtime.exited"),
+    );
+    assert.deepEqual(await get(`/activities/${crashed.id}`), crashed);
+    assert.deepEqual(await get("/runs"), before);
+  } finally {
+    await writeFile(path, original);
+    await post("/runtime/restart");
+  }
+});
+
+test("activities are bounded and expire at API restart; saved Runs remain", async () => {
+  for (let count = 0; count < 55; count++)
+    await post("/activities", { method: "GET", path: "/state" });
+  const activities =
+    await get<import("@backendlab/protocol").ActivitySummary[]>("/activities");
+  assert.equal(activities.length, 50);
+  const last = activities[0]!.id;
+  const runs = await get("/runs");
+  await app.close();
+  await boot();
+  assert.deepEqual(await get("/activities"), []);
+  assert.equal((await fetch(base + `/activities/${last}`)).status, 404);
+  assert.deepEqual(await get("/runs"), runs);
+  assert.equal((await post("/runtime/open")).status, 200);
+  assert.equal((await get<Workbench>()).runtime.status, "ready");
 });

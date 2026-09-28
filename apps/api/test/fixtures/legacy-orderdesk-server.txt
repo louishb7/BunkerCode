@@ -1,5 +1,4 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
 import { connectDatabase } from "./database.mjs";
 import { createOrder } from "./inventory.mjs";
 
@@ -30,15 +29,6 @@ const server = createServer(async (req, res) => {
   };
   const db = database.scoped(context);
   try {
-    if (req.method === "GET" && req.url === "/surface") {
-      const html = await readFile(
-        new URL("./surface.html", import.meta.url),
-        "utf8",
-      );
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(html);
-      return;
-    }
     if (req.method === "GET" && req.url === "/state")
       return respond(200, await db.call("state"));
     if (req.method !== "POST") return respond(404, { error: "Not found" });

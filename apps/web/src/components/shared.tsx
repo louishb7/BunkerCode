@@ -51,11 +51,11 @@ export function RunTable({
         <thead>
           <tr>
             {select && <th>Comparar</th>}
-            <th>Run / Experimento</th>
+            <th>Execução</th>
             <th>Versão do código</th>
             <th>Resultado</th>
             <th>Aceitos / rejeitados</th>
-            <th>Estoque final</th>
+            <th>Observações</th>
             <th />
           </tr>
         </thead>
@@ -89,12 +89,14 @@ export function RunTable({
                   ? `${run.result.accepted} / ${run.result.rejected}`
                   : "—"}
               </td>
-              <td
-                className={
-                  run.result && run.result.finalStock < 0 ? "negative" : ""
-                }
-              >
-                {run.result?.finalStock ?? "—"}
+              <td>
+                {run.result?.observations?.map((item) => (
+                  <div key={item.key}>
+                    {item.label}:{" "}
+                    {item.before !== undefined ? `${item.before} → ` : ""}
+                    {item.value}
+                  </div>
+                )) ?? "—"}
               </td>
               <td>
                 <Link

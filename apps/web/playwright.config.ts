@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
-  timeout: 60000,
+  timeout: 90000,
   outputDir: "../../.bunkerlab/browser-results",
   use: {
     baseURL: "http://127.0.0.1:5174",
@@ -19,7 +19,7 @@ export default defineConfig({
       url: "http://127.0.0.1:3002/workspaces/local/systems/orderdesk",
       env: {
         PORT: "3002",
-        BUNKERLAB_DATA_DIR: resolve("../../.bunkerlab/browser-test"),
+        BUNKERLAB_DATA_DIR: resolve("../../.bunkerlab/browser-system-first"),
       },
       reuseExistingServer: false,
     },

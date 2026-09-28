@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ServiceUnavailableException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -26,6 +27,7 @@ import { LabRepository } from "./repository";
 import { WorkspaceManager } from "./workspace";
 import { RuntimeManager } from "./runtime";
 import { ExperimentRunner } from "./runner";
+import { ActivityBuffer } from "./activities";
 import { systems, experiments } from "./catalog";
 
 @Injectable()
@@ -36,6 +38,7 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
   private runtimes = new Map<string, RuntimeManager>();
   private busy = new Map<string, string>();
   private tasks = new Set<Promise<unknown>>();
+  private activities = new Map<string, ActivityBuffer>();
   private closing = false;
   private ownsLock = false;
   async onModuleInit() {
@@ -69,11 +72,16 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       this.repository.recover();
       this.workspaces = new WorkspaceManager(this.root, this.repository);
       for (const system of systems) {
-        await this.workspaces.ensure("local", system.id);
-        this.runtimes.set(
-          `local/${system.id}`,
-          new RuntimeManager(this.root, "local", system.id),
+        await this.workspaces.ensure("local", system.id, system.name);
+        if (system.surface)
+          await this.workspaces.upgradeSurface("local", system.id);
+        const runtime = new RuntimeManager(this.root, "local", system.id);
+        const activities = new ActivityBuffer();
+        runtime.observeActivity((event, runId) =>
+          activities.collect(event, runId),
         );
+        this.runtimes.set(`local/${system.id}`, runtime);
+        this.activities.set(`local/${system.id}`, activities);
       }
     } catch (error) {
       this.repository?.close();
@@ -130,7 +138,7 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
     let state: SystemState | null = null;
     if (runtime.status().status === "ready" && !this.busy.has(key)) {
       try {
-        const response = await runtime.request("/state");
+        const response = await runtime.request(system.statePath);
         if (response.status === 200) state = response.body as SystemState;
       } catch {
         /* O diagnóstico do runtime permanece disponível. */
@@ -150,23 +158,139 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       checkpoints: this.repository.checkpoints(workspaceId, systemId),
     };
   }
+  systems(workspaceId: string) {
+    if (workspaceId !== "local")
+      throw new NotFoundException("Workspace não encontrado.");
+    return systems.map((system) => ({
+      ...system,
+      runtime: this.scope(workspaceId, system.id).runtime.status().status,
+    }));
+  }
+  async open(workspaceId: string, systemId: string) {
+    const { key, runtime } = this.scope(workspaceId, systemId);
+    if (runtime.status().status === "ready" || this.busy.has(key))
+      return runtime.status();
+    // Apenas parado inicia automaticamente. Falhas exigem uma ação explícita do usuário.
+    if (runtime.status().status === "crashed") return runtime.status();
+    try {
+      await this.restart(workspaceId, systemId);
+    } catch {
+      /* O erro fica disponível no runtime. */
+    }
+    return runtime.status();
+  }
+  async surface(workspaceId: string, systemId: string) {
+    const { system, runtime } = this.scope(workspaceId, systemId);
+    if (!system.surface)
+      throw new NotFoundException("Este sistema não oferece uma surface.");
+    try {
+      const response = await runtime.request(
+        system.surface.path,
+        undefined,
+        undefined,
+        undefined,
+        "text",
+      );
+      if (response.status !== 200)
+        throw new Error(
+          `Surface retornou HTTP ${response.status}. O workspace pode ser anterior à versão com surface.`,
+        );
+      return { html: response.body as string };
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+  activityList(workspaceId: string, systemId: string) {
+    const { key } = this.scope(workspaceId, systemId);
+    return this.activities.get(key)!.list();
+  }
+  activityDetail(workspaceId: string, systemId: string, id: string) {
+    const { key } = this.scope(workspaceId, systemId);
+    const value = this.activities.get(key)!.detail(id);
+    if (!value)
+      throw new NotFoundException(
+        "Atividade expirou ou pertence a outra sessão do control plane.",
+      );
+    return value;
+  }
+  async interact(workspaceId: string, systemId: string, input: unknown) {
+    const { key, runtime, system } = this.scope(workspaceId, systemId);
+    const operation = input as {
+      method?: string;
+      path?: string;
+      body?: unknown;
+    };
+    if (
+      !operation ||
+      !system.surface?.operations.some(
+        (item) =>
+          item.method === operation.method && item.path === operation.path,
+      )
+    )
+      throw new BadRequestException(
+        "Operação não autorizada para esta surface.",
+      );
+    if (JSON.stringify(operation.body ?? null).length > 4096)
+      throw new BadRequestException("Request excede 4 KiB.");
+    return this.exclusive(key, "Interação com o sistema", async () => {
+      const buffer = this.activities.get(key)!;
+      const activity = buffer.begin(
+        systemId,
+        operation.method as "GET" | "POST",
+        operation.path!,
+        operation.body,
+        runtime.status().code,
+      );
+      const started = performance.now();
+      try {
+        const response = await runtime.request(
+          operation.path!,
+          operation.method === "POST" ? (operation.body ?? {}) : undefined,
+          { requestId: activity.id },
+        );
+        activity.status = response.status;
+        activity.body = response.body;
+        await runtime.flush();
+      } catch (error) {
+        activity.error = error instanceof Error ? error.message : String(error);
+        // Interações com timeout também não podem continuar escrevendo após liberar a bancada.
+        await runtime.stop();
+        activity.error = runtime.status().error ?? activity.error;
+      } finally {
+        activity.durationMs = performance.now() - started;
+        buffer.end();
+      }
+      return activity;
+    });
+  }
   async restart(workspaceId: string, systemId: string) {
     const { runtime, key } = this.scope(workspaceId, systemId);
     return this.exclusive(key, "Reiniciando runtime", async () => {
-      await runtime.start(
-        await this.workspaces.snapshot(workspaceId, systemId),
-      );
+      try {
+        await runtime.start(
+          await this.workspaces.snapshot(workspaceId, systemId),
+        );
+      } catch {
+        throw new ServiceUnavailableException(
+          "O runtime não iniciou. O diagnóstico está disponível na área do sistema.",
+        );
+      }
       return runtime.status();
     });
   }
   async reset(workspaceId: string, systemId: string) {
-    const { runtime, key } = this.scope(workspaceId, systemId);
+    const { runtime, key, system } = this.scope(workspaceId, systemId);
     return this.exclusive(key, "Resetando estado", async () => {
       if (runtime.status().status !== "ready")
         await runtime.start(
           await this.workspaces.snapshot(workspaceId, systemId),
         );
-      const response = await runtime.request("/reset", { stock: 5 });
+      const response = await runtime.request(
+        system.reset.path,
+        system.reset.body,
+      );
       if (response.status !== 200)
         throw new BadRequestException("O sistema recusou o reset.");
       return response.body;
@@ -205,17 +329,26 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       (entry) => entry.id === experimentId && entry.systemId === systemId,
     );
     if (!definition) throw new NotFoundException("Experimento não encontrado.");
-    const input = (body ?? {}) as Partial<ExperimentConfig>;
+    if (
+      body !== undefined &&
+      body !== null &&
+      (typeof body !== "object" || Array.isArray(body))
+    )
+      throw new BadRequestException("Condições inválidas.");
+    const input = (body ?? {}) as Record<string, number>;
     const config = { ...definition.summary.defaults, ...input };
     for (const [name, value] of Object.entries(config)) {
+      const field = definition.summary.fields?.find(
+        (field) => field.key === name,
+      );
       if (
-        !["stock", "clients", "concurrency"].includes(name) ||
+        !field ||
         !Number.isSafeInteger(value) ||
-        value < (name === "stock" ? 0 : 1) ||
-        value > 100
+        value < field.min ||
+        value > field.max
       )
         throw new BadRequestException(
-          "Estoque: 0–100. Compradores e concorrência: 1–100.",
+          "Condições inválidas para esta ferramenta.",
         );
     }
     return this.exclusive(key, "Preparando experimento", async () => {
@@ -306,12 +439,32 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       before === undefined ? Number.MAX_SAFE_INTEGER : Number(before);
     if (!Number.isSafeInteger(cursor) || cursor < 1)
       throw new BadRequestException("Cursor inválido.");
-    return this.repository.listRuns(workspaceId, systemId, 100, cursor);
+    return this.repository
+      .listRuns(workspaceId, systemId, 100, cursor)
+      .map((run) => this.present(run));
   }
   detail(workspaceId: string, systemId: string, id: string) {
     this.scope(workspaceId, systemId);
     const detail = this.repository.detail(workspaceId, systemId, id);
     if (!detail) throw new NotFoundException("Run não encontrada.");
+    detail.run = this.present(detail.run);
     return detail;
+  }
+  private present(run: import("@backendlab/protocol").Run) {
+    const definition = experiments.find(
+      (item) => item.id === run.experimentId && item.systemId === run.systemId,
+    );
+    if (
+      run.result &&
+      !run.result.observations &&
+      run.initialState &&
+      definition
+    ) {
+      run.result.observations = definition.observations(
+        run.initialState,
+        run.result,
+      );
+    }
+    return run;
   }
 }

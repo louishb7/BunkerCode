@@ -1,10 +1,9 @@
 # Direção de evolução
 
-BunkerLab é infraestrutura para executar e evoluir sistemas, não um currículo de aulas.
+BunkerLab é um workspace para construir, executar, investigar e evoluir sistemas backend. O sistema é protagonista; o laboratório oferece ferramentas ao redor.
 
-O ciclo atual é sistema → experimento → evidência → edição externa → nova Run → comparação → checkpoint.
-OrderDesk é o primeiro sistema: overselling sob concorrência cria uma razão concreta para investigar leituras obsoletas e transações. Um resultado `passed` é uma observação sob condições específicas, não uma certificação da implementação.
+O usuário pode usar, editar ou quebrar o sistema antes de formular uma investigação. Activities mostram o que acabou de acontecer; Testar produz Runs reproduzíveis quando for útil. Comparação e checkpoints preservam evidências e evolução, sem sequência obrigatória.
 
-Novos sistemas só devem aparecer quando trouxerem propriedades distintas a investigar. Booking, cache, idempotência e consultas são possibilidades, não funcionalidades planejadas na interface. O segundo sistema deve orientar a generalização de contratos hoje específicos de inventário.
+OrderDesk é o primeiro sistema. Novos sistemas devem trazer comportamentos distintos, com surfaces e contratos próprios. Não há currículo, progressão, metas de aprendizado ou avaliações antecipadas na bancada.
 
-A execução e as limitações reais estão em [arquitetura](../architecture/overview.md) e [limites da rodada](../architecture/local-laboratory.md).
+Veja [a arquitetura](../architecture/overview.md) e [a interação system-first](../architecture/system-surfaces.md).

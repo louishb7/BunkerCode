@@ -1,16 +1,16 @@
-export interface SystemState {
-  product: { id: string; name: string; stock: number };
-  orders: {
-    id: string;
-    productId: string;
-    quantity: number;
-    createdAt: number;
-  }[];
-}
+export type { OrderDeskState } from "./orderdesk";
+export type SystemState = unknown;
 export interface ExperimentConfig {
-  stock: number;
   clients: number;
   concurrency: number;
+  [parameter: string]: number;
+}
+export interface Observation {
+  key: string;
+  label: string;
+  value: string | number;
+  before?: string | number;
+  note?: string;
 }
 export interface ExperimentSummary {
   id: string;
@@ -18,6 +18,13 @@ export interface ExperimentSummary {
   name: string;
   description: string;
   defaults: ExperimentConfig;
+  operationLabel?: string;
+  fields?: {
+    key: keyof ExperimentConfig;
+    label: string;
+    min: number;
+    max: number;
+  }[];
 }
 export interface CodeVersion {
   commit: string;
@@ -59,8 +66,8 @@ export interface ExperimentResult {
   accepted: number;
   rejected: number;
   errors: number;
-  finalStock: number;
-  orderCount: number;
+  observations?: Observation[];
+  [measurement: string]: unknown;
   assertions: Assertion[];
 }
 export interface Run {
@@ -87,6 +94,7 @@ export interface RunDetail {
   evidence: Evidence[];
 }
 export interface SystemSummary {
+  surface?: SurfaceDefinition;
   id: string;
   name: string;
   description: string;
@@ -110,3 +118,28 @@ export interface Workbench {
   busy: string | null;
   checkpoints: Checkpoint[];
 }
+
+export interface SurfaceDefinition {
+  title: string;
+  path: string;
+  operations: { method: "GET" | "POST"; path: string }[];
+}
+export interface Activity {
+  id: string;
+  systemId: string;
+  method: "GET" | "POST";
+  path: string;
+  requestBody: unknown;
+  startedAt: number;
+  durationMs?: number;
+  status: number | null;
+  body: unknown;
+  error?: string;
+  code?: CodeVersion;
+  evidence: Evidence[];
+  truncated?: boolean;
+}
+export type ActivitySummary = Omit<
+  Activity,
+  "evidence" | "requestBody" | "body"
+>;

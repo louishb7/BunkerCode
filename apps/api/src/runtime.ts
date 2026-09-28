@@ -23,6 +23,10 @@ export class RuntimeManager {
   private child?: ChildProcess;
   private token = "";
   private current: RuntimeStatus = { status: "stopped", logs: [] };
+  private activitySink?: (
+    event: Omit<Evidence, "sequence">,
+    runId?: string,
+  ) => void;
   private sink?: (event: Omit<Evidence, "sequence">, runId?: string) => void;
   constructor(
     private root: string,
@@ -32,6 +36,13 @@ export class RuntimeManager {
   status(): RuntimeStatus {
     return { ...this.current, logs: [...this.current.logs] };
   }
+  observeActivity(sink: NonNullable<RuntimeManager["activitySink"]>) {
+    this.activitySink = sink;
+  }
+  private emit(event: Omit<Evidence, "sequence">, runId?: string) {
+    this.sink?.(event, runId);
+    this.activitySink?.(event, runId);
+  }
   observe(sink?: RuntimeManager["sink"]) {
     this.sink = sink;
   }
@@ -39,7 +50,7 @@ export class RuntimeManager {
     const clean = text.slice(0, 4000).replaceAll(this.token, "[redacted]");
     this.current.logs.push(clean);
     this.current.logs = this.current.logs.slice(-40);
-    this.sink?.({
+    this.emit({
       timestamp: Date.now(),
       source: "runtime",
       type: "runtime.log",
@@ -78,7 +89,7 @@ export class RuntimeManager {
         typeof message.type === "string" &&
         typeof message.timestamp === "number"
       ) {
-        this.sink?.(
+        this.emit(
           {
             timestamp: message.timestamp,
             source: "system",
@@ -91,14 +102,18 @@ export class RuntimeManager {
       }
     });
     child.on("exit", (code, signal) => {
-      if (this.child !== child) return;
-      this.current.status = "crashed";
-      this.current.error = `OrderDesk encerrou (code=${code}, signal=${signal}).`;
-      this.sink?.({
+      const expected = this.child !== child;
+      if (!expected) {
+        this.current.status = "crashed";
+      }
+      if (!expected || (code !== null && code !== 0))
+        this.current.error = `${this.systemId} encerrou (code=${code}, signal=${signal}).`;
+      // HTTP pode fechar antes do evento exit. O cleanup não pode descartar essa evidência.
+      this.emit({
         timestamp: Date.now(),
         source: "runtime",
         type: "runtime.exited",
-        payload: { code, signal },
+        payload: { code, signal, expected },
       });
     });
     try {
@@ -150,8 +165,9 @@ export class RuntimeManager {
   async request(
     path: string,
     body?: unknown,
-    context?: { runId: string; requestId?: string },
+    context?: { runId?: string; requestId?: string },
     signal?: AbortSignal,
+    format: "json" | "text" = "json",
   ) {
     if (this.current.status !== "ready")
       throw new Error("Runtime indisponível. Reinicie o sistema.");
@@ -167,7 +183,7 @@ export class RuntimeManager {
           "content-type": "application/json",
           ...(context
             ? {
-                "x-run-id": context.runId,
+                ...(context.runId ? { "x-run-id": context.runId } : {}),
                 ...(context.requestId
                   ? { "x-request-id": context.requestId }
                   : {}),
@@ -193,7 +209,10 @@ export class RuntimeManager {
       }
     }
     const text = Buffer.concat(chunks).toString("utf8");
-    return { status: response.status, body: JSON.parse(text) as unknown };
+    return {
+      status: response.status,
+      body: format === "text" ? text : (JSON.parse(text) as unknown),
+    };
   }
   async flush() {
     const child = this.child;

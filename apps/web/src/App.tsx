@@ -5,19 +5,22 @@ import {
   NavLink,
   Route,
   Routes,
-  useNavigate,
+  useSearchParams,
+  useLocation,
 } from "react-router";
 import {
   Box,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Maximize2,
   FlaskConical,
   GitCommitHorizontal,
   Layers3,
   X,
 } from "lucide-react";
-import type { ExperimentConfig, Run, Workbench } from "@backendlab/protocol";
+import type { Run, Workbench } from "@backendlab/protocol";
 import { Empty } from "./components/shared";
-import { api } from "./api";
+import { api, selectSystem } from "./api";
 import { WorkbenchPage } from "./pages/WorkbenchPage";
 import { RunsPage } from "./pages/RunsPage";
 import { SystemPage } from "./pages/SystemPage";
@@ -30,7 +33,33 @@ function Laboratory() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [acting, setActing] = useState(false);
-  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const location = useLocation();
+  const [systemId, setSystemId] = useState(
+    () =>
+      params.get("system") ??
+      localStorage.getItem("bunkerlab.system") ??
+      "orderdesk",
+  );
+  const [sidebar, setSidebar] = useState(
+    () =>
+      localStorage.getItem("bunkerlab.sidebar") ??
+      (window.innerWidth < 800 ? "collapsed" : "expanded"),
+  );
+  selectSystem(systemId);
+  useEffect(() => {
+    const id = params.get("system");
+    if (id && id !== systemId) {
+      setBench(null);
+      setSystemId(id);
+      localStorage.setItem("bunkerlab.system", id);
+    }
+  }, [params, systemId]);
+  function changeSidebar(value: string) {
+    setSidebar(value);
+    localStorage.setItem("bunkerlab.sidebar", value);
+  }
+
   const refresh = useCallback(async () => {
     try {
       const [workbench, history] = await Promise.all([
@@ -46,7 +75,7 @@ function Laboratory() {
           : "Não foi possível conectar ao laboratório.",
       );
     }
-  }, []);
+  }, [systemId]);
   useEffect(() => {
     let disposed = false;
     async function poll() {
@@ -77,64 +106,72 @@ function Laboratory() {
     }
   }
   const busy = acting || !!bench?.busy;
-  async function start(config: ExperimentConfig) {
-    await action(async () => {
-      const run = await api.start(bench!.experiments[0]!.id, config);
-      navigate(`/runs/${run.id}`);
-    }, "Experimento iniciado. O resultado será salvo automaticamente.");
-  }
   return (
-    <div className="app-shell">
+    <div className={`app-shell sidebar-${sidebar}`}>
+      {sidebar === "hidden" && (
+        <button
+          className="restore-sidebar"
+          aria-label="Mostrar navegação"
+          onClick={() => changeSidebar("expanded")}
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+      )}
       <aside className="sidebar">
         <Link className="brand" to="/">
           <span className="brand-mark">
             <Layers3 size={21} />
           </span>
-          BunkerLab<span className="local-tag">LOCAL</span>
+          <span className="brand-name">BunkerLab</span>
         </Link>
-        <div className="workspace-label">WORKSPACE</div>
-        <div className="workspace-switch">
-          <span className="avatar">H</span>
-          <div>
-            Laboratório local<small>Seu espaço de investigação</small>
-          </div>
-        </div>
+        <button
+          className="sidebar-collapse"
+          aria-label={
+            sidebar === "expanded" ? "Recolher navegação" : "Expandir navegação"
+          }
+          onClick={() =>
+            changeSidebar(sidebar === "expanded" ? "collapsed" : "expanded")
+          }
+        >
+          {sidebar === "expanded" ? (
+            <PanelLeftClose size={18} />
+          ) : (
+            <PanelLeftOpen size={18} />
+          )}
+        </button>
         <nav aria-label="Navegação principal">
-          <NavLink to="/" end>
+          <NavLink to="/" end aria-label="Workbench" title="Workbench">
             <FlaskConical size={18} />
-            Workbench
+            <span>Workbench</span>
           </NavLink>
-          <NavLink to="/systems">
+          <NavLink to="/systems" aria-label="Sistemas" title="Sistemas">
             <Box size={18} />
-            Sistemas
+            <span>Sistemas</span>
           </NavLink>
-          <NavLink to="/runs">
+          <NavLink to="/runs" aria-label="Histórico" title="Histórico">
             <Layers3 size={18} />
-            Runs
+            <span>Histórico</span>
           </NavLink>
-          <NavLink to="/checkpoints">
+          <NavLink
+            to="/checkpoints"
+            aria-label="Checkpoints"
+            title="Checkpoints"
+          >
             <GitCommitHorizontal size={18} />
-            Checkpoints
+            <span>Checkpoints</span>
           </NavLink>
         </nav>
-        <div className="sidebar-bottom">
-          <span className="small-dot" /> Ambiente local
-          <small>
-            Código no VS Code.
-            <br />
-            Evidência no laboratório.
-          </small>
-        </div>
+        <button
+          className="sidebar-focus"
+          aria-label="Ocultar navegação"
+          onClick={() => changeSidebar("hidden")}
+        >
+          <Maximize2 size={16} />
+          <span>Mais espaço</span>
+        </button>
       </aside>
       <div className="main-shell">
-        <header className="topbar">
-          <span>
-            Workspace local <ChevronRight size={14} />{" "}
-            <strong>OrderDesk</strong>
-          </span>
-          <span className="subtle">Backend engineering lab</span>
-        </header>
-        <main>
+        <main className={location.pathname === "/" ? "workbench-main" : ""}>
           {error && (
             <div className="alert error" role="alert">
               {error}
@@ -171,18 +208,14 @@ function Laboratory() {
                 element={
                   <WorkbenchPage
                     bench={bench}
-                    runs={runs}
                     busy={busy}
-                    start={start}
+                    action={action}
+                    refresh={refresh}
+                    key={systemId}
                   />
                 }
               />
-              <Route
-                path="systems"
-                element={
-                  <SystemPage bench={bench} busy={busy} action={action} />
-                }
-              />
+              <Route path="systems" element={<SystemPage />} />
               <Route path="runs" element={<RunsPage runs={runs} />} />
               <Route path="runs/:id" element={<Inspector />} />
               <Route path="compare" element={<Compare />} />
@@ -203,10 +236,6 @@ function Laboratory() {
             </Routes>
           )}
         </main>
-        <footer>
-          BUILD <span>→</span> RUN <span>→</span> OBSERVE <span>→</span> MODIFY{" "}
-          <span>→</span> COMPARE
-        </footer>
       </div>
     </div>
   );

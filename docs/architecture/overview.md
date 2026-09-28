@@ -4,7 +4,7 @@
 
 A aplicação anterior executava um domínio síncrono em memória dentro do NestJS e tratava cada POST como uma Run. Mantivemos React/Vite, React Router, NestJS, TypeScript e o pacote de contratos. Substituímos o domínio acoplado, o currículo, o SDK sem consumidores e o SSE por um runner experimental com persistência e polling.
 
-O problema era conceitual: observar uma operação isolada não criava uma hipótese investigável. Agora uma Run aplica condições, executa workload, coleta evidências e verifica invariantes. A versão de código é parte do resultado.
+Uma Run aplica condições, executa workload, coleta evidências e verifica invariantes. A versão de código é parte do resultado. Na direção atual, o usuário começa usando a surface real do sistema e abre Testar quando precisar de uma investigação reproduzível. Veja [Surfaces e Activities](system-surfaces.md).
 
 ```text
 React → HTTP / NestJS control plane → ExperimentRunner
@@ -88,6 +88,8 @@ Git e SQLite não formam uma transação distribuída. Se o commit funcionar e a
 
 ## Interface
 
-Workbench apresenta sistema, hipótese, condições, resultado esperado e execução. Sistemas apresenta caminho editável, divergência de código, runtime, reset e logs. Runs permite histórico paginado e seleção de duas Runs. Inspector é contexto de uma Run: assertions, primeiro ponto de violação, filtro de request, payloads e estados. Checkpoints preserva evolução.
+Workbench é um host genérico para a surface do sistema. OrderDesk serve HTML/JS do seu próprio snapshot. Uso comum gera Activities transitórias; Testar é um drawer que usa o runner persistente existente. Histórico preserva Runs deliberadas, Inspector pertence à atividade/Run e Compare apresenta condições/observações.
 
-O tema principal é claro, com accent laranja e cores de resultado semânticas. Monospace fica reservado a código, hashes, timestamps e evidência. Polling com intervalos após cada resposta evita empilhar consultas. Não há SSE nem WebSockets.
+A sidebar é recolhível e pode ser ocultada. Não existe header global ou resultado esperado na bancada. Sistemas lista o catálogo; código, logs, hashes e runtime aparecem sob demanda. O tema claro com laranja foi preservado.
+
+O runner delega validação de estado e observações à definição do teste; produto, pedido e estoque não são pressupostos do host. O adapter do OrderDesk mantém as avaliações existentes.

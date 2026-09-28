@@ -59,7 +59,7 @@ export class WorkspaceManager {
     );
     return stdout.trim();
   }
-  async ensure(workspaceId: string, systemId: string) {
+  async ensure(workspaceId: string, systemId: string, title = systemId) {
     const path = this.path(workspaceId, systemId);
     if (!existsSync(path)) {
       await mkdir(path, { recursive: true });
@@ -84,8 +84,36 @@ export class WorkspaceManager {
     try {
       await this.git(path, ["rev-parse", "HEAD"]);
     } catch {
-      await this.checkpoint(workspaceId, systemId, "Base do OrderDesk");
+      await this.checkpoint(workspaceId, systemId, `Base do ${title}`);
     }
+  }
+  async upgradeSurface(workspaceId: string, systemId: string) {
+    const path = this.path(workspaceId, systemId);
+    const marker = join(path, ".git", "bunkerlab-surface-v1");
+    if (existsSync(marker)) return;
+    if (existsSync(join(path, "surface.html"))) {
+      await writeFile(marker, "1");
+      return;
+    }
+    const server = await readFile(join(path, "server.mjs"));
+    // Upgrade conservador: só o servidor canônico anterior, byte por byte, pode ser substituído.
+    if (
+      createHash("sha256").update(server).digest("hex") !==
+      "d83220b471c6e8bc854cb3815e80132a3130d6e42e0e7d7b542d7c0b4d3cc88b"
+    )
+      return;
+    await this.checkpoint(
+      workspaceId,
+      systemId,
+      "Antes de adicionar a surface",
+    );
+    for (const file of ["server.mjs", "surface.html"])
+      await copyFile(
+        join(projectRoot(), "templates", systemId, file),
+        join(path, file),
+      );
+    await this.checkpoint(workspaceId, systemId, "Surface do sistema");
+    await writeFile(marker, "1");
   }
   private async files(root: string, prefix = ""): Promise<string[]> {
     const result: string[] = [];

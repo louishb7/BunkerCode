@@ -50,11 +50,10 @@ export function Inspector() {
   return (
     <>
       <Link className="back-link" to="/runs">
-        ← Histórico de Runs
+        ← Histórico
       </Link>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">ORDERDESK / OVERSELLING</div>
           <h1>
             Run #{run.number} <Status status={run.status} />
           </h1>
@@ -63,7 +62,7 @@ export function Inspector() {
           </p>
         </div>
         <Link className="button" to="/">
-          Executar novamente <ArrowRight size={16} />
+          Voltar ao sistema <ArrowRight size={16} />
         </Link>
       </div>
       {run.error && (
@@ -73,12 +72,11 @@ export function Inspector() {
       )}
       <div className="run-metrics">
         {[
-          ["Estoque inicial", run.config.stock],
-          ["Compradores", run.config.clients],
+          ["Requests", run.config.clients],
           ["Concorrência", run.config.concurrency],
           ["Aceitos", run.result?.accepted ?? "—"],
           ["Rejeitados", run.result?.rejected ?? "—"],
-          ["Estoque final", run.result?.finalStock ?? "—"],
+          ["Erros", run.result?.errors ?? "—"],
         ].map(([label, value]) => (
           <div key={label}>
             <span>{label}</span>
@@ -92,13 +90,28 @@ export function Inspector() {
           </div>
         ))}
       </div>
-      <section className="panel assertions">
+      {run.result?.observations && (
+        <div className="result-facts">
+          {run.result.observations.map((item) => (
+            <p key={item.key}>
+              <strong>
+                {item.label}:{" "}
+                {item.before !== undefined ? `${item.before} → ` : ""}
+                {item.value}
+              </strong>
+              {item.note && <span className="negative"> · {item.note}</span>}
+            </p>
+          ))}
+        </div>
+      )}
+      <details className="panel assertions">
+        <summary>Avaliações e regras desta execução</summary>
         <div className="section-title">
-          <h2>O resultado respeitou a hipótese?</h2>
+          <h2>Avaliações</h2>
           <span className="subtle">
             {run.durationMs !== undefined
               ? `${run.durationMs.toFixed(1)} ms · duração total`
-              : "Experimento em andamento"}
+              : "Execução em andamento"}
           </span>
         </div>
         {run.result ? (
@@ -124,7 +137,7 @@ export function Inspector() {
             final.
           </p>
         )}
-      </section>
+      </details>
       {firstViolation && (
         <div className="violation">
           <X size={18} />
@@ -132,10 +145,7 @@ export function Inspector() {
             <strong>
               Primeira violação observada no evento #{firstViolation.sequence}
             </strong>
-            <p>
-              O banco confirmou estoque {String(firstViolation.payload.stock)}.
-              Filtre a request para inspecionar sua leitura anterior.
-            </p>
+            <p>Abra a request para inspecionar os eventos relacionados.</p>
           </div>
           <button
             onClick={() => {

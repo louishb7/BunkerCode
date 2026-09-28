@@ -1,10 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type {
-  Evidence,
-  RequestResult,
-  Run,
-  SystemState,
-} from "@backendlab/protocol";
+import type { Evidence, RequestResult, Run } from "@backendlab/protocol";
 import { LabRepository } from "./repository";
 import { RuntimeManager } from "./runtime";
 import type { ExperimentDefinition } from "./experiments/definition";
@@ -52,13 +47,9 @@ export class ExperimentRunner {
       });
       if (initial.status !== 200)
         throw new Error(`Setup retornou HTTP ${initial.status}`);
-      run.initialState = this.validateState(initial.body);
+      run.initialState = definition.validateState(initial.body);
       this.repository.updateRun(run);
-      if (
-        run.initialState.product.stock !== run.config.stock ||
-        run.initialState.orders.length !== 0
-      )
-        throw new Error("Setup não produziu o estado inicial solicitado.");
+      definition.validateInitial(run.config, run.initialState);
       phase("setup.completed", { state: run.initialState });
       phase("workload.started", {
         clients: run.config.clients,
@@ -127,12 +118,16 @@ export class ExperimentRunner {
         throw new Error(
           "Workload teve falha de transporte ou timeout; runtime encerrado para impedir mutações tardias.",
         );
-      const final = await this.runtime.request("/state", undefined, {
-        runId: run.id,
-      });
+      const final = await this.runtime.request(
+        definition.statePath,
+        undefined,
+        {
+          runId: run.id,
+        },
+      );
       if (final.status !== 200)
         throw new Error(`Inspeção final retornou HTTP ${final.status}`);
-      run.finalState = this.validateState(final.body);
+      run.finalState = definition.validateState(final.body);
       await this.runtime.flush();
       if (collectionError) throw collectionError;
       run.result = definition.assert(
@@ -141,6 +136,10 @@ export class ExperimentRunner {
         run.finalState,
         requests,
         this.repository.detail(run.workspaceId, run.systemId, run.id)!.evidence,
+      );
+      run.result.observations = definition.observations(
+        run.initialState,
+        run.result,
       );
       run.status =
         run.result.errors > 0
@@ -171,19 +170,5 @@ export class ExperimentRunner {
       this.runtime.observe();
       this.repository.updateRun(run);
     }
-  }
-  private validateState(value: unknown): SystemState {
-    const state = value as SystemState;
-    if (
-      !state ||
-      !state.product ||
-      !Number.isSafeInteger(state.product.stock) ||
-      !Array.isArray(state.orders) ||
-      state.orders.some(
-        (order) => !order || !Number.isSafeInteger(order.quantity),
-      )
-    )
-      throw new Error("Contrato de estado inválido retornado pelo sistema.");
-    return state;
   }
 }

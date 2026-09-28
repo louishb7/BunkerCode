@@ -32,11 +32,10 @@ export function Compare() {
   return (
     <>
       <Link className="back-link" to="/runs">
-        ← Histórico de Runs
+        ← Histórico
       </Link>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">EVIDÊNCIA ANTES E DEPOIS</div>
           <h1>Comparar Runs</h1>
           <p>Uma mudança de código alterou o comportamento do sistema?</p>
         </div>
@@ -68,9 +67,15 @@ export function Compare() {
                     ["Versão", (run: Run) => <Version run={run} />],
                     [
                       "Checkpoint Git",
-                      (run: Run) => <code>{run.checkpoint ? short(run.checkpoint.commit) : "Não salvo"}</code>,
+                      (run: Run) => (
+                        <code>
+                          {run.checkpoint
+                            ? short(run.checkpoint.commit)
+                            : "Não salvo"}
+                        </code>
+                      ),
                     ],
-                    ["Estoque inicial", (run: Run) => run.config.stock],
+
                     [
                       "Compradores / concorrência",
                       (run: Run) =>
@@ -79,9 +84,35 @@ export function Compare() {
                     ["Aceitos", (run: Run) => run.result?.accepted ?? "—"],
                     ["Rejeitados", (run: Run) => run.result?.rejected ?? "—"],
                     ["Erros", (run: Run) => run.result?.errors ?? "—"],
+                    ...Array.from(
+                      new Set(
+                        pair.flatMap(
+                          ({ run }) =>
+                            run.result?.observations?.map((item) => item.key) ??
+                            [],
+                        ),
+                      ),
+                    ).map(
+                      (key) =>
+                        [
+                          pair
+                            .flatMap(
+                              ({ run }) => run.result?.observations ?? [],
+                            )
+                            .find((item) => item.key === key)!.label,
+                          (run: Run) => {
+                            const item = run.result?.observations?.find(
+                              (item) => item.key === key,
+                            );
+                            return item
+                              ? `${item.before !== undefined ? `${item.before} → ` : ""}${item.value}`
+                              : "—";
+                          },
+                        ] as [string, (run: Run) => ReactNode],
+                    ),
                     [
-                      "Estoque final",
-                      (run: Run) => run.result?.finalStock ?? "—",
+                      "Condições",
+                      (run: Run) => <code>{JSON.stringify(run.config)}</code>,
                     ],
                     [
                       "Duração total",

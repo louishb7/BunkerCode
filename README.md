@@ -1,43 +1,48 @@
 # BunkerLab
 
-Laboratório local para **construir, quebrar, executar e comparar pequenos backends reais**. O primeiro sistema é o OrderDesk: compradores concorrentes disputam as últimas unidades de estoque.
+Workspace local para construir, usar, investigar e evoluir pequenos sistemas backend. **O sistema fica no centro; ferramentas do laboratório ficam ao redor.**
 
 ## Executar
 
-Requisitos: **Node.js 24+**, pnpm 11 e Git no PATH. Não precisa de Docker ou PostgreSQL.
+Requisitos: **Node.js 24+**, pnpm 11 e Git no PATH.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Abra <http://127.0.0.1:5173>. A API fica em `127.0.0.1:3001`. As migrations e o workspace local são criados automaticamente. O OrderDesk só inicia ao executar um experimento ou reiniciar o runtime.
+Abra <http://127.0.0.1:5173>. A API fica em `127.0.0.1:3001`. Migrations e workspace são preparados automaticamente. Ao abrir o Workbench, o OrderDesk inicia e apresenta sua própria interface.
 
-## Um ciclo completo
+## Trabalhar no sistema
 
-1. No **Workbench**, execute o experimento: 20 compradores disputam 5 unidades.
-2. Abra a Run e observe aceitos, rejeitados, estoque e invariantes. A implementação inicial pode vender além do estoque; o resultado depende do intercalamento real.
-3. Inspecione o primeiro evento de violação e a leitura anterior daquela request.
-4. Em **Sistemas**, copie o caminho do workspace e abra no VS Code:
-   `.bunkerlab/workspaces/local/systems/orderdesk/`.
-5. Edite `inventory.mjs`. Investigue uma correção própria ou troque `strategy` de `"naive"` para `"atomic"` para observar a referência transacional.
-6. Clique em **Reiniciar runtime** para carregar o código salvo. Execute novamente.
-7. Em **Runs**, selecione duas execuções e clique em **Comparar selecionadas**.
-8. Em **Checkpoints**, salve uma descrição. Isso cria um commit no Git **do workspace**, sem alterar o histórico do BunkerLab.
+- **Criar pedido** usa o backend real. Estoque e pedidos vêm do banco do OrderDesk.
+- **Atividade → Inspecionar** mostra request, resposta e evidências daquela interação. Uso comum não cria Runs.
+- **Abrir código → Copiar caminho** localiza a pasta editável no VS Code. `inventory.mjs` contém a operação de estoque; `surface.html` contém a interface do sistema.
+- **Reiniciar** carrega um snapshot dos arquivos salvos, preservando o banco.
+- **Testar** abre a ferramenta opcional de concorrência. Configure requests, concorrência e estado inicial; a execução deliberada é salva como Run.
+- **Histórico** permite inspecionar Runs e selecionar duas para comparação.
+- **Checkpoints** salva pontos da evolução no Git independente do workspace. Restore cria backup do código atual antes de substituir arquivos.
+- **… → Resetar estado** restaura o banco experimental após confirmação; código, checkpoints e histórico permanecem.
 
-**Resetar estado** limpa pedidos e restaura 5 unidades, preservando código e histórico. Cada experimento prepara seu próprio estado inicial. **Restaurar checkpoint** substitui código após criar um checkpoint de segurança, para o runtime e preserva o banco; depois reinicie ou execute novamente.
+Erros de sintaxe, crash ou indisponibilidade aparecem na área do sistema. Logs e restart continuam acessíveis pelo BunkerLab.
 
-## Estado e código separados
+## Responsabilidades
 
 ```text
-templates/orderdesk/                    base canônica
-.bunkerlab/workspaces/local/systems/    código editável + Git independente
-.bunkerlab/snapshots/                   código capturado ao carregar o runtime
-.bunkerlab/runtime/local/orderdesk/     banco do sistema experimental
-.bunkerlab/lab.sqlite                   metadata, Runs, requests e evidências
+templates/orderdesk/                    base canônica: backend + surface
+.bunkerlab/workspaces/local/systems/    código editável + Git próprio
+.bunkerlab/snapshots/                   código carregado pelo runtime
+.bunkerlab/runtime/local/orderdesk/     banco experimental
+.bunkerlab/lab.sqlite                   Runs, resultados, evidências, checkpoints
 ```
 
-A pasta `.bunkerlab` é ignorada pelo Git principal. Não a apague se quiser preservar sua evolução. `BUNKERLAB_DATA_DIR` permite escolher outro diretório; o caminho padrão é relativo à raiz do projeto, independentemente do diretório de execução.
+Activities ficam num buffer de até 50 interações por sistema durante a sessão do control plane. Reiniciar a API descarta esse buffer; Runs e checkpoints permanecem no SQLite/Git.
+
+`.bunkerlab` é ignorada pelo Git principal. Não a apague se quiser preservar sua evolução. `BUNKERLAB_DATA_DIR` seleciona outro diretório de dados.
+
+## Workspaces anteriores à surface
+
+Se `server.mjs` ainda for idêntico à versão canônica anterior, o primeiro boot adiciona a surface após salvar um checkpoint de segurança. Edições em `inventory.mjs` são preservadas. Servidores customizados não são sobrescritos: veja [a integração e os limites](docs/architecture/system-surfaces.md). Restaurar um checkpoint anterior à surface pode deixá-la indisponível; o runtime e o histórico continuam acessíveis.
 
 ## Validar
 
@@ -49,19 +54,15 @@ pnpm build
 pnpm --filter @backendlab/api migrate
 ```
 
-O teste de integração abre portas locais, cria workspace descartável e executa os dois comportamentos, crashes, resets, checkpoints, restauração e restart do control plane.
-
-Para validar no navegador:
+Integração cobre concorrência real, versão transacional, isolamento de Runs, Activities, crashes, timeouts, persistência, restart, checkpoints, restore e upgrade conservador de workspace.
 
 ```bash
 pnpm --filter @backendlab/web exec playwright install chromium
 pnpm test:browser
 ```
 
-Ou use um Chromium já instalado: `BROWSER_PATH=/caminho/do/navegador pnpm test:browser`. O teste usa portas 3002/5174 e dados isolados em `.bunkerlab/browser-test`; capturas ficam em `.bunkerlab/browser-results`.
+Também é possível usar Chromium instalado: `BROWSER_PATH=/caminho/do/navegador pnpm test:browser`. Os testes usam portas 3002/5174 e workspace separado em `.bunkerlab/browser-system-first`. Capturas desktop/mobile ficam em `.bunkerlab/browser-results`.
 
-## Escopo
+Execução local com código confiável, sem IDE web, autenticação ou infraestrutura cloud. Processos separados não constituem sandbox de execução de código não confiável.
 
-Execução **local e confiável**, não uma sandbox para código remoto. Processos separados preservam o control plane frente a erros do sistema, mas não impõem cotas de CPU/memória. Edição externa + restart explícito; sem IDE web, autenticação ou nuvem.
-
-Detalhes: [arquitetura e decisões](docs/architecture/overview.md), [limites e revisão](docs/architecture/local-laboratory.md).
+[Arquitetura](docs/architecture/overview.md) · [Surfaces e Activities](docs/architecture/system-surfaces.md) · [Limites e dívida técnica](docs/architecture/local-laboratory.md)

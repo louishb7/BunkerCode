@@ -15,7 +15,7 @@
 ## Pontos provisórios
 
 1. **SQLite em worker para o OrderDesk.** Reproduz uma race real entre operações de banco, mas não modela latência/locks/isolation levels de PostgreSQL ou múltiplas réplicas. Confiança alta para investigar check-then-act; menor para extrapolar a sistemas distribuídos.
-2. **Contrato de estado/configuração ainda orientado a inventário.** O registro de sistemas e as definições evitam condicionais globais, mas `SystemState`/`ExperimentConfig` ainda refletem este experimento. O segundo sistema deve trazer contratos específicos, não ampliar esse tipo com campos opcionais sem critério.
+2. **Contratos de ferramenta.** O estado agora é opaco ao núcleo e a definição valida seu domínio. Configuração ainda aceita somente campos numéricos; novos tipos de investigação devem orientar a extensão. A ponte de surface suporta somente GET/POST JSON.
 3. **Git + metadata.** Um commit pode existir sem linha de checkpoint se houver crash/falha de disco nesse intervalo. Não há reconciliador automático; Git permite recuperação manual. Restore salva backup e não reescreve histórico, mas evite edição simultânea no VS Code durante a operação.
 4. **Lock de processo local por PID.** Evita duas APIs no mesmo diretório em operação normal; recuperação de lock stale é voltada ao uso local, não a uma eleição distribuída. Um PID reutilizado pode exigir inspeção manual.
 5. **Comparação de observações.** A tabela não calcula significância estatística, não compara patches de código e não prova ausência de races. Condições diferentes têm aviso explícito.
@@ -30,3 +30,5 @@
 ## Review sugerido
 
 Observe se cada Run referencia o código **carregado**, se o primeiro estoque negativo está ligado à leitura anterior da mesma request, se reset não modifica histórico, se restore conserva arquivos novos no checkpoint de segurança e se o laboratório continua acessível após syntax error/crash do OrderDesk. Compare duas Runs sob as mesmas condições antes de concluir que uma mudança corrigiu o fenômeno.
+
+A segunda rodada está detalhada em [Surfaces e Activities](system-surfaces.md), incluindo upgrade conservador e decisões de menor confiança.

@@ -14,6 +14,38 @@ export class LaboratoryController {
   constructor(
     @Inject(LaboratoryService) private readonly lab: LaboratoryService,
   ) {}
+  @Post("runtime/open") @HttpCode(200) open(
+    @Param("workspaceId") w: string,
+    @Param("systemId") s: string,
+  ) {
+    return this.lab.open(w, s);
+  }
+  @Get("surface") surface(
+    @Param("workspaceId") w: string,
+    @Param("systemId") s: string,
+  ) {
+    return this.lab.surface(w, s);
+  }
+  @Get("activities") activities(
+    @Param("workspaceId") w: string,
+    @Param("systemId") s: string,
+  ) {
+    return this.lab.activityList(w, s);
+  }
+  @Get("activities/:id") activity(
+    @Param("workspaceId") w: string,
+    @Param("systemId") s: string,
+    @Param("id") id: string,
+  ) {
+    return this.lab.activityDetail(w, s, id);
+  }
+  @Post("activities") @HttpCode(200) interact(
+    @Param("workspaceId") w: string,
+    @Param("systemId") s: string,
+    @Body() body: unknown,
+  ) {
+    return this.lab.interact(w, s, body);
+  }
   @Get() workbench(
     @Param("workspaceId") w: string,
     @Param("systemId") s: string,
@@ -67,5 +99,15 @@ export class LaboratoryController {
     @Param("id") id: string,
   ) {
     return this.lab.detail(w, s, id);
+  }
+}
+
+@Controller("workspaces/:workspaceId/systems")
+export class SystemsController {
+  constructor(
+    @Inject(LaboratoryService) private readonly lab: LaboratoryService,
+  ) {}
+  @Get() systems(@Param("workspaceId") w: string) {
+    return this.lab.systems(w);
   }
 }

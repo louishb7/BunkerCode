@@ -18,11 +18,8 @@ export function Checkpoints({
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">EVOLUÇÃO DO SISTEMA</div>
           <h1>Checkpoints</h1>
-          <p>
-            Versões reais do código, salvas no Git independente do OrderDesk.
-          </p>
+          <p>Pontos que você quer preservar na evolução do código.</p>
         </div>
       </div>
       <form

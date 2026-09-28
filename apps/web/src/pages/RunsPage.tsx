@@ -16,8 +16,7 @@ export function RunsPage({ runs }: { runs: Run[] }) {
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">HISTÓRICO EXPERIMENTAL</div>
-          <h1>Runs</h1>
+          <h1>Histórico</h1>
           <p>
             Resultados preservados, mesmo depois de resetar ou quebrar o
             sistema.
@@ -49,7 +48,7 @@ export function RunsPage({ runs }: { runs: Run[] }) {
         />
       ) : (
         <Empty>
-          Ainda não há Runs. <Link to="/">Executar um experimento</Link>
+          Nenhum teste salvo ainda. <Link to="/">Abrir o sistema</Link>
         </Empty>
       )}
       {history.length >= 100 && (
