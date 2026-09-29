@@ -46,7 +46,7 @@ O coletor de Activity e o coletor de Run têm assinaturas independentes no runti
 
 `ExperimentRunner` e suas Runs persistidas foram preservados. A ferramenta Concorrência usa a definição existente, com parâmetros editáveis. A configuração informa o reset necessário à reprodutibilidade; não mostra resultado esperado nem invariante antecipadamente.
 
-Depois da execução o painel mostra respostas de sucesso, rejeições e observações mensuradas. OrderDesk fornece a observação de estoque inicial → final e informa se terminou negativo. O usuário abre a Run se quiser investigar.
+Depois da execução o painel mostra respostas de sucesso, rejeições e observações mensuradas. OrderDesk fornece a observação de estoque inicial → final e informa se terminou negativo. O usuário pode abrir o Inspector ou a [investigação guiada opcional](guided-investigations.md), quando a evidência oferecer esse contexto.
 
 O runner não valida mais `product`/`orders` diretamente. A definição fornece `validateState`, `validateInitial`, `statePath` e observações. `SystemState` é opaco ao núcleo; o contrato tipado `OrderDeskState` é específico do sistema. Configurações usam campos declarados pela ferramenta. A UI renderiza essas definições e observações, sem conhecer estoque. Resultados antigos recebem observações pelo adapter da definição na leitura, sem regravar evidências antigas.
 

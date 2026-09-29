@@ -29,6 +29,7 @@ import { RuntimeManager } from "./runtime";
 import { ExperimentRunner } from "./runner";
 import { ActivityBuffer } from "./activities";
 import { systems, experiments } from "./catalog";
+import { investigationsFor } from "./investigations";
 
 @Injectable()
 export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
@@ -73,6 +74,8 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       this.workspaces = new WorkspaceManager(this.root, this.repository);
       for (const system of systems) {
         await this.workspaces.ensure("local", system.id, system.name);
+        if (system.id === "orderdesk")
+          await this.workspaces.upgradeGuidance("local", system.id);
         if (system.surface)
           await this.workspaces.upgradeSurface("local", system.id);
         const runtime = new RuntimeManager(this.root, "local", system.id);
@@ -448,7 +451,7 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
     const detail = this.repository.detail(workspaceId, systemId, id);
     if (!detail) throw new NotFoundException("Run não encontrada.");
     detail.run = this.present(detail.run);
-    return detail;
+    return { ...detail, investigations: investigationsFor(detail) };
   }
   private present(run: import("@backendlab/protocol").Run) {
     const definition = experiments.find(

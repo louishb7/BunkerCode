@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Code2, FlaskConical, MoreHorizontal, RotateCcw } from "lucide-react";
 import type {
+  InvestigationContext,
+  Run,
+  RunDetail,
   Activity,
   ActivitySummary,
   Workbench,
@@ -9,23 +12,82 @@ import { api } from "../api";
 import { Drawer } from "../components/Drawer";
 import { SystemSurface } from "../components/SystemSurface";
 import { ActivityInspector } from "../components/ActivityInspector";
+import { Investigation } from "../components/Investigation";
 import { TestTool } from "../components/TestTool";
 import { short, type Action } from "../components/shared";
 
 export function WorkbenchPage({
   bench,
+  runs,
   busy,
   action,
   refresh,
 }: {
   bench: Workbench;
+  runs: Run[];
   busy: boolean;
   action: Action;
   refresh: () => Promise<void>;
 }) {
   const [panel, setPanel] = useState<
-    "code" | "runtime" | "test" | "reset" | null
+    "code" | "runtime" | "test" | "reset" | "investigation" | null
   >(null);
+  const storageKey = `bunkerlab.investigation.v1.${bench.workspace.id}.${bench.system.id}`;
+  const [context, setContext] = useState<InvestigationContext | null>(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+      return value &&
+        typeof value.baselineRunId === "string" &&
+        typeof value.definitionId === "string" &&
+        Array.isArray(value.comparisonRunIds) &&
+        Number.isInteger(value.revealed) &&
+        value.revealed >= 0 &&
+        value.revealed <= 100
+        ? value
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(`${storageKey}.dismissed`) ?? "",
+  );
+  const [candidate, setCandidate] = useState<RunDetail>();
+  const latest = runs.find((run) => run.status !== "running");
+  useEffect(() => {
+    let active = true;
+    if (latest)
+      void api
+        .run(latest.id)
+        .then((detail) => {
+          if (active) setCandidate(detail);
+        })
+        .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [latest?.id, latest?.status]);
+  function updateContext(value: InvestigationContext) {
+    setContext(value);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch {
+      /* Mantém contexto em memória. */
+    }
+  }
+  function investigate(detail: RunDetail) {
+    const definition = detail.investigations?.find((item) => item.available);
+    if (!definition) return;
+    if (context?.baselineRunId !== detail.run.id)
+      updateContext({
+        definitionId: definition.id,
+        baselineRunId: detail.run.id,
+        comparisonRunIds: [],
+        revealed: 0,
+      });
+    setPanel("investigation");
+  }
+  const suggestion = candidate?.investigations?.find((item) => item.available);
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [inspection, setInspection] = useState("");
   const [showActivities, setShowActivities] = useState(false);
@@ -66,7 +128,7 @@ export function WorkbenchPage({
       .then(setActivities)
       .catch(() => {});
   }, []);
-  const latest =
+  const latestActivity =
     activities.find((item) => item.method === "POST") ?? activities[0];
   const running = bench.runtime.status === "ready";
   const surfaceBlocked = busy && bench.busy !== "Interação com o sistema";
@@ -83,7 +145,8 @@ export function WorkbenchPage({
       .find((line) => /(?:Syntax|Type|Reference)?Error:/.test(line)) ??
     issue?.split("\n")[0];
   const changed =
-    running && bench.runtime.code?.digest !== bench.workingCode.digest;
+    !!bench.runtime.code &&
+    bench.runtime.code.digest !== bench.workingCode.digest;
   async function restart() {
     await action(async () => {
       await api.restart();
@@ -132,9 +195,48 @@ export function WorkbenchPage({
       </div>
       {changed && (
         <div className="code-change">
-          Código editado. Reinicie para carregar as alterações.
+          <span>Alterações ainda não aplicadas</span>
+          <button disabled={busy} onClick={() => void restart()}>
+            Aplicar e reiniciar
+          </button>
         </div>
       )}
+      <div className="investigation-entry">
+        {context && (
+          <button
+            className="text-button"
+            onClick={() => setPanel("investigation")}
+          >
+            Retomar investigação
+          </button>
+        )}
+        {suggestion &&
+          candidate &&
+          candidate.run.id !== dismissed &&
+          candidate.run.id !== context?.baselineRunId &&
+          !context?.comparisonRunIds.includes(candidate.run.id) && (
+            <>
+              <span>{suggestion.observation}</span>
+              <button onClick={() => investigate(candidate)}>Investigar</button>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setDismissed(candidate.run.id);
+                  try {
+                    localStorage.setItem(
+                      `${storageKey}.dismissed`,
+                      candidate.run.id,
+                    );
+                  } catch {
+                    /* Sessão atual. */
+                  }
+                }}
+              >
+                Dispensar
+              </button>
+            </>
+          )}
+      </div>
       <section className="surface-space" aria-label="Sistema em execução">
         {running && !surfaceError && bench.system.surface ? (
           <>
@@ -191,22 +293,26 @@ export function WorkbenchPage({
         >
           Atividade{activities.length ? ` · ${activities.length}` : ""}
         </button>
-        {latest ? (
+        {latestActivity ? (
           <>
             <code>
-              {latest.method} {latest.path}
+              {latestActivity.method} {latestActivity.path}
             </code>
             <span
               className={
-                latest.status === null || latest.status >= 400 ? "negative" : ""
+                latestActivity.status === null || latestActivity.status >= 400
+                  ? "negative"
+                  : ""
               }
             >
-              {latest.status ?? "Sem resposta"}
+              {latestActivity.status ?? "Sem resposta"}
             </span>
-            <span className="subtle">{latest.durationMs?.toFixed(1)} ms</span>
+            <span className="subtle">
+              {latestActivity.durationMs?.toFixed(1)} ms
+            </span>
             <button
               className="text-button"
-              onClick={() => setInspection(latest.id)}
+              onClick={() => setInspection(latestActivity.id)}
             >
               Inspecionar
             </button>
@@ -231,12 +337,24 @@ export function WorkbenchPage({
       {inspection && (
         <ActivityInspector id={inspection} close={() => setInspection("")} />
       )}
+      {panel === "investigation" && context && (
+        <Investigation
+          bench={bench}
+          context={context}
+          update={updateContext}
+          close={() => setPanel(null)}
+          busy={busy}
+          action={action}
+          completed={completed}
+        />
+      )}
       {panel === "test" && (
         <TestTool
           bench={bench}
           busy={busy}
           close={() => setPanel(null)}
           completed={completed}
+          investigate={investigate}
         />
       )}
       {panel === "code" && (
@@ -257,7 +375,7 @@ export function WorkbenchPage({
             Copiar caminho
           </button>
           <p className="subtle">
-            Salve os arquivos e reinicie o runtime para carregar a mudança.
+            Salve os arquivos e use Aplicar e reiniciar para carregar a mudança.
           </p>
         </Drawer>
       )}

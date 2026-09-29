@@ -139,12 +139,11 @@ test("real concurrent requests expose overselling and preserve correlated databa
 
 test("editing code does not silently change the loaded runtime; restart and checkpoint enable comparison", async () => {
   const before = await get<Workbench>();
-  const path = join(before.codePath, "inventory.mjs");
+  const path = join(before.codePath, "order-store.mjs");
   await writeFile(
     path,
-    (await readFile(path, "utf8")).replace(
-      /strategy = ["']naive["']/,
-      'strategy = "atomic"',
+    await readFile(
+      join(projectRoot(), "apps/api/test/fixtures/conditional-order-store.txt"),
     ),
   );
   const edited = await get<Workbench>();
@@ -227,7 +226,7 @@ test("restoring a checkpoint saves dirty and new files before replacing code, wi
   assert.equal(restored.runtime.status, "stopped");
   assert.match(
     await readFile(join(restored.codePath, "inventory.mjs"), "utf8"),
-    /strategy = ['"]naive['"]/,
+    /database.call\("insertOrder", input\)/,
   );
   await assert.rejects(readFile(join(restored.codePath, "notes.txt")));
   const backup = restored.checkpoints.find((checkpoint) =>
@@ -481,4 +480,67 @@ test("activities are bounded and expire at API restart; saved Runs remain", asyn
   assert.deepEqual(await get("/runs"), runs);
   assert.equal((await post("/runtime/open")).status, 200);
   assert.equal((await get<Workbench>()).runtime.status, "ready");
+});
+
+test("investigation availability and selected evidence derive exclusively from the real baseline", async () => {
+  const detail = await get<RunDetail>(`/runs/${naiveRun.run.id}`);
+  const view = detail.investigations![0]!;
+  assert.equal(view.available, true);
+  assert.equal(
+    view.facts.find((item) => item.key === "orders")!.value,
+    detail.run.finalState!.orders.length,
+  );
+  assert.doesNotMatch(
+    JSON.stringify([view.title, view.observation, view.facts]),
+    /race condition|transaction|atomic|solução/i,
+  );
+  assert.equal(view.files[0]!.path, "inventory.mjs");
+  assert.equal(view.hints.length, 4);
+  assert.ok(view.evidence.length > 0);
+  assert.ok(
+    view.evidence.some((item) => {
+      const event = detail.evidence.find(
+        (event) => event.sequence === item.sequence,
+      )!;
+      return event.type === "stock.written" && Number(event.payload.stock) < 0;
+    }),
+  );
+  for (const item of view.evidence) {
+    const event = detail.evidence.find(
+      (event) => event.sequence === item.sequence,
+    )!;
+    assert.ok(event);
+    assert.ok(
+      detail.requests.some((request) => request.id === event.requestId),
+    );
+    assert.ok(item.label.endsWith(`= ${event.payload.stock}`));
+  }
+  const after = await get<RunDetail>(`/runs/${atomicRun.run.id}`);
+  assert.equal(after.investigations![0]!.available, false);
+  assert.match(
+    after.investigations![0]!.observation,
+    /Não foi observado estoque negativo/,
+  );
+});
+
+test("student template contains no strategy switch or completed alternate implementation", async () => {
+  for (const file of [
+    "inventory.mjs",
+    "database.mjs",
+    "order-store.mjs",
+    "README.md",
+  ]) {
+    const code = await readFile(
+      join(projectRoot(), "templates/orderdesk", file),
+      "utf8",
+    );
+    assert.doesNotMatch(code, /strategy\s*=|atomicOrder|stock >= \?/);
+  }
+  assert.match(
+    await readFile(
+      join(projectRoot(), "templates/orderdesk/order-store.mjs"),
+      "utf8",
+    ),
+    /result.changes/,
+  );
 });

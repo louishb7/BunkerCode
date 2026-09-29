@@ -208,6 +208,7 @@ function Laboratory() {
                 element={
                   <WorkbenchPage
                     bench={bench}
+                    runs={runs}
                     busy={busy}
                     action={action}
                     refresh={refresh}

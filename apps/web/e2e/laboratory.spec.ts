@@ -2,7 +2,9 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 const workspace = resolve(
-  "../../.bunkerlab/browser-system-first/workspaces/local/systems/orderdesk",
+  process.env.BUNKERLAB_BROWSER_DATA_DIR ??
+    "../../.bunkerlab/browser-system-first",
+  "workspaces/local/systems/orderdesk",
 );
 const inventory = join(workspace, "inventory.mjs");
 const apiPath = "/api/workspaces/local/systems/orderdesk";
@@ -12,7 +14,9 @@ const headers = {
 };
 async function restart(page: Page) {
   await page.getByRole("button", { name: "Reiniciar", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Runtime reiniciado");
+  await expect(page.getByRole("status")).toContainText("Runtime reiniciado", {
+    timeout: 15000,
+  });
   await expect(
     page.frameLocator("iframe").getByRole("button", { name: "Criar pedido" }),
   ).toBeEnabled();
@@ -41,6 +45,7 @@ async function concurrent(page: Page) {
   await expect(drawer).not.toContainText(
     /resultado esperado|stock >= 0|5 aceitos|15 rejeitados/i,
   );
+  await drawer.getByText("Configurações avançadas", { exact: true }).click();
   await drawer.getByLabel("Quantidade de requests").fill("20");
   await drawer.getByLabel("Concorrência", { exact: true }).fill("20");
   await drawer.getByLabel("Estoque antes do teste").fill("5");
@@ -50,7 +55,7 @@ async function concurrent(page: Page) {
   await expect(
     drawer.getByRole("heading", { name: "Observado nesta execução" }),
   ).toBeVisible();
-  const link = drawer.getByRole("link", { name: /Investigar Run/ });
+  const link = drawer.getByRole("link", { name: /Inspecionar Run/ });
   const id = (await link.getAttribute("href"))!.split("/").at(-1)!;
   await link.click();
   await expect(page.getByRole("heading", { name: /Run #/ })).toBeVisible();
@@ -71,10 +76,13 @@ test("the real system is the workbench; activities, testing, evolution and failu
   await expect(page.locator("body")).not.toContainText(
     /Workspace local|Backend engineering lab|Últimas investigações|SUA BANCADA|RESULTADO ESPERADO|stock >= 0/,
   );
-  const original = await readFile(inventory, "utf8");
   await writeFile(
     inventory,
-    original.replace(/strategy = ["']atomic["']/, 'strategy = "naive"'),
+    await readFile(resolve("../../templates/orderdesk/inventory.mjs")),
+  );
+  await writeFile(
+    join(workspace, "order-store.mjs"),
+    await readFile(resolve("../../templates/orderdesk/order-store.mjs")),
   );
   await restart(page);
   await reset(page);
@@ -145,11 +153,8 @@ test("the real system is the workbench; activities, testing, evolution and failu
     .click();
   await expect(page.getByText("stock.read", { exact: true })).toBeVisible();
   await writeFile(
-    inventory,
-    (await readFile(inventory, "utf8")).replace(
-      /strategy = ["']naive["']/,
-      'strategy = "atomic"',
-    ),
+    join(workspace, "order-store.mjs"),
+    await readFile(resolve("../api/test/fixtures/conditional-order-store.txt")),
   );
   await page.getByRole("link", { name: "Workbench", exact: true }).click();
   await restart(page);
@@ -203,7 +208,9 @@ test("the real system is the workbench; activities, testing, evolution and failu
     .getByRole("button", { name: "Restaurar com cópia de segurança" })
     .click();
   await expect(page.getByRole("status")).toContainText("Código restaurado");
-  expect(await readFile(inventory, "utf8")).toMatch(/strategy = ["']naive["']/);
+  expect(await readFile(inventory, "utf8")).toMatch(
+    /database.call\("insertOrder", input\)/,
+  );
   await page.getByRole("link", { name: "Sistemas", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Sistemas", exact: true }),

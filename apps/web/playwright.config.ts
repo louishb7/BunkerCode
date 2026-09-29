@@ -19,7 +19,10 @@ export default defineConfig({
       url: "http://127.0.0.1:3002/workspaces/local/systems/orderdesk",
       env: {
         PORT: "3002",
-        BUNKERLAB_DATA_DIR: resolve("../../.bunkerlab/browser-system-first"),
+        BUNKERLAB_DATA_DIR: resolve(
+          process.env.BUNKERLAB_BROWSER_DATA_DIR ??
+            "../../.bunkerlab/browser-system-first",
+        ),
       },
       reuseExistingServer: false,
     },

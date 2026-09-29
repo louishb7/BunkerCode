@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { GitCommitHorizontal } from "lucide-react";
-import type { Workbench } from "@backendlab/protocol";
+import type { Checkpoint, Workbench } from "@backendlab/protocol";
 import { date, short, type Action } from "../components/shared";
 import { api } from "../api";
 export function Checkpoints({
@@ -14,6 +14,47 @@ export function Checkpoints({
 }) {
   const [message, setMessage] = useState("");
   const [restoreId, setRestoreId] = useState<string | null>(null);
+  const renderCheckpoint = (checkpoint: Checkpoint) => (
+    <section className="checkpoint-item" key={checkpoint.id}>
+      <GitCommitHorizontal size={22} />
+      <div>
+        <h3>{checkpoint.message}</h3>
+        {checkpoint.kind === "backup" && <small>Backup automático</small>}
+        {checkpoint.kind === "restore" && (
+          <small>Registro de restauração</small>
+        )}
+        <p>
+          {date(checkpoint.createdAt)} · <code>{short(checkpoint.commit)}</code>{" "}
+          · código <code>{short(checkpoint.digest)}</code>
+        </p>
+        {restoreId === checkpoint.id && (
+          <div className="restore-confirm">
+            <p>
+              O runtime será parado e os arquivos serão substituídos. Um
+              checkpoint de segurança preservará o código atual. O banco não
+              será resetado.
+            </p>
+            <button
+              disabled={busy}
+              className="primary"
+              onClick={() =>
+                void action(async () => {
+                  await api.restore(checkpoint.id);
+                  setRestoreId(null);
+                }, "Código restaurado. Reinicie o runtime para carregá-lo.")
+              }
+            >
+              Restaurar com cópia de segurança
+            </button>{" "}
+            <button onClick={() => setRestoreId(null)}>Cancelar</button>
+          </div>
+        )}
+      </div>
+      <button disabled={busy} onClick={() => setRestoreId(checkpoint.id)}>
+        Restaurar
+      </button>
+    </section>
+  );
   return (
     <>
       <div className="page-heading">
@@ -39,7 +80,7 @@ export function Checkpoints({
             value={message}
             maxLength={120}
             required
-            placeholder="Ex.: atualização de estoque em transação"
+            placeholder="Ex.: antes de tentar uma alteração"
             onChange={(event) => setMessage(event.target.value)}
           />
           <button className="primary" disabled={busy || !message.trim()}>
@@ -53,44 +94,30 @@ export function Checkpoints({
         </small>
       </form>
       <div className="checkpoint-list">
-        {bench.checkpoints.map((checkpoint) => (
-          <section className="checkpoint-item" key={checkpoint.id}>
-            <GitCommitHorizontal size={22} />
-            <div>
-              <h3>{checkpoint.message}</h3>
-              <p>
-                {date(checkpoint.createdAt)} ·{" "}
-                <code>{short(checkpoint.commit)}</code> · código{" "}
-                <code>{short(checkpoint.digest)}</code>
-              </p>
-              {restoreId === checkpoint.id && (
-                <div className="restore-confirm">
-                  <p>
-                    O runtime será parado e os arquivos serão substituídos. Um
-                    checkpoint de segurança preservará o código atual. O banco
-                    não será resetado.
-                  </p>
-                  <button
-                    disabled={busy}
-                    className="primary"
-                    onClick={() =>
-                      void action(async () => {
-                        await api.restore(checkpoint.id);
-                        setRestoreId(null);
-                      }, "Código restaurado. Reinicie o runtime para carregá-lo.")
-                    }
-                  >
-                    Restaurar com cópia de segurança
-                  </button>{" "}
-                  <button onClick={() => setRestoreId(null)}>Cancelar</button>
-                </div>
-              )}
-            </div>
-            <button disabled={busy} onClick={() => setRestoreId(checkpoint.id)}>
-              Restaurar
-            </button>
-          </section>
-        ))}
+        {bench.checkpoints
+          .filter(
+            (item) => !["backup", "restore"].includes(item.kind ?? "user"),
+          )
+          .map(renderCheckpoint)}
+        <details className="automatic-checkpoints">
+          <summary>
+            Backups automáticos e restaurações (
+            {
+              bench.checkpoints.filter((item) =>
+                ["backup", "restore"].includes(item.kind ?? "user"),
+              ).length
+            }
+            )
+          </summary>
+          <p className="subtle">
+            Cópias de segurança continuam disponíveis para restauração.
+          </p>
+          {bench.checkpoints
+            .filter((item) =>
+              ["backup", "restore"].includes(item.kind ?? "user"),
+            )
+            .map(renderCheckpoint)}
+        </details>
       </div>
     </>
   );

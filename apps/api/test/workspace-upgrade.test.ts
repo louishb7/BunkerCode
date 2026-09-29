@@ -26,9 +26,9 @@ test("legacy surface upgrade preserves edited domain code and restoring its back
         ),
       ),
     );
-    const customInventory = (
-      await readFile(join(path, "inventory.mjs"), "utf8")
-    ).replace('"naive"', '"atomic"');
+    const customInventory =
+      (await readFile(join(path, "inventory.mjs"), "utf8")) +
+      "\n// Custom domain code\n";
     await writeFile(join(path, "inventory.mjs"), customInventory);
     await manager.upgradeSurface("local", "orderdesk");
     assert.equal(
@@ -87,3 +87,60 @@ test("surface upgrades never overwrite a customized legacy server", async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+for (const edited of [false, true])
+  test(`guidance upgrade preserves legacy code and respects local edits (${edited})`, async () => {
+    const root = await mkdtemp(
+      join(projectRoot(), ".bunkerlab", "guidance-test-"),
+    );
+    const repository = new LabRepository(root);
+    const manager = new WorkspaceManager(root, repository);
+    try {
+      await manager.ensure("local", "orderdesk", "OrderDesk");
+      const path = manager.path("local", "orderdesk");
+      await rm(join(path, "order-store.mjs"));
+      for (const file of ["inventory.mjs", "database.mjs", "README.md"])
+        await writeFile(
+          join(path, file),
+          await readFile(
+            join(
+              projectRoot(),
+              "apps/api/test/fixtures/legacy-guidance",
+              file.replace(".mjs", ".txt"),
+            ),
+          ),
+        );
+      if (edited)
+        await writeFile(join(path, "inventory.mjs"), "// My implementation\n");
+      await manager.upgradeGuidance("local", "orderdesk");
+      if (edited) {
+        assert.equal(
+          await readFile(join(path, "inventory.mjs"), "utf8"),
+          "// My implementation\n",
+        );
+        await assert.rejects(readFile(join(path, "order-store.mjs")));
+      } else {
+        assert.doesNotMatch(
+          await readFile(join(path, "inventory.mjs"), "utf8"),
+          /strategy/,
+        );
+        const backup = repository
+          .checkpoints("local", "orderdesk")
+          .find((item) => item.kind === "backup")!;
+        assert.ok(backup);
+        await manager.restore("local", "orderdesk", backup);
+        await manager.upgradeGuidance("local", "orderdesk");
+        assert.match(
+          await readFile(join(path, "inventory.mjs"), "utf8"),
+          /strategy/,
+        );
+        assert.equal(
+          repository.checkpoints("local", "orderdesk")[0]!.kind,
+          "restore",
+        );
+      }
+    } finally {
+      repository.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });

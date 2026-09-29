@@ -18,10 +18,11 @@ Abra <http://127.0.0.1:5173>. A API fica em `127.0.0.1:3001`. Migrations e works
 - **Criar pedido** usa o backend real. Estoque e pedidos vêm do banco do OrderDesk.
 - **Atividade → Inspecionar** mostra request, resposta e evidências daquela interação. Uso comum não cria Runs.
 - **Abrir código → Copiar caminho** localiza a pasta editável no VS Code. `inventory.mjs` contém a operação de estoque; `surface.html` contém a interface do sistema.
-- **Reiniciar** carrega um snapshot dos arquivos salvos, preservando o banco.
-- **Testar** abre a ferramenta opcional de concorrência. Configure requests, concorrência e estado inicial; a execução deliberada é salva como Run.
+- **Aplicar e reiniciar** carrega um snapshot dos arquivos salvos, preservando o banco. O aviso de alterações pendentes distingue workspace de runtime.
+- **Testar** começa por clientes simultâneos; configurações avançadas mantêm os controles de requests, concorrência e estado inicial. A execução é salva como Run.
+- **Investigar** aparece quando uma Run registra estoque negativo. O drawer oferece fatos, evidências e pistas opcionais, e compara novas tentativas nas condições da baseline.
 - **Histórico** permite inspecionar Runs e selecionar duas para comparação.
-- **Checkpoints** salva pontos da evolução no Git independente do workspace. Restore cria backup do código atual antes de substituir arquivos.
+- **Checkpoints** salva pontos da evolução no Git independente do workspace. Restore cria backup do código atual antes de substituir arquivos. Backups automáticos ficam recolhidos na lista.
 - **… → Resetar estado** restaura o banco experimental após confirmação; código, checkpoints e histórico permanecem.
 
 Erros de sintaxe, crash ou indisponibilidade aparecem na área do sistema. Logs e restart continuam acessíveis pelo BunkerLab.
@@ -61,8 +62,10 @@ pnpm --filter @backendlab/web exec playwright install chromium
 pnpm test:browser
 ```
 
-Também é possível usar Chromium instalado: `BROWSER_PATH=/caminho/do/navegador pnpm test:browser`. Os testes usam portas 3002/5174 e workspace separado em `.bunkerlab/browser-system-first`. Capturas desktop/mobile ficam em `.bunkerlab/browser-results`.
+O contexto de investigação e as pistas abertas ficam neste navegador. Workspaces canônicos antigos recebem atualização com backup; arquivos customizados não são sobrescritos. Veja [compatibilidade e limites](docs/architecture/guided-investigations.md).
+
+Também é possível usar Chromium instalado: `BROWSER_PATH=/caminho/do/navegador pnpm test:browser`. Os testes usam portas 3002/5174 e workspace separado em `.bunkerlab/browser-system-first`. `BUNKERLAB_BROWSER_DATA_DIR` permite escolher outro diretório isolado para os testes. Capturas desktop/mobile ficam em `.bunkerlab/browser-results`.
 
 Execução local com código confiável, sem IDE web, autenticação ou infraestrutura cloud. Processos separados não constituem sandbox de execução de código não confiável.
 
-[Arquitetura](docs/architecture/overview.md) · [Surfaces e Activities](docs/architecture/system-surfaces.md) · [Limites e dívida técnica](docs/architecture/local-laboratory.md)
+[Investigação guiada](docs/architecture/guided-investigations.md) · [Arquitetura](docs/architecture/overview.md) · [Surfaces e Activities](docs/architecture/system-surfaces.md) · [Limites e dívida técnica](docs/architecture/local-laboratory.md)

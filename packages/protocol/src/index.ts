@@ -33,6 +33,7 @@ export interface CodeVersion {
   snapshot: string;
 }
 export interface Checkpoint {
+  kind?: "user" | "backup" | "restore" | "system";
   id: string;
   systemId: string;
   commit: string;
@@ -92,6 +93,29 @@ export interface RunDetail {
   run: Run;
   requests: RequestResult[];
   evidence: Evidence[];
+  investigations?: InvestigationView[];
+}
+
+export interface InvestigationView {
+  id: string;
+  title: string;
+  available: boolean;
+  observation: string;
+  facts: Observation[];
+  evidence: { sequence: number; label: string }[];
+  evidenceNote: string;
+  question: string;
+  files: { path: string; symbol: string; description: string }[];
+  hints: { title: string; text: string }[];
+  checkpointName: string;
+}
+
+export interface InvestigationContext {
+  definitionId: string;
+  baselineRunId: string;
+  comparisonRunIds: string[];
+  revealed: number;
+  checkpointId?: string;
 }
 export interface SystemSummary {
   surface?: SurfaceDefinition;

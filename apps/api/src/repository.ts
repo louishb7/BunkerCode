@@ -84,6 +84,7 @@ export class LabRepository {
   }
   private checkpoint(row: Row): Checkpoint {
     return {
+      kind: row.kind as Checkpoint["kind"],
       id: String(row.id),
       systemId: String(row.system_id),
       commit: String(row.commit_hash),
@@ -94,7 +95,9 @@ export class LabRepository {
   }
   saveCheckpoint(workspaceId: string, value: Checkpoint) {
     this.db
-      .prepare("INSERT INTO checkpoints VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .prepare(
+        "INSERT INTO checkpoints (id, workspace_id, system_id, commit_hash, digest, message, created_at, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
       .run(
         value.id,
         workspaceId,
@@ -103,6 +106,7 @@ export class LabRepository {
         value.digest,
         value.message,
         value.createdAt,
+        value.kind ?? "user",
       );
   }
   createRun(run: Omit<Run, "number">): Run {

@@ -1,4 +1,5 @@
 import type {
+  Checkpoint,
   Activity,
   ActivitySummary,
   SystemSummary,
@@ -55,7 +56,8 @@ export const api = {
     json<Run>(`/experiments/${encodeURIComponent(id)}/runs`, config),
   restart: () => json("/runtime/restart", {}),
   reset: () => json("/runtime/reset", {}),
-  checkpoint: (message: string) => json("/checkpoints", { message }),
+  checkpoint: (message: string) =>
+    json<Checkpoint>("/checkpoints", { message }),
   restore: (id: string) =>
     json(`/checkpoints/${encodeURIComponent(id)}/restore`, {}),
 };

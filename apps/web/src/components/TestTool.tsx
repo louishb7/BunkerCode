@@ -12,16 +12,19 @@ export function TestTool({
   busy,
   close,
   completed,
+  investigate,
 }: {
   bench: Workbench;
   busy: boolean;
   close: () => void;
   completed: () => void;
+  investigate: (detail: RunDetail) => void;
 }) {
   const definition = bench.experiments[0];
   const [config, setConfig] = useState<ExperimentConfig>(
     definition?.defaults ?? { clients: 20, concurrency: 20 },
   );
+  const [advanced, setAdvanced] = useState(false);
   const [detail, setDetail] = useState<RunDetail>();
   const [runId, setRunId] = useState("");
   const [starting, setStarting] = useState(false);
@@ -82,24 +85,48 @@ export function TestTool({
                 value={definition.operationLabel ?? definition.name}
               />
             </label>
-            {definition.fields?.map((field) => (
-              <label key={field.key}>
-                {field.label}
+            {!advanced && (
+              <label>
+                Clientes simultâneos
                 <input
                   type="number"
-                  min={field.min}
-                  max={field.max}
+                  min={1}
+                  max={100}
                   required
-                  value={config[field.key]}
+                  value={config.concurrency}
                   onChange={(event) =>
                     setConfig({
                       ...config,
-                      [field.key]: Number(event.target.value),
+                      clients: Number(event.target.value),
+                      concurrency: Number(event.target.value),
                     })
                   }
                 />
               </label>
-            ))}
+            )}
+            <details
+              onToggle={(event) => setAdvanced(event.currentTarget.open)}
+            >
+              <summary>Configurações avançadas</summary>
+              {definition.fields?.map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  <input
+                    type="number"
+                    min={field.min}
+                    max={field.max}
+                    required
+                    value={config[field.key]}
+                    onChange={(event) =>
+                      setConfig({
+                        ...config,
+                        [field.key]: Number(event.target.value),
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </details>
             <p className="subtle">
               Prepara um novo estado de runtime para esta execução. Código e
               histórico são preservados.
@@ -158,8 +185,29 @@ export function TestTool({
                   {detail.run.error ?? "Execução interrompida."}
                 </p>
               )}
+              {detail.investigations?.map((investigation) => (
+                <div key={investigation.id}>
+                  <p>{investigation.observation}</p>
+                  {investigation.available && (
+                    <button
+                      className="primary"
+                      onClick={() => investigate(detail)}
+                    >
+                      Investigar
+                    </button>
+                  )}
+                  {!investigation.available && (
+                    <button
+                      disabled={busy || starting}
+                      onClick={() => void start()}
+                    >
+                      Executar novamente
+                    </button>
+                  )}
+                </div>
+              ))}
               <Link className="button" to={`/runs/${detail.run.id}`}>
-                Investigar Run #{detail.run.number}
+                Inspecionar Run #{detail.run.number}
               </Link>
             </section>
           )}

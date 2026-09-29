@@ -84,7 +84,12 @@ export class WorkspaceManager {
     try {
       await this.git(path, ["rev-parse", "HEAD"]);
     } catch {
-      await this.checkpoint(workspaceId, systemId, `Base do ${title}`);
+      await this.checkpoint(
+        workspaceId,
+        systemId,
+        `Base do ${title}`,
+        "system",
+      );
     }
   }
   async upgradeSurface(workspaceId: string, systemId: string) {
@@ -106,13 +111,63 @@ export class WorkspaceManager {
       workspaceId,
       systemId,
       "Antes de adicionar a surface",
+      "backup",
     );
     for (const file of ["server.mjs", "surface.html"])
       await copyFile(
         join(projectRoot(), "templates", systemId, file),
         join(path, file),
       );
-    await this.checkpoint(workspaceId, systemId, "Surface do sistema");
+    await this.checkpoint(
+      workspaceId,
+      systemId,
+      "Surface do sistema",
+      "system",
+    );
+    await writeFile(marker, "1");
+  }
+  async upgradeGuidance(workspaceId: string, systemId: string) {
+    const path = this.path(workspaceId, systemId);
+    const marker = join(path, ".git", "bunkerlab-guidance-v1");
+    if (existsSync(marker)) return;
+    const legacy = {
+      "inventory.mjs":
+        "f38c8521c3eafc96fc4957dd80123e66cc28466aa37da83206011cc4ee8063b8",
+      "database.mjs":
+        "56a499fe6a04b3ec8518f9dbe2e91206cc0a94a82d7530480f10aec33aca06e5",
+      "README.md":
+        "3e1e291df17b51e75c9884cab9a1d9dceb3616b64f4c6038302c673c8c267243",
+    };
+    if (existsSync(join(path, "order-store.mjs"))) {
+      await writeFile(marker, "1");
+      return;
+    }
+    for (const [file, digest] of Object.entries(legacy)) {
+      if (
+        !existsSync(join(path, file)) ||
+        createHash("sha256")
+          .update(await readFile(join(path, file)))
+          .digest("hex") !== digest
+      )
+        return;
+    }
+    await this.checkpoint(
+      workspaceId,
+      systemId,
+      "Antes de atualizar a investigação",
+      "backup",
+    );
+    for (const file of [...Object.keys(legacy), "order-store.mjs"])
+      await copyFile(
+        join(projectRoot(), "templates", systemId, file),
+        join(path, file),
+      );
+    await this.checkpoint(
+      workspaceId,
+      systemId,
+      "Workspace para investigação",
+      "system",
+    );
     await writeFile(marker, "1");
   }
   private async files(root: string, prefix = ""): Promise<string[]> {
@@ -187,6 +242,7 @@ export class WorkspaceManager {
     workspaceId: string,
     systemId: string,
     message: string,
+    kind: NonNullable<Checkpoint["kind"]> = "user",
   ): Promise<Checkpoint> {
     const path = this.path(workspaceId, systemId);
     const files = await this.files(path);
@@ -225,6 +281,7 @@ export class WorkspaceManager {
         "O workspace mudou durante o checkpoint. Tente novamente. O commit Git foi preservado.",
       );
     const checkpoint = {
+      kind,
       id: randomUUID(),
       systemId,
       commit: version.commit,
@@ -242,6 +299,7 @@ export class WorkspaceManager {
       workspaceId,
       systemId,
       `Antes de restaurar: ${checkpoint.message}`,
+      "backup",
     );
     await this.git(path, [
       "restore",
@@ -256,6 +314,7 @@ export class WorkspaceManager {
       workspaceId,
       systemId,
       `Restaurado: ${checkpoint.message}`,
+      "restore",
     );
   }
 }
