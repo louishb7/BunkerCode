@@ -1,71 +1,47 @@
-# BunkerLab
+# BunkerCode
 
-Workspace local para construir, usar, investigar e evoluir pequenos sistemas backend. **O sistema fica no centro; ferramentas do laboratório ficam ao redor.**
+Plataforma pessoal e aberta para aprender backend, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
 
-## Executar
+Stack da plataforma: React/Vite, NestJS, Node.js e PNPM. TypeScript, Node.js, NestJS e PostgreSQL são a trilha de estudo; PostgreSQL ainda não é necessário para iniciar o MVP.
 
-Requisitos: **Node.js 24+**, pnpm 11 e Git no PATH.
+## Iniciar
 
-```bash
-pnpm install
-pnpm dev
-```
+Requisitos: Node.js 24+ e pnpm 11.
 
-Abra <http://127.0.0.1:5173>. A API fica em `127.0.0.1:3001`. Migrations e workspace são preparados automaticamente. Ao abrir o Workbench, o OrderDesk inicia e apresenta sua própria interface.
+    pnpm install
+    pnpm dev
 
-## Trabalhar no sistema
+Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001.
 
-- **Criar pedido** usa o backend real. Estoque e pedidos vêm do banco do OrderDesk.
-- **Atividade → Inspecionar** mostra request, resposta e evidências daquela interação. Uso comum não cria Runs.
-- **Abrir código → Copiar caminho** localiza a pasta editável no VS Code. `inventory.mjs` contém a operação de estoque; `surface.html` contém a interface do sistema.
-- **Aplicar e reiniciar** carrega um snapshot dos arquivos salvos, preservando o banco. O aviso de alterações pendentes distingue workspace de runtime.
-- **Testar** começa por clientes simultâneos; configurações avançadas mantêm os controles de requests, concorrência e estado inicial. A execução é salva como Run.
-- **Investigar** aparece quando uma Run registra estoque negativo. O drawer oferece fatos, evidências e pistas opcionais, e compara novas tentativas nas condições da baseline.
-- **Histórico** permite inspecionar Runs e selecionar duas para comparação.
-- **Checkpoints** salva pontos da evolução no Git independente do workspace. Restore cria backup do código atual antes de substituir arquivos. Backups automáticos ficam recolhidos na lista.
-- **… → Resetar estado** restaura o banco experimental após confirmação; código, checkpoints e histórico permanecem.
+## Escrever uma lição
 
-Erros de sintaxe, crash ou indisponibilidade aparecem na área do sistema. Logs e restart continuam acessíveis pelo BunkerLab.
+    pnpm lesson:new --course typescript --slug narrowing --title "Narrowing"
 
-## Responsabilidades
+Edite o lesson.md criado, salve e recarregue a página. Sem rebuild, mudança de React/Nest ou commit automático. Também é possível criar o Markdown e inserir a entrada no course.json manualmente. A ordem do manifesto define a navegação.
 
-```text
-templates/orderdesk/                    base canônica: backend + surface
-.bunkerlab/workspaces/local/systems/    código editável + Git próprio
-.bunkerlab/snapshots/                   código carregado pelo runtime
-.bunkerlab/runtime/local/orderdesk/     banco experimental
-.bunkerlab/lab.sqlite                   Runs, resultados, evidências, checkpoints
-```
+Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. O catálogo descobre a pasta automaticamente. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-Activities ficam num buffer de até 50 interações por sistema durante a sessão do control plane. Reiniciar a API descarta esse buffer; Runs e checkpoints permanecem no SQLite/Git.
+O curso TypeScript começa com duas lições **demonstrativas**, prontas para serem substituídas ou ampliadas com suas palavras. Os exercícios anteriores continuam opcionais em /learn.
 
-`.bunkerlab` é ignorada pelo Git principal. Não a apague se quiser preservar sua evolução. `BUNKERLAB_DATA_DIR` seleciona outro diretório de dados.
+## Organização
 
-## Workspaces anteriores à surface
+- apps/frontend: navegação, leitura Markdown e interface dos exercícios.
+- apps/backend: um monólito modular Nest para conteúdo, tentativas e instrumentos.
+- content/courses: cursos e lições; content/activities: exercícios executáveis.
+- scripts: ferramentas de autoria; docs: arquitetura atual e histórico.
 
-Se `server.mjs` ainda for idêntico à versão canônica anterior, o primeiro boot adiciona a surface após salvar um checkpoint de segurança. Edições em `inventory.mjs` são preservadas. Servidores customizados não são sobrescritos: veja [a integração e os limites](docs/architecture/system-surfaces.md). Restaurar um checkpoint anterior à surface pode deixá-la indisponível; o runtime e o histórico continuam acessíveis.
+[Arquitetura atual](docs/architecture/overview.md) · [Relatório de consolidação](docs/implementation/consolidation-mvp.md)
 
 ## Validar
 
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm --filter @backendlab/api migrate
-```
+    pnpm lint
+    pnpm typecheck
+    pnpm test
+    pnpm build
+    pnpm test:browser
 
-Integração cobre concorrência real, versão transacional, isolamento de Runs, Activities, crashes, timeouts, persistência, restart, checkpoints, restore e upgrade conservador de workspace.
+E2E requer Chromium instalado. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam portas 3012/5184 e cópias descartáveis de conteúdo/dados. Capturas: .bunkercode/consolidation-browser-results.
 
-```bash
-pnpm --filter @backendlab/web exec playwright install chromium
-pnpm test:browser
-```
+Tentativas continuam em .bunkercode/learning.sqlite; BUNKERCODE_DATA_DIR escolhe outro diretório. Dados históricos ignorados do laboratório permanecem no disco sem consumidor; não foram migrados ou apagados.
 
-O contexto de investigação e as pistas abertas ficam neste navegador. Workspaces canônicos antigos recebem atualização com backup; arquivos customizados não são sobrescritos. Veja [compatibilidade e limites](docs/architecture/guided-investigations.md).
-
-Também é possível usar Chromium instalado: `BROWSER_PATH=/caminho/do/navegador pnpm test:browser`. Os testes usam portas 3002/5174 e workspace separado em `.bunkerlab/browser-system-first`. `BUNKERLAB_BROWSER_DATA_DIR` permite escolher outro diretório isolado para os testes. Capturas desktop/mobile ficam em `.bunkerlab/browser-results`.
-
-Execução local com código confiável, sem IDE web, autenticação ou infraestrutura cloud. Processos separados não constituem sandbox de execução de código não confiável.
-
-[Investigação guiada](docs/architecture/guided-investigations.md) · [Arquitetura](docs/architecture/overview.md) · [Surfaces e Activities](docs/architecture/system-surfaces.md) · [Limites e dívida técnica](docs/architecture/local-laboratory.md)
+Execução de exercícios é local e para código confiável. Ler Markdown não inicia processos, cria tentativas nem executa seus blocos de código.

@@ -1,95 +1,55 @@
-# Arquitetura do laboratório local
+# Arquitetura atual do BunkerCode
 
-## Decisão
+Data: 2026-10-08. Esta é a referência ativa. A missão de consolidação substitui as decisões anteriores incompatíveis.
 
-A aplicação anterior executava um domínio síncrono em memória dentro do NestJS e tratava cada POST como uma Run. Mantivemos React/Vite, React Router, NestJS, TypeScript e o pacote de contratos. Substituímos o domínio acoplado, o currículo, o SDK sem consumidores e o SSE por um runner experimental com persistência e polling.
+BunkerCode é uma plataforma pessoal e aberta para estudar backend e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
 
-Uma Run aplica condições, executa workload, coleta evidências e verifica invariantes. A versão de código é parte do resultado. Na direção atual, o usuário começa usando a surface real do sistema e abre Testar quando precisar de uma investigação reproduzível. Veja [Surfaces e Activities](system-surfaces.md).
+## Estrutura
 
-```text
-React → HTTP / NestJS control plane → ExperimentRunner
-                   │                       │
-                   ├─ LabRepository        ├─ HTTP concorrente
-                   │  └─ lab.sqlite        ↓
-                   ├─ WorkspaceManager   OrderDesk (processo filho)
-                   │  ├─ filesystem        ├─ HTTP server
-                   │  └─ Git próprio       └─ worker de banco → state.sqlite
-                   └─ RuntimeManager              │
-                          ↑ IPC ← evidências reais┘
-```
+- apps/frontend: React, React Router e Vite; cursos, leitor Markdown e exercícios opcionais.
+- apps/backend: um monólito modular NestJS; conteúdo, tentativas locais e instrumentos concretos.
+- content/courses: manifestos de cursos e lições Markdown.
+- content/activities: duas atividades executáveis, com starters e harnesses confiáveis.
+- scripts: comando de autoria e seus testes.
+- docs: documentação atual, implementação e histórico selecionado.
 
-## Três responsabilidades
+A raiz configura o monorepo: package.json, pnpm-workspace.yaml, lockfile, ESLint, tsconfig.base.json e .gitignore. O tsconfig base compartilha strictness/target realmente usados pelas duas aplicações; DOM pertence ao frontend, Node e decorators ao backend. Vite, Playwright e tsconfigs específicos ficam nas aplicações. Não há packages compartilhados, Turborepo ou Nx.
 
-| Estado | Onde vive | O que altera |
-| --- | --- | --- |
-| Code state | Workspace Git e snapshots no filesystem | VS Code, checkpoint, restore |
-| Runtime state | SQLite exclusivo do OrderDesk | Pedidos e reset |
-| Lab metadata | SQLite do BunkerLab | Runs, configurações, resultados, evidências, checkpoints |
+## Conteúdo e leitura
 
-Código-fonte nunca é armazenado no banco do laboratório. O runtime recebe um snapshot, não executa diretamente arquivos que podem mudar durante a Run. O snapshot possui SHA-256 calculado sobre nomes e conteúdo; a captura verifica mudanças durante a cópia. `commit`, `dirty` e digest identificam o código carregado. Uma edição posterior aparece como divergência e exige restart explícito.
+course.json define id, título, descrição e ordem das lições. Cada entrada possui slug, título e opcionalmente activityId. O caminho do Markdown é derivado: content/courses/<id>/lessons/<slug>/lesson.md. Não existe path livre vindo do navegador nem um índice duplicado em React/Nest.
 
-## Persistência
+A API oferece:
+- GET /content/courses
+- GET /content/courses/:id
+- GET /content/courses/:id/lessons/:slug
 
-Escolhemos SQLite em vez de PostgreSQL nesta rodada porque o repositório não tinha banco nem infraestrutura de serviços. Precisamos preservar histórico local e separar transações do sistema de metadata, não estudar propriedades específicas do PostgreSQL. Dois arquivos independentes oferecem essa separação sem um daemon adicional.
+Pastas de curso são descobertas por leitura do diretório. Manifestos são validados; IDs/slugs são restritos e symlinks internos recusados. Erros de scope retornam 400/404; conteúdo inválido/ausente retorna 422. Um manifesto inválido interrompe o catálogo com diagnóstico explícito, em vez de esconder um curso quebrado.
 
-`LabRepository` concentra SQL e mapeamento. Migrations SQL versionadas são aplicadas transacionalmente e registradas em `migrations`. Workspaces, systems, experiments, runs, requests, evidence e checkpoints possuem tabelas, chaves e índices. JSON é usado somente para documentos variáveis: payloads, config, snapshots de estado observado e resultados. Não existe um JSON global emulando banco, código e runtime.
+Arquivos são lidos sob demanda, com Cache-Control: no-store. Salvar e recarregar basta; não há watcher, cache editorial, fila ou sincronização. Limites iniciais: 64 KiB por manifesto e 256 KiB por Markdown. O conteúdo completo não cabe nos resultados de execução nem no SQLite.
 
-Uma futura migração para PostgreSQL precisará de adapter assíncrono/revisão do repositório e migrations próprias. A interface HTTP e os sistemas não dependem de SQLite do laboratório. Esta separação reduz o alcance da migração, mas não a torna automática.
+O frontend usa react-markdown, ignora HTML bruto, sanitiza a árvore e aplica highlighting somente à linguagem declarada no fence. Blocos são texto: nunca passam pelo executor. Links inseguros são removidos. O highlighter é um plugin confiável aplicado após a sanitização, conforme sua documentação; não existe rehype-raw, MDX ou dangerouslySetInnerHTML. Referências podem abrir outra aba com noopener/noreferrer.
 
-Cada request e evento é persistido à medida que chega. Runs ainda `running` após reinício da API viram `interrupted`, preservando evidência parcial. O banco não reexecuta uma Run automaticamente.
+## Aprendizagem opcional
 
-## OrderDesk e a concorrência
+LearningActivity + Attempt continuam sendo o domínio dos exercícios. A Lesson pode ter somente texto; leitura não cria Attempt, não inicia processo e não faz request aos endpoints de aprendizagem.
 
-O servidor experimental é pequeno e não depende do NestJS ou de pacotes npm. Usa HTTP do Node e um worker para executar SQLite. A fronteira assíncrona do worker permite múltiplas requests em andamento, mesmo que cada operação SQL seja síncrona no worker.
+Os exercícios anteriores foram mantidos porque suas fronteiras já são pequenas e independentes:
+- order-acceptance: previsão, código congelado e uma request de negócio HTTP real;
+- reserve-stock: código congelado e três casos reais do node:test, sem servidor.
 
-- `naive`: SELECT → validação no handler → UPDATE sem condição + INSERT em transação. A transação mantém pedido e decremento juntos, mas a decisão de estoque ocorreu antes dela. Duas requests podem validar a mesma disponibilidade.
-- `atomic`: UPDATE com `stock >= quantity` + INSERT na mesma transação. Só cria pedido se a reserva alterou uma linha.
+O LearningModule faz parte do único AppModule. Não há outro bootstrap/aplicação Nest para aprendizagem. A implementação mantém os endpoints /learning existentes, os IDs/revisões e o SQLite .bunkercode/learning.sqlite. Não ocorreu migração de dados.
 
-Não há sleeps, barreiras de experimento ou números aleatórios decidindo resultados. A race é de check-then-act real. Não é garantido que toda Run da versão ingênua falhe. O número de aceitações depende do escalonamento.
+Instrumentos continuam concretos, com temporário/processo/estado novos e prazo/cleanup. Eles servem somente a submissões explícitas. Execução local é para código confiável; filho não é sandbox hostil. Linux é a plataforma efetivamente validada.
 
-O banco deliberadamente não possui CHECK `stock >= 0`, pois queremos observar a falha da lógica e compará-la com a escrita condicional. Isso não é uma recomendação para produção. A versão atomic é referência limitada a uma instância/worker e este domínio.
+## Demolição e dados
 
-## Runner
+Workbench, System, Surface, catálogo/runner/orchestration históricos, protocolo @backendlab, templates OrderDesk, migrations lab e seus testes exclusivos foram retirados. Não existem wrappers de compatibilidade.
 
-`catalog.ts` registra sistemas e definições. `experiments/overselling.ts` contém setup, operação e assertions. Não há switches por nome de experimento espalhados pelo control plane.
+.bunkerlab e .backendlab permanecem ignorados e sem consumidor no produto novo; dados pessoais históricos não foram migrados nem apagados. .bunkercode existente foi preservado. Dependências locais foram instaladas neste checkout, sem vínculos de aplicação com outro checkout.
 
-Fluxo:
+Auditorias em docs/audits, a proposta anterior e a rodada first-learning-flows são históricas. Não definem backlog ou obrigação de preservar código. Veja [consolidação](../implementation/consolidation-mvp.md) e [autoria](../authoring.md).
 
-1. Adquire exclusividade por workspace/system e captura a versão carregada.
-2. Persiste a Run `running` antes de iniciar o processo, permitindo registrar até erro de sintaxe.
-3. Prepara e verifica o estado inicial.
-4. Workers assíncronos do runner disparam requests HTTP reais, respeitando o limite de concorrência e o total de compradores.
-5. Persiste status, corpo, erro, correlation ID, início e duração de cada request.
-6. Lê o estado final e aguarda um fence IPC para terminar a coleta anterior.
-7. Verifica estoque mínimo observado/final, aceitos, rejeitados, conservação de unidades, pedidos persistidos e erros.
-8. Salva resultado; preserva estado para inspeção. Uma falha de transporte encerra o runtime para impedir escrita tardia contaminando a próxima Run.
+## Próximo incremento
 
-Resultados: `passed` (assertions satisfeitas), `failed` (hipótese violada), `error` (execução/setup/transporte/servidor), `interrupted` (control plane encerrou antes de concluir).
-
-Reset, restart, checkpoint, restore e outra Run são rejeitados com 409 durante execução. Não existe fila escondida. O workload aceita no máximo 100 compradores, 100 de concorrência e estoque entre 0 e 100; requests têm timeout de 3 s e o experimento tem deadline de 15 s. Respostas são lidas com limite de 1 MiB. O lock é por sistema e existe um lock de processo para o diretório local de metadata.
-
-## Evidência e limites das medições
-
-O OrderDesk emite entrada de request, leitura, escrita confirmada, rejeição, violação e resposta via IPC. O runner emite setup/workload/assertions/teardown e resultados HTTP. Eventos possuem sequência de coleta monotônica e timestamps reais de emissão. O `systemSequence` preserva a ordem no emissor.
-
-A sequência global é ordem de **coleta**, não uma alegação de causalidade total entre HTTP e IPC. Duração de request usa relógio monotônico no runner e inclui transporte local. Evidência do banco é emitida após a resposta do worker à operação concluída. Não há instrumentação de cada função nem tracing distribuído.
-
-Persistir cada evidência tem overhead. Os números não são um benchmark de performance do backend sem instrumentação. Logs são limitados a 40 blocos de 4 KiB; eventos emitidos pelo runtime por Run têm limite de 10 mil, com truncamento explícito.
-
-## Checkpoints
-
-O workspace é um repositório Git independente. Comandos usam `execFile` com argumentos separados, sem interpolação shell; identidade local explícita, sem hooks globais ou signing. O repositório principal não recebe commits.
-
-Salvar checkpoint cria um commit e depois metadata com hash/digest/descrição. Runs associam o checkpoint cujo conteúdo coincide com o código carregado. O hash do commit carregado continua preservado mesmo se o checkpoint foi salvo depois do restart.
-
-Restore recebe um ID de checkpoint conhecido, salva antes um checkpoint de segurança (incluindo arquivos novos), restaura a árvore e cria um novo checkpoint de restauração. O histórico Git não é reescrito, o runtime fica parado e o runtime state não muda. A UI exige confirmação concreta e explica a cópia de segurança.
-
-Git e SQLite não formam uma transação distribuída. Se o commit funcionar e a gravação de metadata falhar, o commit permanece recuperável no Git; a UI informa erro. Não existe navegação/diff de código como em um cliente Git.
-
-## Interface
-
-Workbench é um host genérico para a surface do sistema. OrderDesk serve HTML/JS do seu próprio snapshot. Uso comum gera Activities transitórias; Testar é um drawer que usa o runner persistente existente. Histórico preserva Runs deliberadas, Inspector pertence à atividade/Run e Compare apresenta condições/observações.
-
-A sidebar é recolhível e pode ser ocultada. Não existe header global ou resultado esperado na bancada. Sistemas lista o catálogo; código, logs, hashes e runtime aparecem sob demanda. O tema claro com laranja foi preservado.
-
-O runner delega validação de estado e observações à definição do teste; produto, pedido e estoque não são pressupostos do host. O adapter do OrderDesk mantém as avaliações existentes.
+Usar o fluxo editorial para escrever uma lição real de TypeScript. Registrar dificuldades de autoria/leitura antes de adicionar funcionalidades. Editor inteligente, analyzer, progresso sofisticado, CMS, auth e execução remota permanecem fora desta rodada.

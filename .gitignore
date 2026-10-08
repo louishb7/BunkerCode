@@ -5,9 +5,10 @@ coverage/
 .env.local
 .DS_Store
 *.tsbuildinfo
-.backendlab/workspaces/*
-.backendlab/state/*
-!.backendlab/workspaces/.gitkeep
-!.backendlab/state/.gitkeep
+.bunkercode/
+**/.lesson-new.lock
+**/.course-*.tmp
 
+# Retired local data is preserved and must never enter Git.
 .bunkerlab/
+.backendlab/

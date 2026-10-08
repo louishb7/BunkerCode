@@ -1,0 +1,224 @@
+.learning-shell {
+  min-height: 100vh;
+  background: #10151d;
+  color: #e7edf6;
+  font:
+    16px/1.6 system-ui,
+    sans-serif;
+}
+.learning-shell header {
+  border-bottom: 1px solid #344256;
+  padding: 18px 5vw;
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.learning-shell header a {
+  font-weight: 750;
+  font-size: 22px;
+}
+.learning-shell a {
+  color: #9ec9ff;
+}
+.learning-shell main {
+  margin: auto;
+  max-width: 1000px;
+  padding: 30px 24px 70px;
+}
+.learning-shell h1 {
+  font-size: clamp(26px, 5vw, 36px);
+  margin: 18px 0;
+}
+.learning-shell h2 {
+  margin-top: 32px;
+}
+.learning-shell label {
+  display: block;
+  margin: 15px 0;
+}
+.learning-shell textarea,
+.learning-shell input {
+  background: #0b1017;
+  color: #e7edf6;
+  border: 1px solid #536783;
+  border-radius: 6px;
+  padding: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+}
+.learning-shell textarea {
+  min-height: 95px;
+  resize: vertical;
+}
+.learning-shell .learning-editor textarea {
+  min-height: 280px;
+  font:
+    14px/1.7 ui-monospace,
+    monospace;
+  tab-size: 2;
+}
+.learning-shell button {
+  background: #26374b;
+  color: #f2f6fc;
+  border: 1px solid #627a99;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.learning-shell button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.learning-shell .learning-primary {
+  background: #b4d4ff;
+  color: #101e32;
+  font-weight: 650;
+}
+.learning-shell :focus-visible {
+  outline: 3px solid #f3c969;
+  outline-offset: 3px;
+}
+.learning-shell pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #0b1017;
+  padding: 16px;
+  border-radius: 6px;
+  font:
+    14px/1.6 ui-monospace,
+    monospace;
+}
+.learning-shell details {
+  margin: 16px 0;
+}
+.learning-shell summary {
+  cursor: pointer;
+  color: #b4d4ff;
+}
+.learning-shell table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.learning-shell th,
+.learning-shell td {
+  padding: 8px 4px;
+  border-bottom: 1px solid #344256;
+  text-align: left;
+}
+.learning-shell fieldset {
+  border: 1px solid #344256;
+  border-radius: 6px;
+  margin-top: 20px;
+  padding: 12px 18px;
+}
+.learning-prediction {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.learning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+.learning-result {
+  border-top: 1px solid #536783;
+  padding: 16px 0;
+  margin-top: 24px;
+}
+.learning-shell blockquote {
+  border-left: 3px solid #b4d4ff;
+  padding-left: 16px;
+  margin-left: 0;
+  white-space: pre-wrap;
+}
+.learning-note {
+  color: #a2b4ce;
+  font-size: 14px;
+}
+.learning-catalog {
+  display: grid;
+  gap: 16px;
+  margin: 28px 0;
+}
+.learning-catalog a {
+  padding: 20px 0;
+  border-bottom: 1px solid #344256;
+  text-decoration: none;
+}
+.learning-catalog strong,
+.learning-catalog span {
+  display: block;
+}
+.learning-shell .case-pass {
+  color: #a3ddc0;
+}
+.learning-shell .case-fail,
+.learning-shell [role="alert"] {
+  color: #ffc8b6;
+}
+.learning-shell .case-fail {
+  margin: 16px 0;
+}
+@media (max-width: 600px) {
+  .learning-prediction {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .learning-shell main {
+    padding: 20px 16px 50px;
+  }
+  .learning-shell table {
+    font-size: 13px;
+  }
+}
+/* Keep the learning surface readable while legacy global styles coexist. */
+.learning-shell {
+  --muted: #a2b4ce;
+  --accent: #9ec9ff;
+}
+.learning-shell p {
+  color: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.learning-shell h2 {
+  font-size: 23px;
+}
+.learning-shell h3 {
+  font-size: 20px;
+}
+.learning-shell h4 {
+  font-size: 17px;
+  margin: 18px 0 10px;
+}
+.learning-shell .learning-note {
+  color: #a2b4ce;
+  font-size: 14px;
+}
+.learning-shell input:not([type="checkbox"]) {
+  background: #0b1017;
+  color: #e7edf6;
+  border-color: #536783;
+}
+.learning-shell th {
+  background: #1b293a;
+  color: #c7d4e7;
+  font-size: 14px;
+  white-space: normal;
+}
+.learning-shell td {
+  border-top: 0;
+  font-size: 14px;
+}
+.learning-shell button:hover:enabled {
+  background: #344861;
+}
+.learning-shell .learning-primary:hover:enabled {
+  background: #c9e1ff;
+}

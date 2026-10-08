@@ -1,0 +1,15 @@
+{
+  "id": "reserve-stock",
+  "version": 1,
+  "kind": "code",
+  "title": "Complete reserveStock",
+  "context": "Escreva uma função TypeScript que decide se uma quantidade pode ser reservada, sem request, servidor ou banco.",
+  "task": "Complete o corpo de reserveStock. Preserve a assinatura e retorne { accepted, stock }. Execute os testes, examine cada caso e revise seu código.",
+  "rules": [
+    "Entradas deste exercício: estoque e quantidade são inteiros positivos.",
+    "Quantidade menor ou igual ao estoque: accepted é true e stock é o estoque restante.",
+    "Quantidade maior que o estoque: accepted é false e stock permanece igual ao inicial.",
+    "Os três casos abaixo são os critérios desta atividade; passar não prova correção para todas as entradas."
+  ],
+  "harnessExcerpt": "reserveStock(5, 2) -> { accepted: true, stock: 3 }\nreserveStock(2, 2) -> { accepted: true, stock: 0 }\nreserveStock(2, 3) -> { accepted: false, stock: 2 }"
+}
