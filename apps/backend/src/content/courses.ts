@@ -1,10 +1,12 @@
-import { lstatSync, readFileSync, readdirSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   BadRequestException,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
+
+import { readMarkdownFile } from "./markdown-file";
 
 export interface LessonEntry {
   slug: string;
@@ -26,6 +28,7 @@ export interface CourseSummary {
 export interface Lesson extends LessonEntry {
   course: Course;
   markdown: string;
+  version: string;
   previous: LessonEntry | null;
   next: LessonEntry | null;
 }
@@ -96,6 +99,13 @@ function checkedPath(
   segments: string[],
   directory: boolean,
 ): string {
+  try {
+    if (realpathSync(root) !== resolve(root))
+      invalid("symlink na raiz autorizada.");
+  } catch (error) {
+    if (error instanceof UnprocessableEntityException) throw error;
+    invalid("raiz de conteúdo indisponível.");
+  }
   let path = root;
   for (const [index, segment] of ["", ...segments].entries()) {
     if (segment) path = join(path, segment);
@@ -155,21 +165,26 @@ export function listCourses(root = coursesRoot()): CourseSummary[] {
       return { id, title, description, lessonCount: lessons.length };
     });
 }
-export function loadLesson(
-  id: string,
-  slug: string,
-  root = coursesRoot(),
-): Lesson {
+export function lessonLocation(id: string, slug: string, root = coursesRoot()) {
   if (!validSlug(slug))
     throw new BadRequestException("Slug de lição inválido.");
   const course = loadCourse(id, root);
   const index = course.lessons.findIndex((entry) => entry.slug === slug);
   const lesson = course.lessons[index];
   if (!lesson) throw new NotFoundException("Lição não encontrada.");
+  const path = checkedPath(root, [id, "lessons", slug, "lesson.md"], false);
+  return { course, lesson, index, path };
+}
+export function loadLesson(
+  id: string,
+  slug: string,
+  root = coursesRoot(),
+): Lesson {
+  const { course, lesson, index, path } = lessonLocation(id, slug, root);
   return {
     ...lesson,
     course,
-    markdown: read(root, [id, "lessons", slug, "lesson.md"], 262144),
+    ...readMarkdownFile(path),
     previous: course.lessons[index - 1] ?? null,
     next: course.lessons[index + 1] ?? null,
   };

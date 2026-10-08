@@ -39,3 +39,10 @@ export function Markdown({ source }: { source: string }) {
     </ReactMarkdown>
   );
 }
+
+export function lessonBody(markdown: string, title: string) {
+  const lines = markdown.split("\n");
+  return lines[0]?.trim() === "# " + title
+    ? lines.slice(1).join("\n")
+    : markdown;
+}

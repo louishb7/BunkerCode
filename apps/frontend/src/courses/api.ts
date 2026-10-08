@@ -19,10 +19,11 @@ export interface CourseSummary {
 export interface Lesson extends LessonEntry {
   course: Course;
   markdown: string;
+  version: string;
   previous: LessonEntry | null;
   next: LessonEntry | null;
 }
-export function useContent<T>(path: string) {
+export function useContent<T>(path: string, parse?: (value: unknown) => T) {
   const [state, setState] = useState<{ data: T | null; error: string }>({
     data: null,
     error: "",
@@ -46,7 +47,8 @@ export function useContent<T>(path: string) {
             : "Não foi possível carregar o conteúdo.";
         throw new Error(message);
       }
-      if (!controller.signal.aborted) setState({ data: value as T, error: "" });
+      if (!controller.signal.aborted)
+        setState({ data: parse ? parse(value) : (value as T), error: "" });
     })().catch((error: unknown) => {
       if (!controller.signal.aborted)
         setState({
@@ -56,7 +58,7 @@ export function useContent<T>(path: string) {
         });
     });
     return () => controller.abort();
-  }, [path]);
+  }, [path, parse]);
   return state;
 }
 export const lessonPath = (course: string, slug: string) =>

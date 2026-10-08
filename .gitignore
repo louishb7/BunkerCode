@@ -12,3 +12,7 @@ coverage/
 # Retired local data is preserved and must never enter Git.
 .bunkerlab/
 .backendlab/
+
+# Local Studio lock and atomic-write temporary files.
+**/.studio-save.lock
+**/.studio-*.tmp

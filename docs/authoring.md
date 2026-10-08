@@ -30,9 +30,46 @@ Os dois exemplos iniciais do curso TypeScript estão identificados como demonstr
 
 Abra http://127.0.0.1:5173, selecione TypeScript e a lição. A API fica em 127.0.0.1:3001.
 
-Salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto e novos cursos também aparecem após refresh. Preview automático ao salvar fica para uma necessidade posterior.
+Se você editou no VS Code, salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto e novos cursos também aparecem após refresh. No Studio, a prévia usa o rascunho; somente o botão de salvamento escreve no disco.
 
 Os testes/smokes usam BUNKERCODE_CONTENT_DIR para uma cópia descartável do diretório content, sem alterar o conteúdo canônico. Normalmente você não precisa configurar essa variável.
+
+## Editar no Studio local
+
+1. Inicie `pnpm dev` e abra a lição em `http://127.0.0.1:5173`.
+2. Clique em **Editar lição**. O Studio mantém o curso/título e carrega o Markdown completo, inclusive o primeiro heading e os fences.
+3. Edite na área **Markdown completo** e alterne para **Prévia**. O renderer é o mesmo do leitor; HTML bruto e links inseguros continuam filtrados. Blocos de código não são executados.
+4. Clique em **Salvar alterações**. Aguarde **Salvo no arquivo.**; a resposta confirma a gravação física. Durante a gravação o texto fica bloqueado para a confirmação corresponder exatamente ao que foi enviado.
+5. Use **Voltar à lição**. A leitura atualizada não depende de rebuild. Abra `content/courses/<id>/lessons/<slug>/lesson.md` no VS Code e confira `git diff`/`git status` no checkout principal antes de fazer seu commit.
+
+O Studio edita apenas lições existentes e listadas no manifesto. Criação continua pelo CLI ou por arquivos; não há criação de cursos, alteração de manifesto nem operação Git na interface. A edição não usa SQLite.
+
+### Rascunho e erros
+
+**Alterações não salvas.** significa que o texto do editor difere da versão usada como base. O rascunho é guardado em `sessionStorage`, apenas nesta aba, para retomada depois de navegação ou reload. Isso não é gravação no arquivo nem backup durável: fechar a aba, limpar o armazenamento ou seu navegador impedir a gravação pode perder o rascunho. Falhas no armazenamento da aba têm aviso explícito; copie seu texto antes de sair nesse caso. Recarregar/sair com edição pendente também aciona o aviso padrão do navegador quando suportado.
+
+Uma falha de rede/disco mantém o texto, sem apresentar sucesso. Se a conexão cair depois de o servidor gravar, o resultado pode ser incerto: use **Revisar arquivo atual** antes de tentar novamente. A versão do rascunho é preservada; retornar ao editor detecta se o arquivo mudou.
+
+O texto completo é preservado pelo backend em UTF-8, até **256 KiB em bytes**. Arquivos inválidos são recusados; o texto nunca é truncado. O editor preserva LF e arquivos uniformes em CRLF; um arquivo com estilos de quebra misturados será normalizado pelo textarea para LF ao editar. Conteúdo vazio é permitido.
+
+### Conflitos
+
+Cada leitura inclui uma versão baseada em hash do conteúdo. O salvamento envia a versão carregada. Uma mudança no VS Code ou em outra aba provoca **409 / Conflito de edição**, mantém os dois textos e bloqueia a nova gravação até revisão.
+
+Clique em **Revisar arquivo atual** para ler o Markdown físico numa área separada. Você pode comparar/copiar trechos para seu texto e escolher:
+
+- **Manter meu texto e usar esta versão como base**: preserva seu rascunho. O próximo **Salvar alterações** substituirá a versão que você acabou de revisar; outra mudança ainda será verificada.
+- **Carregar arquivo no editor**: pede confirmação antes de descartar o rascunho. Apenas carrega o arquivo; não grava nada.
+
+A combinação não é automática. Um lock também pode gerar 409 quando outra instância está salvando ou quando um processo foi interrompido. Nesse caso, reler não libera o lock; confira se há processo ativo antes de resolver o arquivo `.studio-save.lock` manualmente. Nunca apague sua lição para recuperar um lock.
+
+### Limites locais
+
+Frontend e API permanecem em loopback. Use a URL exata `http://127.0.0.1:5173`; `localhost` é uma origem diferente. Para mudar a origem/porta da interface, configure `BUNKERCODE_STUDIO_ORIGIN` no backend com a origem HTTP loopback exata e a mesma URL no navegador. Não exponha o Studio com `--host 0.0.0.0`, proxy público ou túnel; esta fase não oferece autenticação/publicação remota.
+
+A escrita exige Host loopback, Origin correspondente, JSON, o cabeçalho de comando local e `Sec-Fetch-Site: same-origin` quando presente. Não há CORS aberto. Essas verificações reduzem CSRF no navegador; **o cabeçalho estático não é autenticação** e um programa local pode forjar os cabeçalhos. O usuário, filesystem e processos locais são considerados confiáveis.
+
+O lock serializa instâncias do Studio, mas o VS Code não participa dele. Uma mudança externa é verificada novamente imediatamente antes do rename; ainda existe uma pequena corrida entre essa leitura e a substituição. Escrita por temporário e rename evita arquivo parcialmente escrito, sem oferecer transação durável contra queda de energia. Crash pode deixar lock/temporário no diretório da lição; eles são ignorados pelo Git, sem expiração/remoção automática. Raiz de conteúdo e seus ancestrais não podem ser symlinks. Linux é a plataforma validada.
 
 ## Criar outro curso
 

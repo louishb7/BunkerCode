@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import { Learning } from "./learning/Learning";
 import { CoursePage, CoursesPage, LessonPage } from "./courses/Pages";
+import { StudioPage } from "./courses/Studio";
 
 export function App() {
   return (
@@ -26,6 +27,10 @@ export function App() {
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:id" element={<CoursePage />} />
         <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
+        <Route
+          path="/courses/:id/lessons/:slug/edit"
+          element={<StudioPage />}
+        />
         <Route path="/learn/*" element={<Learning />} />
         <Route
           path="*"

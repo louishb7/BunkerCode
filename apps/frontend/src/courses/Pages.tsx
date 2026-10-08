@@ -6,9 +6,9 @@ import {
   type CourseSummary,
   type Lesson,
 } from "./api";
-import { Markdown } from "./Markdown";
+import { Markdown, lessonBody } from "./Markdown";
 
-function Status({ error }: { error: string }) {
+export function ContentStatus({ error }: { error: string }) {
   return (
     <main className="page-width content-status">
       {error ? (
@@ -29,7 +29,7 @@ function Status({ error }: { error: string }) {
 }
 export function CoursesPage() {
   const { data, error } = useContent<CourseSummary[]>("");
-  if (!data) return <Status error={error} />;
+  if (!data) return <ContentStatus error={error} />;
   return (
     <main className="page-width catalog-page">
       <p className="eyebrow">Seu acervo de aprendizagem</p>
@@ -91,7 +91,7 @@ export function CoursePage() {
   const { data: course, error } = useContent<Course>(
     "/" + encodeURIComponent(id),
   );
-  if (!course) return <Status error={error} />;
+  if (!course) return <ContentStatus error={error} />;
   return (
     <main className="page-width course-page">
       <Link className="back-link" to="/courses">
@@ -133,13 +133,8 @@ export function LessonPage() {
   const { data: lesson, error } = useContent<Lesson>(
     "/" + encodeURIComponent(id) + "/lessons/" + encodeURIComponent(slug),
   );
-  if (!lesson) return <Status error={error} />;
-  const lines = lesson.markdown.split("\n");
-  // Keep the standalone Markdown title, but avoid displaying it twice in the reader.
-  const body =
-    lines[0]?.trim() === "# " + lesson.title
-      ? lines.slice(1).join("\n")
-      : lesson.markdown;
+  if (!lesson) return <ContentStatus error={error} />;
+  const body = lessonBody(lesson.markdown, lesson.title);
   return (
     <div className="reader-layout">
       <aside className="course-sidebar">
@@ -165,6 +160,12 @@ export function LessonPage() {
           <header className="lesson-heading">
             <p className="eyebrow">{lesson.course.title} · lição</p>
             <h1>{lesson.title}</h1>
+            <Link
+              className="edit-lesson-link"
+              to={lessonPath(id, slug) + "/edit"}
+            >
+              Editar lição
+            </Link>
           </header>
           <div className="prose">
             {body.trim() ? (

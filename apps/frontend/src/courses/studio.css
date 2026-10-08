@@ -1,0 +1,191 @@
+.studio-page {
+  max-width: 1000px;
+}
+.studio-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 14px;
+}
+.studio-breadcrumb a {
+  color: #b6bdb9;
+}
+.studio-heading {
+  margin: 38px 0 28px;
+}
+.studio-heading h1 {
+  margin: 14px 0;
+  font-size: clamp(30px, 5vw, 42px);
+  letter-spacing: -1px;
+}
+.studio-heading > p:last-child {
+  color: #afb8b3;
+  line-height: 1.8;
+  max-width: 700px;
+}
+.studio-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.studio-views {
+  display: flex;
+  gap: 6px;
+}
+.studio-page button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid #4e5655;
+  border-radius: 6px;
+  background: #1b2224;
+  color: #dde3df;
+}
+.studio-page button:hover:enabled {
+  filter: brightness(1.12);
+}
+.studio-views button[aria-pressed="true"] {
+  color: #f1ba82;
+  background: #2e271f;
+  border-color: #9c7953;
+}
+.studio-page .studio-save {
+  background: #e2aa71;
+  color: #191b1b;
+  border-color: #e2aa71;
+  font-weight: 600;
+}
+.studio-page button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.studio-status {
+  color: #b5cbb4;
+  font-size: 14px;
+  margin: 20px 0;
+}
+.studio-status.pending {
+  color: #e8bc86;
+}
+.studio-notice {
+  color: #c9c6b6;
+  line-height: 1.7;
+}
+.studio-page textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #41494c;
+  border-radius: 8px;
+  color: #dee4df;
+  background: #0e1316;
+  padding: 20px;
+  font:
+    14px/1.8 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+.studio-edit-panel label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #bac3bd;
+}
+.studio-edit-panel textarea {
+  min-height: 430px;
+  height: 60vh;
+  white-space: pre;
+  overflow: auto;
+}
+.studio-page textarea:focus {
+  outline: 2px solid #c49666;
+  outline-offset: 3px;
+}
+.studio-preview {
+  border: 1px solid #343d3e;
+  border-radius: 8px;
+  padding: 26px;
+  background: #14191b;
+}
+.studio-preview-title {
+  font-size: 30px;
+  margin: 4px 0 26px;
+}
+.studio-error,
+.studio-comparison {
+  padding: 20px;
+  border: 1px solid #83604a;
+  border-radius: 8px;
+  background: #231d18;
+  margin: 22px 0;
+  line-height: 1.7;
+}
+.studio-error h2,
+.studio-comparison h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+.studio-error p {
+  color: #ead3bc;
+}
+.studio-comparison {
+  background: #192021;
+  border-color: #496361;
+}
+.studio-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.studio-file {
+  margin-top: 30px;
+  color: #bfc9c3;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.studio-file code {
+  color: #d6b28d;
+}
+.studio-caption {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #9eaaa3;
+}
+.edit-lesson-link {
+  display: inline-block;
+  font-size: 14px;
+  padding: 10px 14px;
+  border: 1px solid #66533e;
+  border-radius: 6px;
+  text-decoration: none;
+}
+@media (max-width: 700px) {
+  .studio-heading {
+    margin-top: 28px;
+  }
+  .studio-toolbar {
+    align-items: stretch;
+  }
+  .studio-views,
+  .studio-save {
+    width: 100%;
+  }
+  .studio-views button {
+    flex: 1;
+  }
+  .studio-preview {
+    padding: 18px;
+  }
+  .studio-page textarea {
+    padding: 14px;
+    font-size: 13px;
+  }
+  .studio-review-actions button {
+    width: 100%;
+  }
+}
