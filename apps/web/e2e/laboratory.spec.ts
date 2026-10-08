@@ -13,7 +13,10 @@ const headers = {
   "content-type": "application/json",
 };
 async function restart(page: Page) {
-  await page.getByRole("button", { name: "Reiniciar", exact: true }).click();
+  await page
+    .locator(".workbench-tools")
+    .getByRole("button", { name: /^(Reiniciar|Aplicar e reiniciar)$/ })
+    .click();
   await expect(page.getByRole("status")).toContainText("Runtime reiniciado", {
     timeout: 15000,
   });
@@ -220,6 +223,10 @@ test("the real system is the workbench; activities, testing, evolution and failu
   );
   await page.getByRole("link", { name: "Abrir", exact: true }).click();
   await expect(
+    page.getByRole("button", { name: "Aplicar código restaurado" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Aplicar código restaurado" }).click();
+  await expect(
     surface.getByRole("button", { name: "Criar pedido" }),
   ).toBeEnabled();
   // Falha HTTP permanece na surface, com Activity inspecionável.
@@ -244,7 +251,10 @@ test("the real system is the workbench; activities, testing, evolution and failu
     await page.getByRole("button", { name: "Fechar painel" }).click();
     // Syntax error aparece na área do sistema e mantém navegação, logs e restart.
     await writeFile(inventory, "invalid javascript !!!");
-    await page.getByRole("button", { name: "Reiniciar", exact: true }).click();
+    await page
+      .locator(".workbench-tools")
+      .getByRole("button", { name: /^(Reiniciar|Aplicar e reiniciar)$/ })
+      .click();
     await expect(page.locator(".surface-unavailable")).toContainText(
       "não está disponível",
     );

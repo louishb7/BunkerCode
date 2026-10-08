@@ -156,6 +156,7 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
       runtime: runtime.status(),
       codePath: this.workspaces.path(workspaceId, systemId),
       workingCode: await this.workspaces.version(workspaceId, systemId),
+      applyRequired: this.workspaces.requiresApply(workspaceId, systemId),
       state,
       busy: this.busy.get(key) ?? null,
       checkpoints: this.repository.checkpoints(workspaceId, systemId),
@@ -174,7 +175,11 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
     if (runtime.status().status === "ready" || this.busy.has(key))
       return runtime.status();
     // Apenas parado inicia automaticamente. Falhas exigem uma ação explícita do usuário.
-    if (runtime.status().status === "crashed") return runtime.status();
+    if (
+      runtime.status().status === "crashed" ||
+      this.workspaces.requiresApply(workspaceId, systemId)
+    )
+      return runtime.status();
     try {
       await this.restart(workspaceId, systemId);
     } catch {
@@ -272,9 +277,10 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
     const { runtime, key } = this.scope(workspaceId, systemId);
     return this.exclusive(key, "Reiniciando runtime", async () => {
       try {
-        await runtime.start(
-          await this.workspaces.snapshot(workspaceId, systemId),
-        );
+        const code = await this.workspaces.snapshot(workspaceId, systemId);
+        // Aplicar foi solicitado explicitamente, mesmo se o código não conseguir iniciar.
+        await this.workspaces.acknowledgeApply(workspaceId, systemId);
+        await runtime.start(code);
       } catch {
         throw new ServiceUnavailableException(
           "O runtime não iniciou. O diagnóstico está disponível na área do sistema.",
@@ -286,6 +292,10 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
   async reset(workspaceId: string, systemId: string) {
     const { runtime, key, system } = this.scope(workspaceId, systemId);
     return this.exclusive(key, "Resetando estado", async () => {
+      if (this.workspaces.requiresApply(workspaceId, systemId))
+        throw new ConflictException(
+          "Aplique o código restaurado antes de executar o sistema.",
+        );
       if (runtime.status().status !== "ready")
         await runtime.start(
           await this.workspaces.snapshot(workspaceId, systemId),
@@ -355,6 +365,10 @@ export class LaboratoryService implements OnModuleInit, OnModuleDestroy {
         );
     }
     return this.exclusive(key, "Preparando experimento", async () => {
+      if (this.workspaces.requiresApply(workspaceId, systemId))
+        throw new ConflictException(
+          "Aplique o código restaurado antes de executar o sistema.",
+        );
       // Uma edição nunca entra silenciosamente em uma run: ela exige restart explícito.
       if (runtime.status().status !== "ready") {
         // O snapshot é registrado antes de iniciar: até erro de sintaxe vira uma Run persistida.

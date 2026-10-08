@@ -69,7 +69,7 @@ export function TestTool({
         <p>Nenhuma ferramenta disponível para este sistema.</p>
       ) : (
         <>
-          <h3>Concorrência</h3>
+          <h3>{definition.name}</h3>
           <p>Execute a mesma operação com várias requests.</p>
           <form
             className="test-form"
@@ -135,6 +135,7 @@ export function TestTool({
               className="primary"
               disabled={
                 busy ||
+                bench.applyRequired ||
                 starting ||
                 (!!runId && !detail) ||
                 detail?.run.status === "running"
@@ -174,7 +175,7 @@ export function TestTool({
                         </strong>
                         <span>{observation.label}</span>
                       </div>
-                      {observation.note && (
+                      {!detail.investigations?.length && observation.note && (
                         <p className="negative">{observation.note}</p>
                       )}
                     </div>
@@ -196,14 +197,11 @@ export function TestTool({
                       Investigar
                     </button>
                   )}
-                  {!investigation.available && (
-                    <button
-                      disabled={busy || starting}
-                      onClick={() => void start()}
-                    >
-                      Executar novamente
-                    </button>
-                  )}
+                  {investigation.concerns?.map((concern) => (
+                    <p key={concern} className="negative">
+                      {concern}
+                    </p>
+                  ))}
                 </div>
               ))}
               <Link className="button" to={`/runs/${detail.run.id}`}>

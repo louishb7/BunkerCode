@@ -84,6 +84,7 @@ export function WorkbenchPage({
         baselineRunId: detail.run.id,
         comparisonRunIds: [],
         revealed: 0,
+        guidanceRevision: definition.guidanceRevision,
       });
     setPanel("investigation");
   }
@@ -145,14 +146,15 @@ export function WorkbenchPage({
       .find((line) => /(?:Syntax|Type|Reference)?Error:/.test(line)) ??
     issue?.split("\n")[0];
   const changed =
-    !!bench.runtime.code &&
-    bench.runtime.code.digest !== bench.workingCode.digest;
+    bench.applyRequired ||
+    (!!bench.runtime.code &&
+      bench.runtime.code.digest !== bench.workingCode.digest);
   async function restart() {
     await action(async () => {
       await api.restart();
       setSurfaceError("");
       setRevision((value) => value + 1);
-    }, "Runtime reiniciado.");
+    }, "Código salvo carregado. Runtime reiniciado.");
   }
   return (
     <div className="workbench">
@@ -178,7 +180,7 @@ export function WorkbenchPage({
           </button>
           <button disabled={busy} onClick={() => void restart()}>
             <RotateCcw size={16} />
-            <span>Reiniciar</span>
+            <span>{changed ? "Aplicar e reiniciar" : "Reiniciar"}</span>
           </button>
           <details className="toolbar-menu">
             <summary aria-label="Mais opções">
@@ -196,9 +198,7 @@ export function WorkbenchPage({
       {changed && (
         <div className="code-change">
           <span>Alterações ainda não aplicadas</span>
-          <button disabled={busy} onClick={() => void restart()}>
-            Aplicar e reiniciar
-          </button>
+          <span>O sistema ainda não está executando os arquivos salvos.</span>
         </div>
       )}
       <div className="investigation-entry">
@@ -212,6 +212,7 @@ export function WorkbenchPage({
         )}
         {suggestion &&
           candidate &&
+          !panel &&
           candidate.run.id !== dismissed &&
           candidate.run.id !== context?.baselineRunId &&
           !context?.comparisonRunIds.includes(candidate.run.id) && (
@@ -279,7 +280,11 @@ export function WorkbenchPage({
                 onClick={() => void restart()}
               >
                 <RotateCcw size={16} />
-                {issue ? "Tentar reiniciar" : "Iniciar sistema"}
+                {bench.applyRequired
+                  ? "Aplicar código restaurado"
+                  : issue
+                    ? "Tentar reiniciar"
+                    : "Iniciar sistema"}
               </button>
               <button onClick={() => setPanel("runtime")}>Ver logs</button>
             </div>

@@ -7,6 +7,7 @@ import {
   writeFile,
   lstat,
   copyFile,
+  unlink,
 } from "node:fs/promises";
 import { existsSync, lstatSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -292,6 +293,28 @@ export class WorkspaceManager {
     this.repository.saveCheckpoint(workspaceId, checkpoint);
     return checkpoint;
   }
+  requiresApply(workspaceId: string, systemId: string) {
+    return existsSync(
+      join(
+        this.path(workspaceId, systemId),
+        ".git",
+        "bunkerlab-apply-required",
+      ),
+    );
+  }
+  async acknowledgeApply(workspaceId: string, systemId: string) {
+    try {
+      await unlink(
+        join(
+          this.path(workspaceId, systemId),
+          ".git",
+          "bunkerlab-apply-required",
+        ),
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
   async restore(workspaceId: string, systemId: string, checkpoint: Checkpoint) {
     const path = this.path(workspaceId, systemId);
     // Um checkpoint de segurança mantém inclusive arquivos novos antes da restauração.
@@ -301,6 +324,7 @@ export class WorkspaceManager {
       `Antes de restaurar: ${checkpoint.message}`,
       "backup",
     );
+    await writeFile(join(path, ".git", "bunkerlab-apply-required"), "1");
     await this.git(path, [
       "restore",
       "--source",

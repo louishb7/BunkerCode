@@ -103,10 +103,19 @@ export interface InvestigationView {
   observation: string;
   facts: Observation[];
   evidence: { sequence: number; label: string }[];
+  evidenceTable?: {
+    columns: string[];
+    rows: {
+      label: string;
+      cells: { value: string | number; sequence: number }[];
+    }[];
+  };
+  concerns?: string[];
   evidenceNote: string;
   question: string;
   files: { path: string; symbol: string; description: string }[];
   hints: { title: string; text: string }[];
+  guidanceRevision?: number;
   checkpointName: string;
 }
 
@@ -116,6 +125,7 @@ export interface InvestigationContext {
   comparisonRunIds: string[];
   revealed: number;
   checkpointId?: string;
+  guidanceRevision?: number;
 }
 export interface SystemSummary {
   surface?: SurfaceDefinition;
@@ -138,6 +148,7 @@ export interface Workbench {
   runtime: RuntimeStatus;
   codePath: string;
   workingCode: Omit<CodeVersion, "snapshot">;
+  applyRequired?: boolean;
   state: SystemState | null;
   busy: string | null;
   checkpoints: Checkpoint[];

@@ -74,7 +74,14 @@ export function Investigation({
   const after = comparison?.investigations?.find(
     (item) => item.id === context.definitionId,
   );
-  const changed = bench.runtime.code?.digest !== bench.workingCode.digest;
+  const changed =
+    bench.applyRequired ||
+    bench.runtime.code?.digest !== bench.workingCode.digest;
+  const revealed =
+    context.guidanceRevision === definition?.guidanceRevision
+      ? context.revealed
+      : Math.min(context.revealed, 4);
+  const [activeHint, setActiveHint] = useState<number | null>(null);
   const pending =
     starting ||
     comparison?.run.status === "running" ||
@@ -99,7 +106,14 @@ export function Investigation({
       setStarting(false);
     }
   }
-  const reveal = () => update({ ...context, revealed: context.revealed + 1 });
+  const reveal = () => {
+    setActiveHint(revealed - 2);
+    update({
+      ...context,
+      guidanceRevision: definition?.guidanceRevision,
+      revealed: revealed + 1,
+    });
+  };
   return (
     <Drawer title={definition?.title ?? "Investigação"} close={close}>
       {error && (
@@ -115,48 +129,81 @@ export function Investigation({
         </p>
       ) : (
         <>
-          <p className="subtle">Baseline · Run #{baseline!.run.number}</p>
+          <p className="subtle">
+            Referência inicial · Run #{baseline!.run.number}
+          </p>
           <p>{definition.observation}</p>
           <Facts definition={definition} />
-          {context.revealed === 0 && (
+          {revealed === 0 && (
             <button className="primary" onClick={reveal}>
               Ver como isso aconteceu
             </button>
           )}
-          {context.revealed >= 1 && (
+          {revealed >= 1 && (
             <section className="investigation-section">
               <h3>Evidência selecionada</h3>
-              <ol className="focused-evidence">
-                {definition.evidence.map((item) => {
-                  const event = baseline!.evidence.find(
-                    (event) => event.sequence === item.sequence,
-                  );
-                  return (
-                    event && (
-                      <li key={item.sequence} data-sequence={event.sequence}>
-                        <small>Evento #{event.sequence}</small>
-                        <span>{item.label}</span>
-                        <details>
-                          <summary>Identificação</summary>
-                          <code>{event.requestId}</code>
-                          <pre>{JSON.stringify(event.payload, null, 2)}</pre>
-                        </details>
-                      </li>
-                    )
-                  );
-                })}
-              </ol>
-              <p className="subtle">{definition.evidenceNote}</p>
+              <p>{definition.evidenceNote}</p>
+              {definition.evidenceTable && (
+                <table className="evidence-comparison">
+                  <thead>
+                    <tr>
+                      <th>Request</th>
+                      {definition.evidenceTable.columns.map((column) => (
+                        <th key={column}>{column}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {definition.evidenceTable.rows.map((row) => (
+                      <tr key={row.label}>
+                        <th>{row.label}</th>
+                        {row.cells.map((cell, index) => (
+                          <td key={index} title={`Evento #${cell.sequence}`}>
+                            {cell.value}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <details className="evidence-source">
+                <summary>Eventos de origem</summary>
+                <ol className="focused-evidence">
+                  {definition.evidence.map((item) => {
+                    const event = baseline!.evidence.find(
+                      (event) => event.sequence === item.sequence,
+                    );
+                    return (
+                      event && (
+                        <li key={item.sequence} data-sequence={event.sequence}>
+                          <small>Evento #{event.sequence}</small>
+                          <span>{item.label}</span>
+                          <details>
+                            <summary>Identificação</summary>
+                            <code>{event.requestId}</code>
+                            <pre>{JSON.stringify(event.payload, null, 2)}</pre>
+                          </details>
+                        </li>
+                      )
+                    );
+                  })}
+                </ol>
+                <p className="subtle">
+                  Ordem recebida pelo Lab; não representa um relógio global das
+                  operações no banco.
+                </p>
+              </details>
               <Link to={`/runs/${baseline!.run.id}`}>
                 Abrir Inspector completo
               </Link>
               <p className="investigation-question">{definition.question}</p>
-              {context.revealed === 1 && (
+              {revealed === 1 && (
                 <button onClick={reveal}>Localizar no código</button>
               )}
             </section>
           )}
-          {context.revealed >= 2 && (
+          {revealed >= 2 && (
             <section className="investigation-section">
               <h3>Onde observar no código</h3>
               {definition.files.map((file) => (
@@ -199,10 +246,6 @@ export function Investigation({
                 </p>
               )}
               <div className="investigation-checkpoint">
-                <p>
-                  Vai tentar uma alteração? Você pode preservar o código atual
-                  antes de editar.
-                </p>
                 {context.checkpointId ? (
                   <p>Checkpoint da tentativa salvo.</p>
                 ) : (
@@ -211,7 +254,7 @@ export function Investigation({
                     onClick={() =>
                       void action(async () => {
                         const checkpoint = await api.checkpoint(
-                          definition.checkpointName,
+                          `${definition.checkpointName} · Run #${baseline!.run.number}`,
                         );
                         update({ ...context, checkpointId: checkpoint.id });
                       }, "Checkpoint da tentativa salvo.")
@@ -226,18 +269,35 @@ export function Investigation({
                 </small>
               </div>
               {definition.hints
-                .slice(0, Math.max(0, context.revealed - 2))
-                .map((hint) => (
-                  <section className="investigation-hint" key={hint.title}>
-                    <h3>{hint.title}</h3>
+                .slice(0, Math.max(0, revealed - 2))
+                .map((hint, index) => (
+                  <details
+                    className="investigation-hint"
+                    key={hint.title}
+                    open={
+                      activeHint === null
+                        ? index === revealed - 3
+                        : index === activeHint
+                    }
+                  >
+                    <summary
+                      onClick={(event) => {
+                        event.preventDefault();
+                        const current =
+                          activeHint === null ? revealed - 3 : activeHint;
+                        setActiveHint(current === index ? -1 : index);
+                      }}
+                    >
+                      {hint.title}
+                    </summary>
                     <p>{hint.text}</p>
-                  </section>
+                  </details>
                 ))}
-              {context.revealed - 2 < definition.hints.length && (
+              {revealed - 2 < definition.hints.length && (
                 <button onClick={reveal}>
-                  {context.revealed < 4
-                    ? `Pedir pista ${context.revealed - 1}`
-                    : definition.hints[context.revealed - 2]!.title}
+                  {revealed < 4
+                    ? `Pedir pista ${revealed - 1}`
+                    : definition.hints[revealed - 2]!.title}
                 </button>
               )}
               <div className="investigation-section">
@@ -254,7 +314,7 @@ export function Investigation({
                         void action(async () => {
                           await api.restart();
                           completed();
-                        }, "Runtime reiniciado.")
+                        }, "Código salvo carregado. Runtime reiniciado.")
                       }
                     >
                       Aplicar e reiniciar
@@ -262,9 +322,7 @@ export function Investigation({
                   </>
                 ) : (
                   <p className="subtle">
-                    {bench.runtime.status === "ready"
-                      ? "O runtime está usando o código salvo."
-                      : "Runtime indisponível. Aplique o código para tentar iniciar."}
+                    O sistema está executando o código salvo.
                   </p>
                 )}
               </div>
@@ -273,11 +331,23 @@ export function Investigation({
           <section className="investigation-section">
             <h3>Repetir nas mesmas condições</h3>
             <p className="subtle">
-              Cada execução prepara novamente o estado inicial da baseline.
+              O teste prepara novamente o mesmo estado inicial.
             </p>
             <details>
-              <summary>Condições da baseline</summary>
-              <pre>{JSON.stringify(baseline!.run.config, null, 2)}</pre>
+              <summary>Condições da referência</summary>
+              <dl>
+                {Object.entries(baseline!.run.config).map(([key, value]) => (
+                  <div key={key}>
+                    <dt>
+                      {bench.experiments
+                        .find((item) => item.id === baseline!.run.experimentId)
+                        ?.fields?.find((field) => field.key === key)?.label ??
+                        key}
+                    </dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
             </details>
             {changed && (
               <p className="subtle">
@@ -293,7 +363,7 @@ export function Investigation({
               {pending ? "Executando…" : "Executar novamente"}
             </button>
           </section>
-          {comparison && comparison.run.status !== "running" && (
+          {comparison && !pending && comparison.run.status !== "running" && (
             <section
               className="investigation-section"
               aria-label="Comparação da investigação"
@@ -326,6 +396,14 @@ export function Investigation({
                     </tbody>
                   </table>
                   <p>{after.observation}</p>
+                  {!!after.concerns?.length && (
+                    <div className="comparison-concerns">
+                      <h4>Outros comportamentos nesta tentativa</h4>
+                      {after.concerns.map((concern) => (
+                        <p key={concern}>{concern}</p>
+                      ))}
+                    </div>
+                  )}
                   <p className="subtle">
                     Uma execução não prova que o comportamento será o mesmo em
                     todas as condições.
@@ -339,8 +417,8 @@ export function Investigation({
               )}
               <p className="subtle">
                 {comparison.run.code.digest === baseline!.run.code.digest
-                  ? "Mesmo código da baseline."
-                  : "Código diferente da baseline."}{" "}
+                  ? "Mesmo código da referência inicial."
+                  : "Código diferente da referência inicial."}{" "}
                 {context.comparisonRunIds.length} tentativa(s) nesta
                 investigação.
               </p>

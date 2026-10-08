@@ -6,7 +6,13 @@ export const inventoryInvestigation: InvestigationDefinition = {
   systemId: "orderdesk",
   experimentId: "overselling",
   inspect({ run, requests, evidence }) {
-    if (!run.result || !["passed", "failed"].includes(run.status)) return null;
+    if (
+      !run.result ||
+      !run.initialState ||
+      !run.finalState ||
+      run.status === "running"
+    )
+      return null;
     const initial = run.initialState as OrderDeskState;
     const final = run.finalState as OrderDeskState;
     const writes = evidence.filter((event) => event.type === "stock.written");
@@ -20,54 +26,76 @@ export const inventoryInvestigation: InvestigationDefinition = {
         event.payload.stock > 0 &&
         event.requestId,
     );
-    let focus: Evidence[] = [];
-    for (const first of [...reads].sort(
-      (a, b) => Number(a.payload.stock) - Number(b.payload.stock),
-    )) {
-      const candidates = reads.filter(
-        (event) =>
-          event.requestId !== first.requestId &&
-          event.payload.stock === first.payload.stock &&
-          event.sequence > first.sequence,
-      );
-      for (const second of candidates) {
-        const firstWrite = writes.find(
+    const negative = writes.find(
+      (event) =>
+        typeof event.payload.stock === "number" && event.payload.stock < 0,
+    );
+    const reading = (write: Evidence) =>
+      [...reads]
+        .reverse()
+        .find(
           (event) =>
-            event.requestId === first.requestId &&
-            event.sequence > second.sequence,
+            event.requestId === write.requestId &&
+            event.sequence < write.sequence,
         );
-        const secondWrite = writes.find(
-          (event) =>
-            event.requestId === second.requestId &&
-            event.sequence > second.sequence,
-        );
-        if (
-          firstWrite &&
-          secondWrite &&
-          (Number(firstWrite.payload.stock) < 0 ||
-            Number(secondWrite.payload.stock) < 0)
-        ) {
-          focus = [first, second, firstWrite, secondWrite].sort(
-            (a, b) => a.sequence - b.sequence,
-          );
-          break;
-        }
-      }
-      if (focus.length) break;
-    }
-    const paired = focus.length > 0;
-    if (!paired) {
-      const negative = writes.find((event) => Number(event.payload.stock) < 0);
-      if (negative)
-        focus = evidence.filter(
-          (event) =>
-            event.requestId === negative.requestId &&
-            ["stock.read", "stock.written"].includes(event.type),
-        );
-    }
+    const negativeRead = negative?.requestId ? reading(negative) : undefined;
+    const partner =
+      negative && negativeRead
+        ? [...writes].reverse().find((write) => {
+            const read = reading(write);
+            return (
+              write.requestId &&
+              write.requestId !== negative.requestId &&
+              write.sequence < negative.sequence &&
+              write.sequence > negativeRead.sequence &&
+              read &&
+              read.sequence < negative.sequence &&
+              read.payload.stock === negativeRead.payload.stock
+            );
+          })
+        : undefined;
+    const pairs = [partner, negative]
+      .filter((event): event is Evidence => !!event)
+      .flatMap((write) => {
+        const read = write.requestId ? reading(write) : undefined;
+        return read ? [{ read, write }] : [];
+      });
+    const focus = (
+      pairs.length
+        ? pairs.flatMap(({ read, write }) => [read, write])
+        : negative
+          ? [negative]
+          : []
+    ).sort((a, b) => a.sequence - b.sequence);
     const ids = [...new Set(focus.map((event) => event.requestId))];
+    const omittedWrites = focus.length
+      ? writes.filter(
+          (event) =>
+            event.sequence > focus[0]!.sequence &&
+            event.sequence < focus.at(-1)!.sequence &&
+            !focus.includes(event),
+        ).length
+      : 0;
+    const units = final.orders.reduce((sum, order) => sum + order.quantity, 0);
+    const concerns: string[] = [];
+    if (final.product.stock + units !== initial.product.stock)
+      concerns.push(
+        `O estado final registra ${units} unidades em pedidos e ${final.product.stock} em estoque, partindo de ${initial.product.stock}. Esses valores não conservam o estoque inicial.`,
+      );
+    if (run.result.accepted !== final.orders.length)
+      concerns.push(
+        `${run.result.accepted} respostas de sucesso, mas ${final.orders.length} pedidos persistidos.`,
+      );
+    if (run.result.rejected > 0 && final.product.stock > 0)
+      concerns.push(
+        `${run.result.rejected} requests foram rejeitadas e restaram ${final.product.stock} unidades. Cada request desta execução pediu uma unidade.`,
+      );
+    if (run.result.errors > 0)
+      concerns.push(`${run.result.errors} requests terminaram com erro.`);
     return {
       id: this.id,
+      guidanceRevision: 2,
+      concerns,
       title: "Investigar o estoque",
       available,
       observation: available
@@ -95,9 +123,32 @@ export const inventoryInvestigation: InvestigationDefinition = {
         sequence: event.sequence,
         label: `Request ${String.fromCharCode(65 + ids.indexOf(event.requestId))} · ${event.type === "stock.read" ? "leu estoque" : "criou pedido; estoque após escrita"} = ${event.payload.stock}`,
       })),
-      evidenceNote: paired
-        ? "Recorte de duas requests desta Run, na ordem recebida. Outras requests também executaram entre estes eventos; abra o Inspector para a sequência completa. A ordem recebida não é um relógio global do banco."
-        : "Não foi possível selecionar duas leituras sobrepostas. Os eventos disponíveis da escrita negativa estão abaixo; não inferimos uma sequência ausente.",
+      evidenceTable: pairs.length
+        ? {
+            columns: ["Na leitura", "Antes da escrita", "Após a escrita"],
+            rows: pairs.map(({ read, write }) => ({
+              label: `Request ${String.fromCharCode(65 + ids.indexOf(write.requestId))}`,
+              cells: [
+                { value: Number(read.payload.stock), sequence: read.sequence },
+                {
+                  value:
+                    typeof write.payload.before === "number"
+                      ? write.payload.before
+                      : "Não registrado",
+                  sequence: write.sequence,
+                },
+                {
+                  value: Number(write.payload.stock),
+                  sequence: write.sequence,
+                },
+              ],
+            })),
+          }
+        : undefined,
+      evidenceNote:
+        pairs.length === 2
+          ? `Estoque registrado para duas requests que criaram pedidos. Entre a primeira leitura e a última escrita do recorte, houve ${omittedWrites} escrita(s) de outras requests. Compare o que cada uma leu com o valor registrado imediatamente antes de sua escrita.`
+          : "Não há eventos suficientes para comparar duas requests. Mostramos somente o que foi registrado, sem reconstruir etapas ausentes.",
       question:
         "O que cada request sabia sobre o estoque quando decidiu criar o pedido? Onde essa decisão aparece no código?",
       files: [
@@ -111,19 +162,23 @@ export const inventoryInvestigation: InvestigationDefinition = {
       hints: [
         {
           title: "Pista 1",
-          text: "Observe que a leitura do estoque e a criação do pedido são operações separadas. O que pode acontecer entre essas duas chamadas?",
+          text: "Compare o estoque lido por uma request com o estoque antes de sua escrita. Ele permaneceu igual? O que as outras requests fizeram nesse intervalo?",
         },
         {
           title: "Pista 2",
-          text: "Imagine duas requests executando esse trecho quando existe apenas 1 unidade. As duas podem ler stock = 1 antes que qualquer uma altere o estado? Volte aos eventos: o que eles permitem afirmar nesta Run?",
+          text: "No código, ler o estoque e criar o pedido são operações separadas. Enquanto uma request aguarda uma chamada com await, outra pode avançar. Que informação a primeira continua usando quando volta a executar?",
         },
         {
           title: "Entender o conceito",
-          text: "Esse padrão é chamado check-then-act: verificar e agir em operações separadas permite interleaving entre requests (uma race condition). Falta atomicidade entre a condição e a alteração. Famílias de solução incluem update condicional, transaction com isolamento adequado ou lock compartilhado. Uma transação apenas na escrita não protege uma decisão tomada antes dela.",
+          text: "Verificar uma condição e agir depois é o padrão check-then-act. Se outra request altera o estado nesse intervalo, a decisão pode ficar desatualizada. Quando o resultado depende dessa ordem, chamamos isso de race condition. Atomicidade é a propriedade de tratar a decisão e a mudança como uma única operação, sem outra alteração entre elas.",
+        },
+        {
+          title: "Explorar estratégias",
+          text: "Você pode fazer o banco verificar a condição na própria escrita (update condicional), ou impedir que outra operação altere o estado entre a leitura e a escrita (lock ou transação com isolamento adequado). Uma transação agrupa operações; sozinha, não protege uma decisão tomada fora dela. Compare também pedidos, rejeições e estado final: impedir um número negativo não basta.",
         },
         {
           title: "Direção de implementação",
-          text: "Siga insertOrder até order-store.mjs. Ali db.prepare executa SQL com parâmetros e result.changes informa quantas linhas foram alteradas. O UPDATE e o INSERT já compartilham uma transação. Que condição a escrita precisa verificar para que o pedido só seja persistido quando houver estoque? Você pode mudar essa operação e a decisão em inventory.mjs; não precisa editar o driver em database.mjs.",
+          text: "inventory.mjs coordena chamadas assíncronas; order-store.mjs executa a escrita. Escolha em qual desses lugares sua hipótese precisa atuar. No segundo, db.prepare executa SQL com parâmetros e result.changes informa linhas alteradas. Se controlar a ordem das chamadas no Node, considere quem compartilha esse controle. Preserve a evidência e use a próxima Run para observar o efeito, inclusive novas falhas.",
         },
       ],
       checkpointName: "Antes de investigar concorrência",

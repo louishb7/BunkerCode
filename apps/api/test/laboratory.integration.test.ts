@@ -264,6 +264,7 @@ test("syntax errors and process crashes are results, not control plane crashes",
   const path = join(bench.codePath, "inventory.mjs");
   const original = await readFile(path, "utf8");
   await writeFile(path, "this is not valid javascript !!!");
+  assert.equal((await post("/runtime/restart")).status, 503);
   const broken = await run();
   assert.equal(broken.run.status, "error");
   assert.match(broken.run.error!, /SyntaxError/);
@@ -495,7 +496,7 @@ test("investigation availability and selected evidence derive exclusively from t
     /race condition|transaction|atomic|solução/i,
   );
   assert.equal(view.files[0]!.path, "inventory.mjs");
-  assert.equal(view.hints.length, 4);
+  assert.equal(view.hints.length, 5);
   assert.ok(view.evidence.length > 0);
   assert.ok(
     view.evidence.some((item) => {
@@ -543,4 +544,82 @@ test("student template contains no strategy switch or completed alternate implem
     ),
     /result.changes/,
   );
+});
+
+test("restore requires explicit application even after reopening or rebooting the Lab", async () => {
+  const bench = await get<Workbench>();
+  const saved = (await (
+    await post("/checkpoints", { message: "Before restore audit" })
+  ).json()) as Checkpoint;
+  await writeFile(join(bench.codePath, "audit-note.txt"), "Preserve me");
+  assert.equal((await post(`/checkpoints/${saved.id}/restore`)).status, 200);
+  assert.equal((await get<Workbench>()).applyRequired, true);
+  assert.equal((await post("/runtime/open")).status, 200);
+  assert.equal((await get<Workbench>()).runtime.status, "stopped");
+  assert.equal((await post("/runtime/reset")).status, 409);
+  assert.equal((await post("/experiments/overselling/runs")).status, 409);
+  await app.close();
+  await boot();
+  await post("/runtime/open");
+  assert.equal((await get<Workbench>()).applyRequired, true);
+  assert.equal((await get<Workbench>()).runtime.status, "stopped");
+  assert.equal((await post("/runtime/restart")).status, 200);
+  const applied = await get<Workbench>();
+  assert.equal(applied.applyRequired, false);
+  assert.equal(applied.runtime.code!.digest, applied.workingCode.digest);
+  assert.equal(
+    (await run({ stock: 3, clients: 7, concurrency: 3 })).run.status,
+    "passed",
+  );
+});
+
+test("preventing negative stock does not hide lost inventory conservation or HTTP errors", async () => {
+  const bench = await get<Workbench>();
+  const inventoryPath = join(bench.codePath, "inventory.mjs");
+  const storePath = join(bench.codePath, "order-store.mjs");
+  const original = await readFile(inventoryPath, "utf8");
+  const store = await readFile(storePath, "utf8");
+  try {
+    const naive = await readFile(
+      join(projectRoot(), "templates/orderdesk/order-store.mjs"),
+      "utf8",
+    );
+    await writeFile(
+      inventoryPath,
+      'export async function createOrder(database, input) { return database.call("insertOrder", input); }',
+    );
+    await writeFile(
+      storePath,
+      naive.replace("stock = stock - ?", "stock = MAX(0, stock - ?)"),
+    );
+    await post("/runtime/restart");
+    const partial = await run({ clients: 12, concurrency: 7, stock: 3 });
+    assert.equal(partial.run.result!.finalStock, 0);
+    assert.equal(partial.run.result!.orderCount, 12);
+    assert.equal(partial.run.status, "failed");
+    const view = partial.investigations![0]!;
+    assert.match(view.observation, /Não foi observado estoque negativo/);
+    assert.ok(
+      view.concerns!.some(
+        (text) =>
+          /12 unidades em pedidos/.test(text) && /não conservam/.test(text),
+      ),
+    );
+    await writeFile(
+      inventoryPath,
+      'export async function createOrder() { throw new Error("Rejected by my attempt"); }',
+    );
+    await post("/runtime/restart");
+    const failure = await run({ clients: 4, concurrency: 2, stock: 3 });
+    assert.equal(failure.run.status, "error");
+    assert.ok(
+      failure.investigations![0]!.concerns!.includes(
+        "4 requests terminaram com erro.",
+      ),
+    );
+  } finally {
+    await writeFile(inventoryPath, original);
+    await writeFile(storePath, store);
+    await post("/runtime/restart");
+  }
 });

@@ -14,19 +14,41 @@ export function Checkpoints({
 }) {
   const [message, setMessage] = useState("");
   const [restoreId, setRestoreId] = useState<string | null>(null);
+  const currentId = bench.checkpoints.find(
+    (item) =>
+      !["backup", "restore"].includes(item.kind ?? "user") &&
+      item.digest === bench.workingCode.digest,
+  )?.id;
   const renderCheckpoint = (checkpoint: Checkpoint) => (
     <section className="checkpoint-item" key={checkpoint.id}>
       <GitCommitHorizontal size={22} />
       <div>
-        <h3>{checkpoint.message}</h3>
-        {checkpoint.kind === "backup" && <small>Backup automático</small>}
-        {checkpoint.kind === "restore" && (
-          <small>Registro de restauração</small>
+        <h3>
+          {checkpoint.kind === "backup"
+            ? "Backup automático"
+            : checkpoint.kind === "restore"
+              ? "Registro de restauração"
+              : checkpoint.message}
+        </h3>
+        {checkpoint.id === currentId && (
+          <p>
+            {bench.runtime.status === "ready" &&
+            bench.runtime.code?.digest === checkpoint.digest
+              ? "Código atual · em execução"
+              : "Código atual no workspace"}
+          </p>
         )}
-        <p>
-          {date(checkpoint.createdAt)} · <code>{short(checkpoint.commit)}</code>{" "}
-          · código <code>{short(checkpoint.digest)}</code>
-        </p>
+        <p>{date(checkpoint.createdAt)}</p>
+        <details>
+          <summary>Detalhes do checkpoint</summary>
+          {["backup", "restore"].includes(checkpoint.kind ?? "user") && (
+            <p>{checkpoint.message}</p>
+          )}
+          <p>
+            Commit <code>{short(checkpoint.commit)}</code> · código{" "}
+            <code>{short(checkpoint.digest)}</code>
+          </p>
+        </details>
         {restoreId === checkpoint.id && (
           <div className="restore-confirm">
             <p>
@@ -41,7 +63,7 @@ export function Checkpoints({
                 void action(async () => {
                   await api.restore(checkpoint.id);
                   setRestoreId(null);
-                }, "Código restaurado. Reinicie o runtime para carregá-lo.")
+                }, "Código restaurado no workspace. Aplique para colocá-lo em execução.")
               }
             >
               Restaurar com cópia de segurança
@@ -63,6 +85,22 @@ export function Checkpoints({
           <p>Pontos que você quer preservar na evolução do código.</p>
         </div>
       </div>
+      {bench.applyRequired && (
+        <p className="code-change">
+          Código restaurado no workspace, ainda não aplicado.
+          <button
+            disabled={busy}
+            onClick={() =>
+              void action(
+                () => api.restart(),
+                "Código salvo carregado. Runtime reiniciado.",
+              )
+            }
+          >
+            Aplicar código restaurado
+          </button>
+        </p>
+      )}
       <form
         className="checkpoint-form panel"
         onSubmit={(event) => {
