@@ -229,60 +229,109 @@
 }
 .prose .code-block {
   min-width: 0;
-  margin: 26px 0;
+  margin: 22px 0;
   border: 1px solid #353d40;
   border-radius: 8px;
   overflow: hidden;
-  background: #0d1115;
+  background: #23272c;
 }
-.code-language {
+.prose .code-language {
   color: #a3afb3;
   font:
     11px/1.5 ui-monospace,
     monospace;
-  padding: 10px 18px;
+  padding: 8px 18px;
   border-bottom: 1px solid #30383c;
-  background: #171d21;
+  background: #1f2328;
 }
 .prose pre {
   margin: 0;
-  padding: 20px;
+  padding: 16px 18px;
+  font:
+    14px/1.5 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
   overflow-x: auto;
   max-width: 100%;
   white-space: pre;
   tab-size: 2;
 }
 .prose pre code {
-  font-size: 14px;
-  line-height: 1.8;
-  color: #d6dee2;
+  font: inherit;
+  color: #d4d4d4;
   border: 0;
   padding: 0;
   background: transparent;
 }
-.hljs-keyword,
-.hljs-literal,
-.hljs-operator {
-  color: #ff9f91;
+.prose .code-block .hljs {
+  color: #d4d4d4;
 }
-.hljs-string,
-.hljs-regexp {
-  color: #a5d8b0;
+.prose .code-block .hljs-keyword,
+.prose .code-block .hljs-literal,
+.prose .code-block .hljs-meta {
+  color: #db7e32;
 }
-.hljs-number,
-.hljs-type,
-.hljs-built_in,
-.hljs-attr {
-  color: #9ecff1;
+.prose .code-block .hljs-string {
+  color: #7cb961;
 }
-.hljs-title,
-.hljs-title.function_ {
-  color: #d7bbf4;
+.prose .code-block .hljs-regexp {
+  color: #646695;
 }
-.hljs-comment,
-.hljs-quote {
-  color: #87989f;
-  font-style: italic;
+.prose .code-block .hljs-number {
+  color: #6897bb;
+}
+.prose .code-block .hljs-built_in {
+  color: #f7d064;
+}
+/* TypeScript groups primitive types and built-ins in the same token class. */
+.prose .code-block code.language-typescript .hljs-built_in,
+.prose .code-block code.language-ts .hljs-built_in {
+  color: #db7e32;
+}
+.prose .code-block .hljs-title,
+.prose .code-block .hljs-title.function_ {
+  color: #f7d064;
+}
+.prose .code-block .hljs-title.class_,
+.prose .code-block .hljs-type {
+  color: #ebb662;
+}
+.prose .code-block .hljs-attr,
+.prose .code-block .hljs-property,
+.prose .code-block .hljs-attribute {
+  color: #bf93d8;
+}
+.prose .code-block .hljs-params {
+  color: #bdc9d6;
+}
+.prose .code-block .hljs-params .hljs-attr {
+  color: #bdc9d6;
+}
+.prose .code-block .hljs-variable {
+  color: #a9b7c6;
+}
+/* JS/TS share this class between this, console, window and other globals.
+   Keep it neutral: CSS cannot distinguish their TextMate scopes. */
+.prose .code-block .hljs-variable.language_ {
+  color: #a9b7c6;
+  font-style: normal;
+}
+.prose .code-block .hljs-operator,
+.prose .code-block .hljs-punctuation,
+.prose .code-block .hljs-subst {
+  color: #a9b7c6;
+}
+.prose .code-block .hljs-comment,
+.prose .code-block .hljs-quote {
+  color: #808080;
+  font-style: normal;
+}
+.prose .code-block .hljs-addition {
+  color: #b5cea8;
+}
+.prose .code-block .hljs-deletion {
+  color: #ce9178;
 }
 .prose hr {
   border: 0;
