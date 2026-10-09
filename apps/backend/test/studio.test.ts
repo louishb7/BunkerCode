@@ -78,7 +78,6 @@ before(async () => {
   execFileSync("git", ["init", "--quiet"], { cwd: root });
   execFileSync("git", ["add", "content"], { cwd: root });
   process.env.BUNKERCODE_CONTENT_DIR = join(root, "content");
-  process.env.BUNKERCODE_DATA_DIR = join(root, "data");
   app = await createApplication(true);
   await app.listen(0, "127.0.0.1");
   base =
@@ -89,7 +88,6 @@ before(async () => {
 after(async () => {
   await app?.close();
   delete process.env.BUNKERCODE_CONTENT_DIR;
-  delete process.env.BUNKERCODE_DATA_DIR;
   await rm(root, { recursive: true, force: true });
 });
 
@@ -332,4 +330,38 @@ test("Studio requires the exact local origin, local Host, JSON and same-origin m
     },
   });
   assert.equal(options.headers.get("access-control-allow-origin"), null);
+});
+
+test("editorial JSON parsing rejects malformed and oversized requests while accepting escaped Markdown at the byte limit", async () => {
+  const loaded = await lesson();
+  for (const [body, status] of [
+    ['{"markdown":', 400],
+    [
+      JSON.stringify({
+        markdown: "x".repeat(1600 * 1024),
+        version: loaded.version,
+      }),
+      413,
+    ],
+  ] as const) {
+    const response = await fetch(base + path + "/markdown", {
+      method: "PUT",
+      headers,
+      body,
+    });
+    assert.equal(response.status, status);
+    assert.equal(await readFile(file, "utf8"), original);
+  }
+  // Each ASCII control character expands to six bytes in JSON, but is one decoded byte.
+  const escaped = "\u0001".repeat(256 * 1024);
+  try {
+    assert.equal(
+      (await put({ markdown: escaped, version: loaded.version })).status,
+      200,
+    );
+    assert.equal(await readFile(file, "utf8"), escaped);
+  } finally {
+    await writeFile(file, original);
+  }
+  await cleanTemporaryFiles();
 });

@@ -86,13 +86,11 @@ Use o comando de autoria com --course software-architecture ou crie Markdown e e
 
 IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição do curso: até 800. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
 
-## Exercício opcional
+## Escopo do MVP 02
 
-Uma entrada pode conter:
+Cursos, Leitor e Studio organizam, apresentam e salvam conteúdo autoral. A entrada de uma lição possui apenas slug e title; activityId foi removido e é recusado pelo validador. Exemplos de código continuam em fences Markdown, com o mesmo tema Darcula no leitor e na prévia, sem execução no site.
 
-    { "slug": "conditions", "title": "Condições", "activityId": "reserve-stock" }
-
-O leitor mostra um link para a atividade; abrir a lição não executa nada. IDs disponíveis nesta rodada: order-acceptance e reserve-stock. Um ID desconhecido apresenta o estado de atividade inexistente. Não se cria uma atividade executável apenas para publicar texto.
+Dados locais anteriores, incluindo bancos e capturas em .bunkercode, .bunkerlab e .backendlab, permanecem preservados e não são usados para editar lições. Não é necessário migrar ou apagar nenhum banco para iniciar a plataforma. Testes de navegador escrevem em cópias descartáveis e geram um diretório novo de capturas por execução.
 
 ## Proteções do comando
 

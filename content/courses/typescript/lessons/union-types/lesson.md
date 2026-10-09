@@ -85,10 +85,6 @@ async function fetchUser(id: ID): Promise<User<{ score: number }>> {
 
 Por que chamar `toFixed` antes da condição não serve para todos os valores aceitos pela função?
 
-## Prática opcional
-
-O exercício de reserva de estoque está disponível ao fim da lição. Ele usa decisões e retornos tipados; não avalia domínio de union types. Você pode ler esta lição sem abrir ou executar o exercício.
-
 ## Referência
 
 - [TypeScript Handbook: Union Types](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#union-types)

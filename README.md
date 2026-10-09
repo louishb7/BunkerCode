@@ -1,6 +1,6 @@
 # BunkerCode
 
-Plataforma pessoal e aberta para aprender backend, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
+Plataforma pessoal e aberta para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
 
 Stack da plataforma: React/Vite, NestJS, Node.js e PNPM. TypeScript, Node.js, NestJS e PostgreSQL são a trilha de estudo; PostgreSQL ainda não é necessário para iniciar o MVP.
 
@@ -21,16 +21,16 @@ Abra a lição no site e clique em **Editar lição** para escrever no Studio, c
 
 Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. O catálogo descobre a pasta automaticamente. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-O curso TypeScript começa com duas lições **demonstrativas**, prontas para serem substituídas ou ampliadas com suas palavras. Os exercícios anteriores continuam opcionais em /learn.
+O curso TypeScript começa com duas lições **demonstrativas**, prontas para serem substituídas ou ampliadas com suas palavras.
 
 ## Organização
 
-- apps/frontend: navegação, leitor Markdown, Studio local e interface dos exercícios.
-- apps/backend: um monólito modular Nest para conteúdo, tentativas e instrumentos.
-- content/courses: cursos e lições; content/activities: exercícios executáveis.
+- apps/frontend: catálogo de cursos, leitor Markdown e Studio local.
+- apps/backend: um monólito NestJS para leitura de cursos e escrita editorial segura.
+- content/courses: manifestos ordenados e lições Markdown.
 - scripts: ferramentas de autoria; docs: arquitetura atual e histórico.
 
-[Arquitetura atual](docs/architecture/overview.md) · [Relatório de consolidação](docs/implementation/consolidation-mvp.md)
+[Arquitetura atual](docs/architecture/overview.md) · [Histórico da consolidação](docs/implementation/consolidation-mvp.md)
 
 ## Validar
 
@@ -40,8 +40,8 @@ O curso TypeScript começa com duas lições **demonstrativas**, prontas para se
     pnpm build
     pnpm test:browser
 
-E2E requer Chromium instalado. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam portas 3012/5184 e cópias descartáveis de conteúdo/dados. Capturas desta rodada: .bunkercode/studio-browser-results. As capturas anteriores foram preservadas.
+E2E requer Chromium instalado. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam portas 3012/5184 e cópias descartáveis de conteúdo. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
-Tentativas continuam em .bunkercode/learning.sqlite; BUNKERCODE_DATA_DIR escolhe outro diretório. Dados históricos ignorados do laboratório permanecem no disco sem consumidor; não foram migrados ou apagados.
+O MVP 02 contém Cursos, Leitor e Studio. Exemplos de código são texto com syntax highlighting; o site não executa código nem registra tentativas. Não há banco editorial.
 
-Execução de exercícios é local e para código confiável. Ler Markdown não inicia processos, cria tentativas nem executa seus blocos de código.
+Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.

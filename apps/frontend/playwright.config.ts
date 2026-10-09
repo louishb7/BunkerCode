@@ -15,7 +15,7 @@ export default defineConfig({
   testDir: "./e2e",
   workers: 1,
   timeout: 45000,
-  outputDir: "../../.bunkercode/studio-browser-results",
+  outputDir: mkdtempSync(resolve("../../.bunkercode/browser-results-")),
   use: {
     baseURL: "http://127.0.0.1:5184",
     viewport: { width: 1280, height: 960 },
@@ -28,15 +28,12 @@ export default defineConfig({
     {
       command: "pnpm --filter @bunkercode/backend start",
       cwd: "../..",
-      url: "http://127.0.0.1:3012/learning/activities",
+      url: "http://127.0.0.1:3012/content/courses",
       reuseExistingServer: false,
       env: {
         PORT: "3012",
         BUNKERCODE_STUDIO_ORIGIN: "http://127.0.0.1:5184",
         BUNKERCODE_CONTENT_DIR: process.env.BUNKERCODE_BROWSER_CONTENT_DIR,
-        BUNKERCODE_DATA_DIR: resolve(
-          `../../.bunkercode/browser-mvp-${Date.now()}`,
-        ),
       },
     },
     {

@@ -184,3 +184,35 @@ test("Markdown stays inert and missing/invalid/empty content has readable states
     await writeFile(manifest, saved);
   }
 });
+
+test("course navigation has no exercise links and retired routes use the ordinary missing-page state", async ({
+  page,
+}) => {
+  await page.goto("/courses/typescript/lessons/union-types");
+  await expect(
+    page.getByRole("heading", { name: "Union types", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('a[href^="/learn"]')).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Navegação principal" })
+      .getByRole("link"),
+  ).toHaveText(["Cursos"]);
+  await expect(page.locator(".optional-practice")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Prática opcional", exact: true }),
+  ).toHaveCount(0);
+  for (const route of ["/learn", "/learn/reserve-stock"]) {
+    await page.goto(route);
+    await expect(
+      page.getByRole("heading", { name: "Página não encontrada" }),
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Voltar aos cursos", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/courses$/);
+    await expect(
+      page.getByRole("heading", { name: /Seu estudo/ }),
+    ).toBeVisible();
+  }
+});

@@ -23,6 +23,7 @@ export async function createApplication(quiet = false) {
   const allowedOrigin = studioOrigin();
   const app = await NestFactory.create(AppModule, {
     logger: quiet ? false : undefined,
+    bodyParser: false,
   });
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
@@ -56,28 +57,15 @@ export async function createApplication(quiet = false) {
           .json({ message: "Envie o conteúdo como application/json." });
         return;
       }
-    }
-    if (
-      req.method !== "GET" &&
-      req.method !== "HEAD" &&
-      (req.header("x-bunkercode-client") !== "local" ||
-        !req.is("application/json"))
-    ) {
-      res.status(403).json({ message: "Comando local inválido." });
-      return;
+      if (req.header("x-bunkercode-client") !== "local") {
+        res.status(403).json({ message: "Comando local inválido." });
+        return;
+      }
     }
     next();
   });
-  // Only editorial JSON needs this limit (UTF-8 Markdown can be JSON-escaped).
-  // Nest's normal parser/limits still handle the existing learning endpoints.
-  const editorialJson = json({ limit: 1600 * 1024 });
-  // Nest detects installed parsers by middleware name. A scoped jsonParser alone
-  // would incorrectly suppress Nest's default JSON parser for learning routes.
-  app.use(
-    "/content/courses",
-    (req: Request, res: Response, next: NextFunction) =>
-      editorialJson(req, res, next),
-  );
+  // Markdown can expand through JSON escapes; the decoded byte limit remains 256 KiB.
+  app.use("/content/courses", json({ limit: 1600 * 1024 }));
   app.enableShutdownHooks();
   return app;
 }

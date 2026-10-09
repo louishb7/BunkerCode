@@ -341,19 +341,6 @@
 .prose img {
   max-width: 100%;
 }
-.optional-practice {
-  border-top: 1px solid #353c3e;
-  margin-top: 44px;
-  padding-top: 20px;
-}
-.optional-practice h2 {
-  font-size: 21px;
-}
-.optional-practice p {
-  font-size: 15px;
-  color: #aeb5b2;
-  line-height: 1.75;
-}
 .lesson-pagination {
   margin-top: 48px;
   padding-top: 24px;

@@ -11,7 +11,6 @@ import { readMarkdownFile } from "./markdown-file";
 export interface LessonEntry {
   slug: string;
   title: string;
-  activityId?: string;
 }
 export interface Course {
   id: string;
@@ -72,18 +71,13 @@ export function parseCourse(value: unknown, id: string): Course {
   const seen = new Set<string>();
   const lessons = course.lessons.map((value): LessonEntry => {
     const lesson = object(value);
-    fields(lesson, ["slug", "title", "activityId"]);
+    fields(lesson, ["slug", "title"]);
     if (!validSlug(lesson.slug)) invalid("slug de lição inválido.");
     if (seen.has(lesson.slug)) invalid(`slug duplicado: ${lesson.slug}.`);
     seen.add(lesson.slug);
-    if (lesson.activityId !== undefined && !validSlug(lesson.activityId))
-      invalid("activityId inválido.");
     return {
       slug: lesson.slug,
       title: text(lesson.title, 160, "title"),
-      ...(typeof lesson.activityId === "string"
-        ? { activityId: lesson.activityId }
-        : {}),
     };
   });
   return {

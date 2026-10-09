@@ -6,7 +6,6 @@ import {
   Route,
   Routes,
 } from "react-router";
-import { Learning } from "./learning/Learning";
 import { CoursePage, CoursesPage, LessonPage } from "./courses/Pages";
 import { StudioPage } from "./courses/Studio";
 
@@ -19,7 +18,6 @@ export function App() {
         </Link>
         <nav aria-label="Navegação principal">
           <NavLink to="/courses">Cursos</NavLink>
-          <NavLink to="/learn">Exercícios</NavLink>
         </nav>
       </header>
       <Routes>
@@ -31,7 +29,6 @@ export function App() {
           path="/courses/:id/lessons/:slug/edit"
           element={<StudioPage />}
         />
-        <Route path="/learn/*" element={<Learning />} />
         <Route
           path="*"
           element={

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 export interface LessonEntry {
   slug: string;
   title: string;
-  activityId?: string;
 }
 export interface Course {
   id: string;

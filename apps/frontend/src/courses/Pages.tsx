@@ -178,18 +178,6 @@ export function LessonPage() {
             )}
           </div>
         </article>
-        {lesson.activityId && (
-          <section className="optional-practice">
-            <h2>Exercício relacionado</h2>
-            <p>
-              Abra o exercício quando quiser confrontar uma ideia com código. A
-              leitura não inicia nenhuma execução.
-            </p>
-            <Link to={"/learn/" + encodeURIComponent(lesson.activityId)}>
-              Abrir exercício →
-            </Link>
-          </section>
-        )}
         <nav className="lesson-pagination" aria-label="Navegação entre lições">
           {lesson.previous ? (
             <Link to={lessonPath(id, lesson.previous.slug)}>

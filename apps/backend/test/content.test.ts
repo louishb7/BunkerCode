@@ -12,7 +12,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { AddressInfo } from "node:net";
 import type { INestApplication } from "@nestjs/common";
-import { DatabaseSync } from "node:sqlite";
 import { createApplication } from "../src/application";
 import type { Course, Lesson } from "../src/content/courses";
 
@@ -45,6 +44,12 @@ before(async () => {
   }
   await publish(manifest);
   process.env.BUNKERCODE_CONTENT_DIR = join(root, "content");
+  // A retired data location must remain untouched even when the old env is set.
+  await mkdir(join(root, "data"));
+  await writeFile(
+    join(root, "data/learning.sqlite"),
+    "Preserved retired bytes",
+  );
   process.env.BUNKERCODE_DATA_DIR = join(root, "data");
   app = await createApplication(true);
   await app.listen(0, "127.0.0.1");
@@ -119,12 +124,10 @@ test("content is ordered by one manifest, reload observes edits and new lessons/
     ((await (await get("")).json()) as Course[]).map((entry) => entry.id),
     ["architecture", "typescript"],
   );
-  const db = new DatabaseSync(join(root, "data/learning.sqlite"));
   assert.equal(
-    db.prepare("SELECT COUNT(*) AS count FROM attempts").get()!.count,
-    0,
+    await readFile(join(root, "data/learning.sqlite"), "utf8"),
+    "Preserved retired bytes",
   );
-  db.close();
   await publish(manifest);
 });
 
@@ -138,6 +141,10 @@ test("content rejects unknown scope, traversal, malformed manifests and missing 
     { ...manifest, id: "other" },
     { ...manifest, lessons: [...manifest.lessons, manifest.lessons[0]] },
     { ...manifest, lessons: [{ slug: "../secret", title: "Bad" }] },
+    {
+      ...manifest,
+      lessons: [{ slug: "first", title: "First", activityId: "reserve-stock" }],
+    },
   ]) {
     await publish(value);
     assert.equal((await get("/typescript")).status, 422);
@@ -190,4 +197,33 @@ test("oversized lesson content is refused rather than truncated into misleading 
   assert.equal((await get("/typescript/lessons/first")).status, 422);
   await writeFile(path, "# First\n\nWithin the limit.");
   assert.equal((await get("/typescript/lessons/first")).status, 200);
+});
+
+test("retired exercise endpoints are absent while course content stays available", async () => {
+  const origin = new URL(base).origin;
+  for (const path of [
+    "/learning/activities",
+    "/learning/activities/reserve-stock",
+    "/learning/attempts",
+    "/learning/attempts/old-attempt/submissions",
+  ])
+    assert.equal((await fetch(origin + path)).status, 404);
+  assert.equal(
+    (
+      await fetch(origin + "/learning/attempts", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-bunkercode-client": "local",
+        },
+        body: JSON.stringify({ activityId: "reserve-stock" }),
+      })
+    ).status,
+    404,
+  );
+  assert.equal((await get("")).status, 200);
+  assert.equal(
+    await readFile(join(root, "data/learning.sqlite"), "utf8"),
+    "Preserved retired bytes",
+  );
 });
