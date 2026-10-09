@@ -19,8 +19,8 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     page.getByRole("heading", { name: "TypeScript", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".lesson-list a")).toHaveText([
-    "01Valores e tipos→",
-    "02Union types→",
+    "01Valores e tiposComeçar →",
+    "02Union typesLer →",
   ]);
   await page.getByRole("link", { name: "01 Valores e tipos" }).click();
   await expect(
@@ -212,7 +212,7 @@ test("course navigation has no exercise links and retired routes use the ordinar
       .click();
     await expect(page).toHaveURL(/\/courses$/);
     await expect(
-      page.getByRole("heading", { name: /Seu estudo/ }),
+      page.getByRole("heading", { name: "Cursos", exact: true }),
     ).toBeVisible();
   }
 });

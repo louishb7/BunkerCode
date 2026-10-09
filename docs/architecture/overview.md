@@ -20,9 +20,11 @@ course.json define id, título, descrição e ordem das lições. Cada entrada p
 
 O Leitor usa uma coluna de até 750 px, com margens menores no mobile. O botão **Lições** abre um `dialog` modal nativo com a ordem do manifesto e a lição ativa; selecionar uma lição fecha o índice. Escape e Fechar devolvem o foco ao botão, o fundo fica inerte e a rolagem do documento é bloqueada enquanto o índice está aberto. Anterior/próxima e retorno ao curso continuam disponíveis. A prévia do Studio compartilha a medida efetiva da prosa e a tipografia do título, sem a navegação do leitor.
 
-Todas as rotas têm conteúdo principal identificado para o skip link e título de documento contextual. Ao concluir o carregamento de uma rota, o foco vai para o título; navegação comum começa no topo, enquanto Voltar/Avançar restaura a posição registrada por entrada do histórico durante a sessão. Mudanças no editor e alternância da prévia não movem foco nem scroll. Reload/deep link carrega o conteúdo diretamente e começa no topo; não há suporte novo a âncoras Markdown.
+Todas as rotas têm conteúdo principal identificado para o skip link e título de documento contextual. Ao concluir o carregamento de uma rota, o foco vai para o título; navegação comum começa no topo, enquanto Voltar/Avançar restaura a posição registrada por entrada do histórico durante a sessão. Digitação não move o foco da edição. A alternância Editar/Prévia mantém o foco no controle acionado e restaura a posição de cada vista e a seleção/scroll interno do textarea. Reload/deep link carrega o conteúdo diretamente e começa no topo; não há suporte novo a âncoras Markdown.
 
-O cliente valida o formato do conteúdo e distingue falha de rede, erro HTTP e resposta incompatível (incluindo vazia/HTML/JSON inválido), com mensagens em português e tentativa novamente. Diagnósticos válidos do backend são preservados.
+Catálogo e curso usam links únicos por card/linha; a primeira linha de lição indica “Começar”, sem duplicar o destino em outro CTA.
+
+O cliente valida o formato do conteúdo e distingue falha de rede, erro HTTP e resposta incompatível (incluindo vazia/HTML/JSON inválido), com mensagens em português e tentativa novamente. Diagnósticos válidos do backend são preservados. IDs/slugs, textos, listas sem identidades duplicadas, versão e vizinhos na ordem do manifesto são validados no consumo. Uma resposta de outro curso/lição é recusada como incompatível, incluindo a entrada do Studio, em vez de carregar indefinidamente.
 
 A API oferece:
 
@@ -63,9 +65,17 @@ O bloco define sua própria fonte de 14px e line-height de 1.5 (21px), inclusive
 
 Os dois prints de VS Code enviados pelo autor orientam a densidade e a revisão visual: keywords alaranjadas, propriedades violetas, funções amarelas, strings verdes e comentários cinza. O resultado aproxima essa aparência, mas a classificação lexical não permite reproduzir integralmente semantic tokens, itálicos contextuais ou bracket pair colorization do editor.
 
+## Carregamento do frontend
+
+Cursos e a página de curso carregam no bundle inicial. Leitor e Studio usam React.lazy por rota; ambos compartilham um chunk de Markdown/highlighting que só é solicitado ao abrir leitura/autoria. ContentStatus permanece independente dessas páginas e oferece loading com role=status e erro recuperável para falha de chunk. O header e o skip link permanecem disponíveis. O CSS comum é importado pela entrada global; somente CSS específico do Studio acompanha seu chunk. Estados básicos dos controles e medidas de página/leitura usam variáveis pequenas, sem biblioteca de componentes.
+
+O build gera manifest.json em dist/.vite para verificar o grafo de assets nos testes. A suíte E2E usa Vite preview do build de produção, com proxy local /api, para exercitar o carregamento real dos chunks e do CSS. `pnpm test:browser` continua compilando antes da suíte. O comando frontend isolado exige build prévio.
+
 ## Studio Fase 1: editar e salvar
 
-A rota `/courses/:id/lessons/:slug/edit` usa um textarea e o renderer Markdown existente. Ela edita apenas o Markdown de uma lição existente; não altera curso/manifesto nem cria arquivos. O estado do editor contém rascunho, Markdown de base e versão de base. A prévia usa o rascunho, enquanto leitor/disco continuam com a última gravação confirmada. Durante o PUT, a edição fica bloqueada; erros/confirmação inválida não limpam o rascunho. Um journal em sessionStorage por aba permite retomar navegação/reload, com aviso de falha; não substitui backup e desaparece ao fechar a aba.
+A rota `/courses/:id/lessons/:slug/edit` usa um textarea e o renderer Markdown existente. Ela edita apenas o Markdown de uma lição existente; não altera curso/manifesto nem cria arquivos. O estado do editor contém rascunho, Markdown de base e versão de base. O textarea usa soft wrap visual, preserva LF/CRLF conforme o contrato existente e permanece montado/oculto ao entrar na prévia. A prévia só é renderizada quando aberta, evitando highlighting a cada digitação. Seleção e posições de edição/prévia são locais à página, sem reimplementar o journal. A prévia usa o rascunho, enquanto leitor/disco continuam com a última gravação confirmada. Durante o PUT, a edição fica bloqueada; erros/confirmação inválida não limpam o rascunho. Um journal em sessionStorage por aba permite retomar navegação/reload, com aviso de falha; não substitui backup e desaparece ao fechar a aba.
+
+A toolbar do Studio é persistente, com save, vistas e estado juntos; em altura de viewport ≤500 px permanece no fluxo para não cobrir a edição.
 
 ### Contrato e escrita
 

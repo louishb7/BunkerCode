@@ -1,3 +1,4 @@
+import { isContentSlug, isContentTitle } from "./api";
 export interface MarkdownRevision {
   markdown: string;
   version: string;
@@ -34,10 +35,10 @@ export function parseEditableLesson(value: unknown): EditableLesson {
   const data = object(value),
     course = object(data.course);
   if (
-    typeof data.slug !== "string" ||
-    typeof data.title !== "string" ||
-    typeof course.id !== "string" ||
-    typeof course.title !== "string"
+    !isContentSlug(data.slug) ||
+    !isContentTitle(data.title) ||
+    !isContentSlug(course.id) ||
+    !isContentTitle(course.title)
   )
     throw new Error("Resposta de lição inválida.");
   return {

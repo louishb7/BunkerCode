@@ -1,5 +1,11 @@
 @import url("./courses/reader.css");
+@import url("./courses/catalog.css");
 :root {
+  --accent: #f2ba83;
+  --text-muted: #b8bbbd;
+  --control-background: #1b2224;
+  --control-border: #4e5655;
+  --control-radius: 6px;
   --reading-width: 750px;
   --reading-heading-gap: 38px;
   --reading-gutter: 28px;
@@ -17,15 +23,28 @@ body {
   margin: 0;
 }
 a {
-  color: #f2ba83;
+  color: var(--accent);
   text-underline-offset: 4px;
 }
 button {
   font: inherit;
   cursor: pointer;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--control-background);
+  color: #dde3df;
+}
+button:hover:enabled {
+  filter: brightness(1.12);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 :focus-visible {
-  outline: 2px solid #f2ba83;
+  outline: 2px solid var(--accent);
   outline-offset: 5px;
 }
 .site-header {
@@ -67,7 +86,10 @@ button {
 .page-width {
   max-width: 1040px;
   margin: auto;
-  padding: 58px 28px 80px;
+  padding: 48px var(--reading-gutter) 80px;
+}
+.page-width.reading-page {
+  max-width: calc(var(--reading-width) + 2 * var(--reading-gutter));
 }
 .eyebrow {
   font-size: 12px;
@@ -84,7 +106,7 @@ h3 {
 }
 .back-link {
   font-size: 14px;
-  color: #b8bbbd;
+  color: var(--text-muted);
   text-decoration: none;
 }
 .muted {
@@ -103,11 +125,6 @@ h3 {
 }
 .content-status button {
   margin: 16px;
-  border: 1px solid #5c5146;
-  background: #242422;
-  color: #f0ece5;
-  border-radius: 6px;
-  padding: 10px 15px;
 }
 @media (max-width: 600px) {
   .site-header {
@@ -126,7 +143,7 @@ h3 {
     padding: 22px 0;
   }
   .page-width {
-    padding: 36px 20px 60px;
+    padding: 36px var(--reading-gutter) 60px;
   }
 }
 

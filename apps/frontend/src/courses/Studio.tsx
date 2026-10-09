@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { lessonPath, useContent } from "./api";
+import { lessonPath, useContent, incompatibleContent } from "./api";
 import { Page } from "./Page";
-import { ContentStatus } from "./Pages";
+import { ContentStatus } from "./ContentStatus";
 import { Markdown, lessonBody } from "./Markdown";
 import {
   editorialPath,
@@ -15,6 +15,13 @@ import {
 } from "./studio-api";
 import "./studio.css";
 
+interface EditorPosition {
+  start: number;
+  end: number;
+  direction: "forward" | "backward" | "none";
+  top: number;
+  left: number;
+}
 interface BufferState extends MarkdownRevision {
   baseMarkdown: string;
 }
@@ -69,7 +76,9 @@ export function StudioPage() {
     parseEditableLesson,
   );
   if (!lesson || lesson.course.id !== id || lesson.slug !== slug)
-    return <ContentStatus error={error} />;
+    return (
+      <ContentStatus error={error || (lesson ? incompatibleContent : "")} />
+    );
   return <LessonEditor key={id + "/" + slug} lesson={lesson} />;
 }
 function LessonEditor({ lesson }: { lesson: EditableLesson }) {
@@ -93,7 +102,38 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   const [current, setCurrent] = useState<MarkdownRevision | null>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [storageError, setStorageError] = useState("");
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const editingPosition = useRef<EditorPosition | null>(null);
+  const viewScroll = useRef({ edit: 0, preview: 0 });
+  const changingView = useRef(false);
   const alive = useRef(true);
+  function changeView(next: "edit" | "preview") {
+    if (view === next) return;
+    viewScroll.current[view] = window.scrollY;
+    const input = editor.current;
+    if (view === "edit" && input)
+      editingPosition.current = {
+        start: input.selectionStart,
+        end: input.selectionEnd,
+        direction: input.selectionDirection,
+        top: input.scrollTop,
+        left: input.scrollLeft,
+      };
+    changingView.current = true;
+    setView(next);
+  }
+  useLayoutEffect(() => {
+    if (!changingView.current) return;
+    changingView.current = false;
+    const position = editingPosition.current;
+    const input = editor.current;
+    if (view === "edit" && position && input) {
+      input.setSelectionRange(position.start, position.end, position.direction);
+      input.scrollTop = position.top;
+      input.scrollLeft = position.left;
+    }
+    window.scrollTo(0, viewScroll.current[view]);
+  }, [view]);
   const dirty = buffer.markdown !== buffer.baseMarkdown;
   useEffect(() => {
     alive.current = true;
@@ -188,7 +228,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   return (
     <Page
       title={`Studio · ${lesson.title} · ${lesson.course.title}`}
-      className="page-width studio-page"
+      className="page-width reading-page studio-page"
     >
       <nav className="studio-breadcrumb" aria-label="Caminho da página">
         <Link to={"/courses/" + encodeURIComponent(id)}>
@@ -207,39 +247,41 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           abre no VS Code.
         </p>
       </header>
-      <div className="studio-toolbar">
-        <div
-          className="studio-views"
-          role="group"
-          aria-label="Visualização do Studio"
-        >
-          <button
-            aria-pressed={view === "edit"}
-            onClick={() => setView("edit")}
+      <div className="studio-controls">
+        <div className="studio-toolbar">
+          <div
+            className="studio-views"
+            role="group"
+            aria-label="Visualização do Studio"
           >
-            Editar Markdown
-          </button>
+            <button
+              aria-pressed={view === "edit"}
+              onClick={() => changeView("edit")}
+            >
+              Editar Markdown
+            </button>
+            <button
+              aria-pressed={view === "preview"}
+              onClick={() => changeView("preview")}
+            >
+              Prévia
+            </button>
+          </div>
           <button
-            aria-pressed={view === "preview"}
-            onClick={() => setView("preview")}
+            className="studio-save"
+            disabled={!dirty || saving || conflict}
+            onClick={() => void save()}
           >
-            Prévia
+            {saving ? "Salvando…" : "Salvar alterações"}
           </button>
         </div>
-        <button
-          className="studio-save"
-          disabled={!dirty || saving || conflict}
-          onClick={() => void save()}
+        <p
+          className={dirty ? "studio-status pending" : "studio-status"}
+          role="status"
         >
-          {saving ? "Salvando…" : "Salvar alterações"}
-        </button>
+          {status}
+        </p>
       </div>
-      <p
-        className={dirty ? "studio-status pending" : "studio-status"}
-        role="status"
-      >
-        {status}
-      </p>
       {notice && <p className="studio-notice">{notice}</p>}
       {storageError && (
         <p role="alert" className="studio-error">
@@ -286,31 +328,31 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           </div>
         </section>
       )}
-      {view === "edit" ? (
-        <section className="studio-edit-panel">
-          <label htmlFor="lesson-markdown">Markdown completo</label>
-          <textarea
-            id="lesson-markdown"
-            value={buffer.markdown}
-            disabled={saving}
-            spellCheck={false}
-            wrap="off"
-            onChange={(event) => {
-              let markdown = event.target.value;
-              if (
-                buffer.baseMarkdown.includes("\r\n") &&
-                !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
-              )
-                markdown = markdown.replaceAll("\n", "\r\n");
-              changeBuffer({ ...buffer, markdown });
-            }}
-          />
-          <p className="studio-caption">
-            O rascunho fica nesta aba; o arquivo só muda ao salvar. Limite: 256
-            KiB em UTF-8.
-          </p>
-        </section>
-      ) : (
+      <section className="studio-edit-panel" hidden={view !== "edit"}>
+        <label htmlFor="lesson-markdown">Markdown completo</label>
+        <textarea
+          id="lesson-markdown"
+          ref={editor}
+          value={buffer.markdown}
+          disabled={saving}
+          spellCheck={false}
+          wrap="soft"
+          onChange={(event) => {
+            let markdown = event.target.value;
+            if (
+              buffer.baseMarkdown.includes("\r\n") &&
+              !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
+            )
+              markdown = markdown.replaceAll("\n", "\r\n");
+            changeBuffer({ ...buffer, markdown });
+          }}
+        />
+        <p className="studio-caption">
+          O rascunho fica nesta aba; o arquivo só muda ao salvar. Limite: 256
+          KiB em UTF-8.
+        </p>
+      </section>
+      {view === "preview" && (
         <section className="studio-preview" aria-label="Prévia da lição">
           <h2 className="studio-preview-title reading-title">{lesson.title}</h2>
           <div className="prose">

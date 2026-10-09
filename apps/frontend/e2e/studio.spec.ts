@@ -52,14 +52,12 @@ test("Studio previews inert Markdown, waits for real disk confirmation and works
       ".studio-preview script, .studio-preview img, .studio-preview iframe",
     ),
   ).toHaveCount(0);
-  await expect(page.getByText("Link inseguro")).not.toHaveAttribute(
-    "href",
-    /^javascript:/i,
-  );
-  await expect(page.getByText("Data URL")).not.toHaveAttribute(
-    "href",
-    /^data:/i,
-  );
+  await expect(
+    page.locator(".studio-preview").getByText("Link inseguro", { exact: true }),
+  ).not.toHaveAttribute("href", /^javascript:/i);
+  await expect(
+    page.locator(".studio-preview").getByText("Data URL", { exact: true }),
+  ).not.toHaveAttribute("href", /^data:/i);
   expect(await page.evaluate(() => "__studioExecuted" in window)).toBe(false);
   expect(await readFile(file, "utf8")).toBe(original);
   await page.screenshot({

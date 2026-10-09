@@ -20,6 +20,8 @@ A ordem da lista é a ordem do curso. Não depende de nome de arquivo, timestamp
 
 Use títulos, parágrafos, listas, links e fences com a linguagem (typescript, javascript, sql etc.). Observações e dicas podem ser blockquotes. HTML bruto é ignorado; MDX, scripts e componentes React não são conteúdo suportado.
 
+O dialeto atual não inclui tabelas GFM nem IDs/âncoras automáticas de headings. Tabelas com pipes aparecem como texto e links para headings não têm destino gerado. O conteúdo atual usa os elementos suportados; eventual ampliação depende de uma necessidade editorial concreta.
+
 Mantenha pequenos exemplos que expliquem a dúvida. Referências externas ajudam a retornar à fonte de estudo. Não copiar materiais completos de outras plataformas; registrar seu entendimento e atribuir a fonte.
 
 Os dois exemplos iniciais do curso TypeScript estão identificados como demonstrativos. Não são relatos pessoais do autor. Substitua-os ou expanda-os conforme seu estudo.
@@ -41,6 +43,10 @@ Os testes/smokes usam BUNKERCODE_CONTENT_DIR para uma cópia descartável do dir
 3. Edite na área **Markdown completo** e alterne para **Prévia**. O renderer é o mesmo do leitor; HTML bruto e links inseguros continuam filtrados. Blocos de código não são executados.
 4. Clique em **Salvar alterações**. Aguarde **Salvo no arquivo.**; a resposta confirma a gravação física. Durante a gravação o texto fica bloqueado para a confirmação corresponder exatamente ao que foi enviado.
 5. Use **Voltar à lição**. A leitura atualizada não depende de rebuild. Abra `content/courses/<id>/lessons/<slug>/lesson.md` no VS Code e confira `git diff`/`git status` no checkout principal antes de fazer seu commit.
+
+O editor usa quebra **visual** de linha (`wrap="soft"`), inclusive em código longo, mantendo fonte monoespaçada e indentação. Não insere quebras no Markdown por largura da tela. Na alternância entre Editar e Prévia, mantém seleção/caret e scroll interno do textarea e registra uma posição de página para cada vista. O foco permanece no botão acionado; Tab permite voltar ao campo. Essas posições duram enquanto a página de edição estiver montada; navegação/reload recupera o texto pelo rascunho, sem prometer restauração do caret.
+
+Salvar, os controles de vista e o estado ficam juntos numa toolbar persistente durante a rolagem da página. Em viewports com altura de até 500 px, ela permanece no fluxo do documento para não ocupar a área curta de edição. O arquivo continua mudando somente por **Salvar alterações**, depois da confirmação física; não há autosave canônico.
 
 O Studio edita apenas lições existentes e listadas no manifesto. Criação continua pelo CLI ou por arquivos; não há criação de cursos, alteração de manifesto nem operação Git na interface. A edição não usa SQLite.
 

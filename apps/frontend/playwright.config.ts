@@ -38,7 +38,8 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm dev --port 5184 --strictPort",
+      command:
+        "pnpm exec vite preview --host 127.0.0.1 --port 5184 --strictPort",
       url: "http://127.0.0.1:5184",
       reuseExistingServer: false,
       env: { BUNKERCODE_API_URL: "http://127.0.0.1:3012" },

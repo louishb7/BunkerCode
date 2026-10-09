@@ -25,44 +25,59 @@ export interface Lesson extends LessonEntry {
 function object(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
+export function isContentSlug(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= 80 &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
+  );
+}
+function text(value: unknown, limit: number): value is string {
+  return typeof value === "string" && !!value.trim() && value.length <= limit;
+}
+export const isContentTitle = (value: unknown): value is string =>
+  text(value, 160);
 function entry(value: unknown): value is LessonEntry {
   return (
-    object(value) &&
-    typeof value.slug === "string" &&
-    typeof value.title === "string"
+    object(value) && isContentSlug(value.slug) && isContentTitle(value.title)
   );
 }
 function course(value: unknown): value is Course {
   return (
     object(value) &&
-    typeof value.id === "string" &&
-    typeof value.title === "string" &&
-    typeof value.description === "string" &&
+    isContentSlug(value.id) &&
+    isContentTitle(value.title) &&
+    text(value.description, 800) &&
     Array.isArray(value.lessons) &&
-    value.lessons.every(entry)
+    value.lessons.every(entry) &&
+    new Set(value.lessons.map((lesson: LessonEntry) => lesson.slug)).size ===
+      value.lessons.length
   );
 }
-const incompatible =
+function summary(value: unknown): value is CourseSummary {
+  return (
+    object(value) &&
+    isContentSlug(value.id) &&
+    isContentTitle(value.title) &&
+    text(value.description, 800) &&
+    typeof value.lessonCount === "number" &&
+    Number.isInteger(value.lessonCount) &&
+    value.lessonCount >= 0
+  );
+}
+export const incompatibleContent =
   "O servidor retornou uma resposta de conteúdo incompatível. Tente novamente.";
 export function parseCourses(value: unknown): CourseSummary[] {
   if (
     !Array.isArray(value) ||
-    !value.every(
-      (item: unknown) =>
-        object(item) &&
-        typeof item.id === "string" &&
-        typeof item.title === "string" &&
-        typeof item.description === "string" &&
-        typeof item.lessonCount === "number" &&
-        Number.isInteger(item.lessonCount) &&
-        item.lessonCount >= 0,
-    )
+    !value.every(summary) ||
+    new Set(value.map((item: CourseSummary) => item.id)).size !== value.length
   )
-    throw new Error(incompatible);
-  return value as CourseSummary[];
+    throw new Error(incompatibleContent);
+  return value;
 }
 export function parseCourse(value: unknown): Course {
-  if (!course(value)) throw new Error(incompatible);
+  if (!course(value)) throw new Error(incompatibleContent);
   return value;
 }
 export function parseLesson(value: unknown): Lesson {
@@ -76,7 +91,24 @@ export function parseLesson(value: unknown): Lesson {
     !(value.previous === null || entry(value.previous)) ||
     !(value.next === null || entry(value.next))
   )
-    throw new Error(incompatible);
+    throw new Error(incompatibleContent);
+  const index = value.course.lessons.findIndex(
+    (lesson) => lesson.slug === value.slug,
+  );
+  const matches = (
+    actual: LessonEntry | null,
+    expected: LessonEntry | undefined,
+  ) =>
+    expected
+      ? actual?.slug === expected.slug && actual.title === expected.title
+      : actual === null;
+  if (
+    index < 0 ||
+    value.course.lessons[index]?.title !== value.title ||
+    !matches(value.previous, value.course.lessons[index - 1]) ||
+    !matches(value.next, value.course.lessons[index + 1])
+  )
+    throw new Error(incompatibleContent);
   return {
     slug: value.slug,
     title: value.title,
@@ -107,7 +139,7 @@ async function contentResponse(
   try {
     value = JSON.parse(text);
   } catch {
-    if (response.ok) throw new Error(incompatible);
+    if (response.ok) throw new Error(incompatibleContent);
   }
   if (!response.ok)
     throw new Error(
@@ -136,7 +168,7 @@ export function useContent<T>(path: string, parse: (value: unknown) => T) {
           setState({
             path,
             data: null,
-            error: error instanceof Error ? error.message : incompatible,
+            error: error instanceof Error ? error.message : incompatibleContent,
           });
       });
     return () => controller.abort();

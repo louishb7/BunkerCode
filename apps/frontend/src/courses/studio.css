@@ -1,7 +1,5 @@
-.page-width.studio-page {
-  max-width: calc(var(--reading-width) + 2 * var(--reading-gutter));
-  padding-left: var(--reading-gutter);
-  padding-right: var(--reading-gutter);
+.studio-page {
+  overflow-anchor: none;
 }
 .studio-breadcrumb {
   display: flex;
@@ -13,7 +11,7 @@
   color: #b6bdb9;
 }
 .studio-heading {
-  margin: 38px 0 28px;
+  margin: 28px 0 24px;
 }
 .studio-heading h1 {
   margin: 14px 0;
@@ -24,6 +22,15 @@
   color: #afb8b3;
   line-height: 1.8;
   max-width: 700px;
+}
+.studio-controls {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 0;
+  margin-bottom: 20px;
+  background: #111417;
+  border-bottom: 1px solid #343d3e;
 }
 .studio-toolbar {
   display: flex;
@@ -36,17 +43,6 @@
   display: flex;
   gap: 6px;
 }
-.studio-page button {
-  min-height: 42px;
-  padding: 10px 16px;
-  border: 1px solid #4e5655;
-  border-radius: 6px;
-  background: #1b2224;
-  color: #dde3df;
-}
-.studio-page button:hover:enabled {
-  filter: brightness(1.12);
-}
 .studio-views button[aria-pressed="true"] {
   color: #f1ba82;
   background: #2e271f;
@@ -58,14 +54,10 @@
   border-color: #e2aa71;
   font-weight: 600;
 }
-.studio-page button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 .studio-status {
   color: #b5cbb4;
   font-size: 14px;
-  margin: 20px 0;
+  margin: 10px 0 0;
 }
 .studio-status.pending {
   color: #e8bc86;
@@ -99,7 +91,8 @@
 .studio-edit-panel textarea {
   min-height: 430px;
   height: 60vh;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   overflow: auto;
 }
 .studio-page textarea:focus {
@@ -155,9 +148,15 @@
 }
 @media (max-width: 700px) {
   .studio-heading {
-    margin-top: 28px;
+    margin-top: 24px;
+  }
+
+  .studio-controls button {
+    min-height: 38px;
+    padding: 8px 12px;
   }
   .studio-toolbar {
+    gap: 8px;
     align-items: stretch;
   }
   .studio-views,
@@ -173,5 +172,11 @@
   }
   .studio-review-actions button {
     width: 100%;
+  }
+}
+
+@media (max-height: 500px) {
+  .studio-controls {
+    position: static;
   }
 }
