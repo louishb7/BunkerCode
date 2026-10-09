@@ -1,13 +1,7 @@
+import { HomePage } from "./product/HomePage";
+import { SiteHeader } from "./product/SiteHeader";
 import { Component, lazy, Suspense, type ReactNode } from "react";
-import {
-  BrowserRouter,
-  Link,
-  Navigate,
-  NavLink,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router";
+import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router";
 import { CoursePage, CoursesPage } from "./courses/Pages";
 import { Page, ScrollRestoration } from "./courses/Page";
 import { ContentStatus } from "./courses/ContentStatus";
@@ -43,7 +37,7 @@ function AppRoutes() {
     <RouteBoundary key={pathname}>
       <Suspense fallback={<ContentStatus error="" />}>
         <Routes>
-          <Route path="/" element={<Navigate to="/courses" replace />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
@@ -82,14 +76,7 @@ export function App() {
       >
         Pular para o conteúdo
       </a>
-      <header className="site-header">
-        <Link className="brand" to="/courses">
-          <span aria-hidden="true">▰</span> BunkerCode
-        </Link>
-        <nav aria-label="Navegação principal">
-          <NavLink to="/courses">Cursos</NavLink>
-        </nav>
-      </header>
+      <SiteHeader />
       <AppRoutes />
     </BrowserRouter>
   );

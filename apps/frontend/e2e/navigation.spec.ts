@@ -68,7 +68,9 @@ test("thirty-lesson modal supports keyboard, inert background, active order and 
   await expect(dialog.locator("nav a").last()).toHaveText(
     "30Lição de teste 30",
   );
-  await page.locator(".brand").evaluate((node: HTMLElement) => node.focus());
+  await page
+    .getByRole("link", { name: "BunkerCode — Início", exact: true })
+    .evaluate((node: HTMLElement) => node.focus());
   expect(
     await page.evaluate(() => !!document.activeElement?.closest("dialog")),
   ).toBe(true);

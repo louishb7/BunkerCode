@@ -1,0 +1,9 @@
+{
+  "id": "product-values",
+  "title": "Descreva um produto com tipos",
+  "objective": "Praticar anotações explícitas e inferência usando string, number e boolean. Exemplo editorial demonstrativo.",
+  "instructions": "Declare productName com o nome de um produto (string) e remainingStock com sua quantidade em estoque (number). Depois, derive available comparando remainingStock com zero, sem escrever true ou false diretamente. Adicione uma anotação explícita em pelo menos uma variável e deixe o TypeScript inferir outra. Por fim, escreva um comentário explicando por que atribuir uma string a remainingStock violaria seu tipo.",
+  "language": "typescript",
+  "starterCode": "// Complete as declarações com valores coerentes.\nconst productName: string = \"\";\nlet remainingStock: number = 0;\n\n// Derive available a partir de remainingStock.\n\n// Explique aqui uma atribuição incompatível com o tipo.\n",
+  "expected": "Seu código deve representar nome, quantidade e disponibilidade com tipos coerentes. Confira se a disponibilidade muda quando o estoque é zero e se seu comentário distingue valor de tipo. O BunkerCode preserva sua escrita; não executa, compila nem avalia a solução."
+}

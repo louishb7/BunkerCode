@@ -79,6 +79,8 @@ html:has(.lesson-index[open]) {
   overflow-wrap: anywhere;
 }
 .lesson-index nav span {
+  flex-shrink: 0;
+  white-space: nowrap;
   color: #a4abad;
   font:
     11px ui-monospace,
@@ -320,5 +322,55 @@ html:has(.lesson-index[open]) {
   }
   .lesson-pagination a {
     padding: 12px;
+  }
+}
+
+/* Workspace layout changes only geometry; prose and Darcula rules stay untouched. */
+.practice-layout {
+  padding-top: 28px;
+}
+.practice-workspace {
+  max-width: 1380px;
+}
+.study-panels {
+  display: grid;
+  gap: 32px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.study-explanation {
+  min-width: 0;
+}
+.study-code {
+  align-self: start;
+}
+.workspace-switch button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #29251f;
+}
+@media (min-width: 1200px) {
+  .practice-workspace .study-panels {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+  .practice-workspace .study-code {
+    position: sticky;
+    top: 20px;
+  }
+  .workspace-switch {
+    display: none;
+  }
+}
+@media (max-width: 1199px) {
+  .practice-workspace {
+    max-width: var(--reading-width);
+  }
+  .study-panels[data-view="explanation"] .study-code,
+  .study-panels[data-view="code"] .study-explanation {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  .practice-workspace .study-code {
+    position: static;
   }
 }

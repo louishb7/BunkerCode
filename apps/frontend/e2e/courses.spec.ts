@@ -13,7 +13,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     if (request.url().includes("/api/learning"))
       executionRequests.push(request.url());
   });
-  await page.goto("/");
+  await page.goto("/courses");
   await page.getByRole("link", { name: /^TypeScript/ }).click();
   await expect(
     page.getByRole("heading", { name: "TypeScript", exact: true }),
@@ -185,7 +185,7 @@ test("Markdown stays inert and missing/invalid/empty content has readable states
   }
 });
 
-test("course navigation has no exercise links and retired routes use the ordinary missing-page state", async ({
+test("navigation exposes Home and Courses while retired execution routes remain absent", async ({
   page,
 }) => {
   await page.goto("/courses/typescript/lessons/union-types");
@@ -197,7 +197,7 @@ test("course navigation has no exercise links and retired routes use the ordinar
     page
       .getByRole("navigation", { name: "Navegação principal" })
       .getByRole("link"),
-  ).toHaveText(["Cursos"]);
+  ).toHaveText(["Início", "Cursos"]);
   await expect(page.locator(".optional-practice")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Prática opcional", exact: true }),

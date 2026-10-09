@@ -1,12 +1,12 @@
 # Arquitetura atual do BunkerCode
 
-Data: 2026-10-09. Esta é a referência ativa. O MVP 02 contém Cursos, Leitor e Studio e substitui as decisões anteriores incompatíveis.
+Data: 2026-10-09. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. A prática não reativa a execução aposentada no MVP 02.
 
 BunkerCode é uma plataforma pessoal e aberta para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
 
 ## Estrutura
 
-- apps/frontend: React, React Router e Vite; cursos, leitor Markdown, Studio local.
+- apps/frontend: React, React Router, Vite e Tailwind v4; Home, cursos, leitor Markdown, prática CodeMirror e Studio local.
 - apps/backend: um monólito NestJS; leitura de cursos e escrita editorial segura.
 - content/courses: manifestos de cursos e lições Markdown.
 - scripts: comando de autoria e seus testes.
@@ -22,7 +22,7 @@ O Leitor usa uma coluna de até 750 px, com margens menores no mobile. O botão 
 
 Todas as rotas têm conteúdo principal identificado para o skip link e título de documento contextual. Ao concluir o carregamento de uma rota, o foco vai para o título; navegação comum começa no topo, enquanto Voltar/Avançar restaura a posição registrada por entrada do histórico durante a sessão. Digitação não move o foco da edição. A alternância Editar/Prévia mantém o foco no controle acionado e restaura a posição de cada vista e a seleção/scroll interno do textarea. Reload/deep link carrega o conteúdo diretamente e começa no topo; não há suporte novo a âncoras Markdown.
 
-Catálogo e curso usam links únicos por card/linha; a primeira linha de lição indica “Começar”, sem duplicar o destino em outro CTA.
+Catálogo usa um link por card. A apresentação de curso inclui CTA para a primeira lição e percurso plano com links independentes na ordem editorial; não há capítulos ou conclusão inventados.
 
 O cliente valida o formato do conteúdo e distingue falha de rede, erro HTTP e resposta incompatível (incluindo vazia/HTML/JSON inválido), com mensagens em português e tentativa novamente. Diagnósticos válidos do backend são preservados. IDs/slugs, textos, listas sem identidades duplicadas, versão e vizinhos na ordem do manifesto são validados no consumo. Uma resposta de outro curso/lição é recusada como incompatível, incluindo a entrada do Studio, em vez de carregar indefinidamente.
 
@@ -31,6 +31,7 @@ A API oferece:
 - GET /content/courses
 - GET /content/courses/:id
 - GET /content/courses/:id/lessons/:slug
+- GET /content/courses/:id/lessons/:slug/exercise (`{ exercise: objeto validado | null }`)
 - PUT /content/courses/:id/lessons/:slug/markdown
 
 Pastas de curso são descobertas por leitura do diretório. Manifestos são validados; IDs/slugs são restritos e symlinks internos recusados. Erros de scope retornam 400/404; conteúdo inválido/ausente retorna 422. A raiz autorizada e seus ancestrais também não podem ser symlinks. Um manifesto inválido interrompe o catálogo com diagnóstico explícito, em vez de esconder um curso quebrado.
@@ -114,6 +115,30 @@ Workbench, System, Surface, catálogo/runner/orchestration históricos, protocol
 
 Auditorias em docs/audits, a proposta anterior e os relatórios em docs/implementation são históricos. Não definem backlog ou obrigação de preservar código. Veja [consolidação](../implementation/consolidation-mvp.md) e [autoria](../authoring.md).
 
-## Próximo incremento
+## Interface e prática no MVP 03
 
-Usar o Studio para escrever e revisar uma lição real de TypeScript; conferir o arquivo no VS Code e o diff antes do commit manual. Registrar dificuldades antes de ampliar autoria para criação de cursos/lições pela interface. Editor inteligente, analyzer, progresso, CMS, auth e execução de código permanecem fora desta rodada.
+A rota `/` é uma Home independente; a marca aponta para ela e Início/Cursos ficam juntos à esquerda. As demais rotas continuam iguais. `product/` contém os componentes usados pela Home e Cursos, incluindo figura por tecnologia com fallback neutro. O PNG oficial Bunker vem de `BunkerMode/frontend/public/faviconbg.png`, copiado sem alteração para `public/brand/bunker.png`; também é o favicon. BunkerMode não é dependência de runtime nem recebe alterações.
+
+Tailwind v4 usa o plugin de Vite, tokens em `styles.css` e utilities na nova interface. Preflight não é importado: resets globais alterariam o Markdown e o Studio. Defaults ficam na camada base, classes compartilhadas na camada components e utilities têm precedência explícita. `reader.css` e `studio.css` mantêm suas regras especializadas; `catalog.css` contém apenas geometria do percurso e quebra de textos. Darcula e o renderer não foram substituídos. Lucide fornece os ícones usados. Radix AlertDialog dá foco, semântica e confirmação acessível à restauração do código. Não há biblioteca de animação; transições CSS respeitam reduced-motion.
+
+Home/Cursos ficam no bundle inicial. Leitor, Markdown e Studio continuam lazy; `PracticePanel` e CodeMirror só são importados para uma definição de exercício válida. A falha de chunk tem recuperação pela boundary de rota. `useContent` cancela respostas obsoletas. Sem exercício, a leitura mantém largura de 750 px. Com prática, duas colunas aparecem a partir de 1200 px; abaixo disso Explicação/Código alternam visibilidade sem desmontar CodeMirror. O editor gerencia seleção e undo/redo durante sua montagem. Tab indenta, Escape seguido de Tab permite sair.
+
+### Contrato editorial
+
+`exercise.json` é opcional, ao lado de `lesson.md`. Sua identidade é explícita, independente do título; a revisão é SHA-256 dos bytes editoriais. A API de exercício é separada para que uma definição inválida não impeça leitura ou autoria. O path é derivado de curso/lição validados e pertencentes ao manifesto. O arquivo é aberto com O_NOFOLLOW, tipo regular, UTF-8 e limite de 64 KiB; campos desconhecidos e linguagens fora de TypeScript/JavaScript são recusados. Não há escrita desse arquivo pela interface nem interpretação de blocos Markdown como exercícios.
+
+### Rascunhos de prática
+
+`bunkercode-practice` é um IndexedDB novo e específico do navegador. Store `drafts`, schema 1. A chave contém produto, curso, lição, ID de exercício e revisão editorial. Cada registro armazena texto, versão inteira e timestamp; limite de 64 KiB por código. A conclusão da transação confirma o estado salvo, nunca apenas o estado React. Escritas são serializadas e coalescem digitação ocorrida durante uma gravação.
+
+Cada gravação lê a revisão esperada e faz o put na mesma transação readwrite. Uma aba obsoleta entra em conflito e mantém seu código, mostrando a versão salva separadamente. A escolha explícita de manter ou carregar ainda é protegida por nova comparação na gravação. Eventos de storage não são usados como trava.
+
+Uma revisão editorial nova pode iniciar com a solução anterior, que permanece em seu registro original; a interface informa a mudança e permite inspecionar a versão anterior. Restauração pede confirmação. Copiar/download exportam somente texto. Revisões antigas não são apagadas automaticamente. A quantidade total depende da quota do navegador; armazenamento local não é backup, não sincroniza dispositivos e pode ser removido pelo navegador/usuário.
+
+Falhas de abertura/leitura/quota/validação mantêm o texto em memória e oferecem retry, cópia e download. Sessões pendentes/com falha sobrevivem à navegação SPA em um mapa específico; sessões gravadas são liberadas. Há aviso beforeunload durante trabalho não confirmado, quando suportado. Sair/recarregar sem armazenamento funcionando ainda pode perder texto: baixar é a recuperação independente. IndexedDB não tem relação com SQLite legado ou journal do Studio. O Studio continua usando seu protocolo editorial e sessionStorage próprios.
+
+O último acesso usa uma chave separada `bunkercode:last-lesson:v1` no localStorage. IDs são validados e o destino é conferido no manifesto atual antes de oferecer retorno. Falha desse histórico opcional não impede leitura. Não existe progresso ou conclusão implícita.
+
+## Próximo passo
+
+Revisar visualmente o MVP 03 e o exemplo editorial de Valores e tipos; decidir a revisão didática de Union types. Execução, avaliação automática, autenticação, sincronização e métricas de conclusão continuam fora do produto.

@@ -11,11 +11,14 @@ if (!process.env.BUNKERCODE_BROWSER_CONTENT_DIR) {
     recursive: true,
   });
 }
+process.env.BUNKERCODE_BROWSER_OUTPUT_DIR ??= mkdtempSync(
+  resolve("../../.bunkercode/browser-results-"),
+);
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
   timeout: 45000,
-  outputDir: mkdtempSync(resolve("../../.bunkercode/browser-results-")),
+  outputDir: process.env.BUNKERCODE_BROWSER_OUTPUT_DIR,
   use: {
     baseURL: "http://127.0.0.1:5184",
     viewport: { width: 1280, height: 960 },

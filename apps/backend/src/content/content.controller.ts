@@ -1,3 +1,4 @@
+import { loadExercise } from "./exercise";
 import { Body, Controller, Get, Header, Param, Put } from "@nestjs/common";
 import { listCourses, loadCourse, loadLesson } from "./courses";
 import { saveLesson } from "./studio";
@@ -21,6 +22,12 @@ export class ContentController {
   lesson(@Param("id") id: string, @Param("slug") slug: string) {
     return loadLesson(id, slug);
   }
+  @Get(":id/lessons/:slug/exercise")
+  @Header("Cache-Control", "no-store")
+  exercise(@Param("id") id: string, @Param("slug") slug: string) {
+    return { exercise: loadExercise(id, slug) };
+  }
+
   @Put(":id/lessons/:slug/markdown")
   @Header("Cache-Control", "no-store")
   save(

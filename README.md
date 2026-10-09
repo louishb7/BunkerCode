@@ -2,7 +2,7 @@
 
 Plataforma pessoal e aberta para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
 
-Stack da plataforma: React/Vite, NestJS, Node.js e PNPM. TypeScript, Node.js, NestJS e PostgreSQL são a trilha de estudo; PostgreSQL ainda não é necessário para iniciar o MVP.
+Stack da plataforma: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, Node.js e PNPM. TypeScript, Node.js, NestJS e PostgreSQL são a trilha de estudo; PostgreSQL ainda não é necessário para iniciar o MVP.
 
 ## Iniciar
 
@@ -25,7 +25,7 @@ O curso TypeScript começa com duas lições **demonstrativas**, prontas para se
 
 ## Organização
 
-- apps/frontend: catálogo de cursos, leitor Markdown e Studio local.
+- apps/frontend: Home, catálogo, leitor Markdown, editor de prática e Studio local.
 - apps/backend: um monólito NestJS para leitura de cursos e escrita editorial segura.
 - content/courses: manifestos ordenados e lições Markdown.
 - scripts: ferramentas de autoria; docs: arquitetura atual e histórico.
@@ -42,6 +42,6 @@ O curso TypeScript começa com duas lições **demonstrativas**, prontas para se
 
 Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. E2E requer Chromium instalado. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
-O MVP 02 contém Cursos, Leitor e Studio. Exemplos de código são texto com syntax highlighting; o site não executa código nem registra tentativas. Não há banco editorial.
+O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home retoma o último acesso válido; isso não representa conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O site não executa, compila nem avalia código. Não há banco editorial.
 
 Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.

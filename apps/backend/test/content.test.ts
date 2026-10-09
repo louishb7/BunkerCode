@@ -66,6 +66,10 @@ after(async () => {
 });
 
 test("content is ordered by one manifest, reload observes edits and new lessons/courses without execution", async () => {
+  const absent = await get("/typescript/lessons/first/exercise");
+  assert.equal(absent.status, 200);
+  assert.equal(absent.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await absent.json(), { exercise: null });
   const response = await get("/typescript");
   assert.equal(response.headers.get("cache-control"), "no-store");
   const course = (await response.json()) as Course;

@@ -92,7 +92,7 @@ Use o comando de autoria com --course software-architecture ou crie Markdown e e
 
 IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição do curso: até 800. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
 
-## Escopo do MVP 02
+## Escopo atual
 
 Cursos, Leitor e Studio organizam, apresentam e salvam conteúdo autoral. A entrada de uma lição possui apenas slug e title; activityId foi removido e é recusado pelo validador. Exemplos de código continuam em fences Markdown, com o mesmo tema Darcula no leitor e na prévia, sem execução no site.
 
@@ -113,4 +113,28 @@ Se a atualização do manifesto falhar, o comando tenta remover somente a liçã
 
 Sugestão para uma lição: docs: add TypeScript narrowing notes.
 
-O site não avalia sua redação nem certifica compreensão. Seu Git é o histórico autoral. Não existe progresso editorial automático nesta rodada.
+O site não avalia sua redação nem certifica compreensão. Seu Git é o histórico autoral. Não existe progresso editorial automático.
+
+## Exercício de escrita opcional
+
+Crie `content/courses/<curso>/lessons/<lição>/exercise.json` junto ao Markdown. Não é preciso alterar o manifesto nem React/Nest. O exemplo em Valores e tipos está explicitamente identificado como editorial demonstrativo. Ele pede nome, quantidade e disponibilidade de um produto, anotações/inferência e comentário sobre atribuição incompatível.
+
+Campos obrigatórios, sem campos extras:
+
+```json
+{
+  "id": "product-values",
+  "title": "Descreva um produto com tipos",
+  "objective": "Praticar anotações e inferência.",
+  "instructions": "Escreva declarações de nome, quantidade e disponibilidade.",
+  "language": "typescript",
+  "starterCode": "const productName: string = \"\";\n",
+  "expected": "Tipos coerentes. Sem execução ou avaliação automática."
+}
+```
+
+`id` segue as regras de slug e deve permanecer estável quando o texto mudar. Linguagem: `typescript` ou `javascript`. Título até 160 caracteres; objetivo até 2000 bytes, instruções até 12000, código inicial até 32768 e resultado esperado até 4000; arquivo completo até 64 KiB, UTF-8 e sem symlink. Código inicial pode ser vazio, os outros textos não. Enunciados são texto simples; não aceitam HTML executável, comandos ou paths. O hash dos bytes identifica a revisão, inclusive mudanças de formatação do JSON.
+
+O aluno escreve em CodeMirror; seu código é texto inerte. Tab indenta e Escape seguido de Tab sai do editor. Copiar e Baixar código preservam o texto fora do site. O rascunho é salvo no IndexedDB deste navegador, até 64 KiB de código, somente com confirmação de transação. Não grava `lesson.md` nem `exercise.json`. A troca de vista mantém editor/undo; reload recupera texto, não promete recuperar seleção/undo.
+
+Se o enunciado mudar, a solução anterior continua guardada e aparece para revisão. Restaurar inicial exige confirmação. Duas abas são protegidas por revisão transacional: uma edição obsoleta abre comparação, sem sobrescrever silenciosamente. Em caso de erro, copie ou baixe antes de fechar/recarregar. Armazenamento local pode ser negado, atingir quota ou ser removido; não é backup. Não há sincronização nem entrega/correção automática.

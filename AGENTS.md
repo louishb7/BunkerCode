@@ -4,7 +4,7 @@
 
 BunkerCode é uma plataforma pessoal e aberta para estudar programação e construir conhecimento autoral. O autor é seu primeiro usuário. Prioridade atual: estudar, praticar, escrever entendimento próprio em Markdown, revisar no site e fazer commit manualmente.
 
-Arquitetura ativa: docs/architecture/overview.md. Autoria: docs/authoring.md. Cursos, Leitor e Studio compõem o MVP 02. Relatórios em docs/implementation, auditorias, arquitetura de reconstrução anterior e primeiros fluxos são documentos históricos; não reautorizam backlog nem obrigam compatibilidade.
+Arquitetura ativa: docs/architecture/overview.md. Autoria: docs/authoring.md. Home, Cursos, Leitor, prática de escrita e Studio compõem o MVP 03. Relatórios em docs/implementation, auditorias, arquitetura de reconstrução anterior e primeiros fluxos são documentos históricos; não reautorizam backlog nem obrigam compatibilidade.
 
 ## Arquitetura e simplicidade
 
@@ -18,7 +18,7 @@ Conteúdo existe fora da UI. course.json é a fonte de identidade, título e ord
 
 Não atribuir texto demonstrativo ou experiências inventadas ao autor. Identificar exemplos iniciais; incentivar autoria própria e referências. O fluxo é estudar, praticar fora do site, escrever em Markdown, revisar no leitor/Studio e fazer commit manualmente.
 
-Exercícios executáveis, tentativas, submissões, previsões, feedback automatizado, persistência de aprendizagem e executores foram aposentados no MVP 02. Não reintroduzir essa infraestrutura, placeholders ou alternativas sem uma nova necessidade explicitamente autorizada. Exemplos de código continuam texto com highlighting e nunca são executados pelo site.
+Exercícios executáveis, tentativas, submissões, previsões, feedback automatizado, persistência de aprendizagem e executores foram aposentados no MVP 02. Não reintroduzir essa infraestrutura, placeholders ou alternativas sem uma nova necessidade explicitamente autorizada. O MVP 03 autoriza exercícios editoriais de escrita com CodeMirror e rascunhos locais no IndexedDB, separados do Studio. Isso não reativa tentativas, submissões ou execução. Exemplos e soluções continuam texto e nunca são executados pelo site.
 
 ## Implementação e segurança
 
