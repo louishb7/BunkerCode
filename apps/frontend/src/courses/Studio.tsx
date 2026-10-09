@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { lessonPath, useContent } from "./api";
+import { Page } from "./Page";
 import { ContentStatus } from "./Pages";
 import { Markdown, lessonBody } from "./Markdown";
 import {
@@ -185,14 +186,19 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         ? "Alterações não salvas."
         : "Sem alterações.";
   return (
-    <main className="page-width studio-page">
-      <div className="studio-breadcrumb">
+    <Page
+      title={`Studio · ${lesson.title} · ${lesson.course.title}`}
+      className="page-width studio-page"
+    >
+      <nav className="studio-breadcrumb" aria-label="Caminho da página">
         <Link to={"/courses/" + encodeURIComponent(id)}>
           {lesson.course.title}
         </Link>
         <span aria-hidden="true">/</span>
         <Link to={lessonPath(id, slug)}>Voltar à lição</Link>
-      </div>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Studio</span>
+      </nav>
       <header className="studio-heading">
         <p className="eyebrow">Studio · autoria local</p>
         <h1>{lesson.title}</h1>
@@ -306,7 +312,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         </section>
       ) : (
         <section className="studio-preview" aria-label="Prévia da lição">
-          <h2 className="studio-preview-title">{lesson.title}</h2>
+          <h2 className="studio-preview-title reading-title">{lesson.title}</h2>
           <div className="prose">
             {buffer.markdown.trim() ? (
               <Markdown source={lessonBody(buffer.markdown, lesson.title)} />
@@ -326,6 +332,6 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         Após salvar, confira o arquivo no VS Code e revise seu git diff. O
         Studio não faz commits.
       </p>
-    </main>
+    </Page>
   );
 }

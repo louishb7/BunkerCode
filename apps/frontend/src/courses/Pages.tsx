@@ -1,16 +1,22 @@
-import { Link, NavLink, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import {
   lessonPath,
   useContent,
-  type Course,
-  type CourseSummary,
-  type Lesson,
+  parseCourse,
+  parseCourses,
+  parseLesson,
 } from "./api";
+import { Page } from "./Page";
+import { LessonIndex } from "./LessonIndex";
 import { Markdown, lessonBody } from "./Markdown";
 
 export function ContentStatus({ error }: { error: string }) {
   return (
-    <main className="page-width content-status">
+    <Page
+      title={error ? "Conteúdo indisponível" : "Carregando conteúdo"}
+      ready={!!error}
+      className="page-width content-status"
+    >
       {error ? (
         <>
           <p className="eyebrow">Conteúdo indisponível</p>
@@ -24,14 +30,14 @@ export function ContentStatus({ error }: { error: string }) {
       ) : (
         <p role="status">Carregando conteúdo…</p>
       )}
-    </main>
+    </Page>
   );
 }
 export function CoursesPage() {
-  const { data, error } = useContent<CourseSummary[]>("");
+  const { data, error } = useContent("", parseCourses);
   if (!data) return <ContentStatus error={error} />;
   return (
-    <main className="page-width catalog-page">
+    <Page title="Cursos" className="page-width catalog-page">
       <p className="eyebrow">Seu acervo de aprendizagem</p>
       <h1>
         Seu estudo,
@@ -83,20 +89,26 @@ export function CoursesPage() {
         Este é um espaço para construir seu entendimento. As lições iniciais
         estão identificadas como exemplos demonstrativos.
       </p>
-    </main>
+    </Page>
   );
 }
 export function CoursePage() {
   const { id = "" } = useParams();
-  const { data: course, error } = useContent<Course>(
+  const { data: course, error } = useContent(
     "/" + encodeURIComponent(id),
+    parseCourse,
   );
   if (!course) return <ContentStatus error={error} />;
   return (
-    <main className="page-width course-page">
-      <Link className="back-link" to="/courses">
-        ← Todos os cursos
-      </Link>
+    <Page title={course.title} className="page-width course-page">
+      <nav aria-label="Caminho da página">
+        <Link className="back-link" to="/courses">
+          ← Todos os cursos
+        </Link>
+        <span aria-current="page" className="breadcrumb-current">
+          {course.title}
+        </span>
+      </nav>
       <p className="eyebrow">Curso · {course.lessons.length} lições</p>
       <h1>{course.title}</h1>
       <p className="course-description">{course.description}</p>
@@ -125,37 +137,37 @@ export function CoursePage() {
         Cada lição é um arquivo Markdown independente. Salve sua edição e
         recarregue a página para revisar o conteúdo.
       </p>
-    </main>
+    </Page>
   );
 }
 export function LessonPage() {
   const { id = "", slug = "" } = useParams();
-  const { data: lesson, error } = useContent<Lesson>(
+  const { data: lesson, error } = useContent(
     "/" + encodeURIComponent(id) + "/lessons/" + encodeURIComponent(slug),
+    parseLesson,
   );
   if (!lesson) return <ContentStatus error={error} />;
   const body = lessonBody(lesson.markdown, lesson.title);
   return (
     <div className="reader-layout">
-      <aside className="course-sidebar">
-        <Link className="back-link" to={"/courses/" + encodeURIComponent(id)}>
-          ← Voltar ao curso
-        </Link>
-        <h2>{lesson.course.title}</h2>
-        <nav aria-label="Lições do curso">
-          <ol>
-            {lesson.course.lessons.map((entry, index) => (
-              <li key={entry.slug}>
-                <NavLink to={lessonPath(id, entry.slug)}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {entry.title}
-                </NavLink>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      </aside>
-      <main className="lesson-reader">
+      <Page
+        title={`${lesson.title} · ${lesson.course.title}`}
+        className="lesson-reader"
+      >
+        <div className="lesson-context">
+          <nav aria-label="Caminho da página">
+            <Link
+              className="back-link"
+              to={"/courses/" + encodeURIComponent(id)}
+            >
+              ← Voltar ao curso
+            </Link>
+            <span aria-current="page" className="breadcrumb-current">
+              {lesson.title}
+            </span>
+          </nav>
+          <LessonIndex course={lesson.course} />
+        </div>
         <article>
           <header className="lesson-heading">
             <p className="eyebrow">{lesson.course.title} · lição</p>
@@ -199,7 +211,7 @@ export function LessonPage() {
             </Link>
           )}
         </nav>
-      </main>
+      </Page>
     </div>
   );
 }

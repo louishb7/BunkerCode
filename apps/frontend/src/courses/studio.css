@@ -1,5 +1,7 @@
-.studio-page {
-  max-width: 1000px;
+.page-width.studio-page {
+  max-width: calc(var(--reading-width) + 2 * var(--reading-gutter));
+  padding-left: var(--reading-gutter);
+  padding-right: var(--reading-gutter);
 }
 .studio-breadcrumb {
   display: flex;
@@ -105,14 +107,9 @@
   outline-offset: 3px;
 }
 .studio-preview {
-  border: 1px solid #343d3e;
-  border-radius: 8px;
-  padding: 26px;
-  background: #14191b;
-}
-.studio-preview-title {
-  font-size: 30px;
-  margin: 4px 0 26px;
+  padding: 24px 0;
+  border-top: 1px solid #343d3e;
+  border-bottom: 1px solid #343d3e;
 }
 .studio-error,
 .studio-comparison {
@@ -156,14 +153,6 @@
   line-height: 1.7;
   color: #9eaaa3;
 }
-.edit-lesson-link {
-  display: inline-block;
-  font-size: 14px;
-  padding: 10px 14px;
-  border: 1px solid #66533e;
-  border-radius: 6px;
-  text-decoration: none;
-}
 @media (max-width: 700px) {
   .studio-heading {
     margin-top: 28px;
@@ -177,9 +166,6 @@
   }
   .studio-views button {
     flex: 1;
-  }
-  .studio-preview {
-    padding: 18px;
   }
   .studio-page textarea {
     padding: 14px;

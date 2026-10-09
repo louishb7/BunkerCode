@@ -7,11 +7,25 @@ import {
   Routes,
 } from "react-router";
 import { CoursePage, CoursesPage, LessonPage } from "./courses/Pages";
+import { Page, ScrollRestoration } from "./courses/Page";
 import { StudioPage } from "./courses/Studio";
 
 export function App() {
   return (
     <BrowserRouter>
+      <ScrollRestoration />
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          const main = document.getElementById("main-content");
+          main?.focus({ preventScroll: true });
+          main?.scrollIntoView();
+        }}
+      >
+        Pular para o conteúdo
+      </a>
       <header className="site-header">
         <Link className="brand" to="/courses">
           <span aria-hidden="true">▰</span> BunkerCode
@@ -32,10 +46,10 @@ export function App() {
         <Route
           path="*"
           element={
-            <main className="page-width">
+            <Page title="Página não encontrada" className="page-width">
               <h1>Página não encontrada</h1>
               <Link to="/courses">Voltar aos cursos</Link>
-            </main>
+            </Page>
           }
         />
       </Routes>

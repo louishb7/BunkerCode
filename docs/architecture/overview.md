@@ -1,6 +1,6 @@
 # Arquitetura atual do BunkerCode
 
-Data: 2026-10-08. Esta é a referência ativa. O MVP 02 contém Cursos, Leitor e Studio e substitui as decisões anteriores incompatíveis.
+Data: 2026-10-09. Esta é a referência ativa. O MVP 02 contém Cursos, Leitor e Studio e substitui as decisões anteriores incompatíveis.
 
 BunkerCode é uma plataforma pessoal e aberta para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
 
@@ -18,6 +18,12 @@ A raiz configura o monorepo: package.json, pnpm-workspace.yaml, lockfile, ESLint
 
 course.json define id, título, descrição e ordem das lições. Cada entrada possui somente slug e título; campos obsoletos como activityId são recusados como desconhecidos. O caminho do Markdown é derivado: content/courses/<id>/lessons/<slug>/lesson.md. Não existe path livre vindo do navegador nem um índice duplicado em React/Nest.
 
+O Leitor usa uma coluna de até 750 px, com margens menores no mobile. O botão **Lições** abre um `dialog` modal nativo com a ordem do manifesto e a lição ativa; selecionar uma lição fecha o índice. Escape e Fechar devolvem o foco ao botão, o fundo fica inerte e a rolagem do documento é bloqueada enquanto o índice está aberto. Anterior/próxima e retorno ao curso continuam disponíveis. A prévia do Studio compartilha a medida efetiva da prosa e a tipografia do título, sem a navegação do leitor.
+
+Todas as rotas têm conteúdo principal identificado para o skip link e título de documento contextual. Ao concluir o carregamento de uma rota, o foco vai para o título; navegação comum começa no topo, enquanto Voltar/Avançar restaura a posição registrada por entrada do histórico durante a sessão. Mudanças no editor e alternância da prévia não movem foco nem scroll. Reload/deep link carrega o conteúdo diretamente e começa no topo; não há suporte novo a âncoras Markdown.
+
+O cliente valida o formato do conteúdo e distingue falha de rede, erro HTTP e resposta incompatível (incluindo vazia/HTML/JSON inválido), com mensagens em português e tentativa novamente. Diagnósticos válidos do backend são preservados.
+
 A API oferece:
 
 - GET /content/courses
@@ -33,6 +39,8 @@ O frontend usa react-markdown, ignora HTML bruto, sanitiza a árvore e aplica hi
 
 As cores dos tokens nos blocos de código seguem uma adaptação do [IntelliJ-ish Darcula Theme](https://github.com/csantiago132/intellij-ish-darcula-theme/blob/develop/themes/IntelliJ-ish%20Darcula-color-theme.json), de Carlos Santiago, distribuído sob MIT ([licença](https://github.com/csantiago132/intellij-ish-darcula-theme/blob/develop/LICENSE.md)). O fundo de código usa #23272C e o foreground base #D4D4D4; palavras-chave são laranja, strings verdes, números azuis, comentários cinza, propriedades violetas e funções/classes amarelo/âmbar. As regras ficam limitadas a `.prose .code-block`. O leitor e a prévia usam o mesmo componente e CSS.
 
+Comentários/quotes usam #909090 (4,71:1) e expressões regulares #9395C6 (5,26:1) sobre #23272C. Somente estes tokens foram clareados para superar 4,5:1, mantendo cinza e violeta azulado e as demais cores. Testes verificam as cores e o contraste no mesmo renderer do Leitor e da prévia.
+
 A adaptação usa as classes realmente emitidas pelo Highlight.js 11.11.2, sem reproduzir a classificação TextMate ou a análise semântica do VS Code. O fonte original contém regras repetidas: por exemplo, a regra posterior de classes/tipos usa #EBB662. O mapeamento considera essas distinções e mantém as cores da primeira implementação onde já correspondem ao original.
 
 | Construção TypeScript                                                                                                                 | HTML do Highlight.js                           | Intenção do tema original                                           | Correspondência nesta adaptação                                                                                                                                 |
@@ -47,7 +55,7 @@ A adaptação usa as classes realmente emitidas pelo Highlight.js 11.11.2, sem r
 | Parâmetros de `function fetchUser(...)`                                                                                               | `hljs-params`, com spans internos              | `variable.parameter.ts`: #BDC9D6                                    | Grupo claro; spans internos mantêm suas cores de tipos/keywords. Pontuação não recebe classificação individual.                                                 |
 | `this`, `console`, `window`, `super`                                                                                                  | `hljs-variable language_` compartilhado        | `this`: laranja/itálico; objetos/globals: claros, normalmente retos | Neutro #A9B7C6, sem itálico. A regra anterior aplicava o estilo de `this` também a `console`. Não existe distinção segura por CSS.                              |
 | `@sealed`                                                                                                                             | `hljs-meta`                                    | Escopos de metadados/annotations dependentes da gramática           | Laranja aproximado; não há identificação semântica do decorator.                                                                                                |
-| Strings, números, comentários                                                                                                         | `hljs-string`, `hljs-number`, `hljs-comment`   | #7CB961, #6897BB, #808080                                           | Correspondência direta para estes exemplos.                                                                                                                     |
+| Strings, números, comentários                                                                                                         | `hljs-string`, `hljs-number`, `hljs-comment`   | #7CB961, #6897BB, #808080                                           | Strings e números correspondem diretamente; comentários usam #909090 para contraste AA sobre #23272C.                                                                                                                     |
 | Template literal com `${id}`                                                                                                          | `hljs-string` contendo `hljs-subst`            | String verde e interpolação #A9B7C6                                 | Interpolação neutra; spans internos continuam com suas cores.                                                                                                   |
 | `{}`, `()`, `[]`, `<T>`, `=`, `\|`, `;`, `.`                                                                                          | Em geral texto sem span em TS                  | Pontuação/operadores e bracket pair colorization do editor          | Foreground base neutro #D4D4D4; sem cores por profundidade. Classes de operador/pontuação existentes em outras linguagens usam #A9B7C6.                         |
 
@@ -78,15 +86,15 @@ I/O síncrono limitado a 256 KiB evita awaits na janela de checagem/substituiç�
 
 O bind do backend continua 127.0.0.1. Escrita editorial exige Host loopback, Origin exatamente igual a `BUNKERCODE_STUDIO_ORIGIN` (padrão `http://127.0.0.1:5173`), Fetch Metadata same-origin quando disponível, JSON e cabeçalho de comando local. A proteção cobre a mesma insensibilidade a maiúsculas das rotas Express. Não há CORS permissivo. Essas camadas seguem as orientações de origem/Fetch Metadata da [OWASP sobre CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html); não são autenticação. Programas locais podem forjar cabeçalhos. Não existe auth, exposição pública, sandbox de filesystem ou publicação remota nesta fase.
 
-Nenhuma dependência, módulo editorial genérico, banco, watcher ou integração Git foi adicionada. O controller delega à função específica de escrita; o AppModule contém apenas ContentController. Testes usam cópias de conteúdo/dados e um índice Git descartável; não fazem commit nem editam conteúdo autoral canônico.
+A implementação editorial não introduz módulo genérico, banco, watcher ou integração Git. O controller delega à função específica de escrita; o AppModule contém apenas ContentController. Testes usam cópias de conteúdo/dados e um índice Git descartável; não fazem commit nem editam conteúdo autoral canônico.
 
 ## MVP 02: escopo e remoção
 
 O produto apresenta Cursos, Leitor e Studio. Foram retirados catálogo/páginas de exercícios, rotas /learn, cliente /learning, LearningModule, tentativas/submissões/feedback, store SQLite, executores TypeScript, supervisor/harnesses, atividades e migration versionada. GET/POST dos endpoints /learning retornam 404; URLs /learn caem no estado normal de página inexistente. Não há placeholder ou executor alternativo.
 
-Nenhuma dependência de package.json era exclusiva dos exercícios: TypeScript continua necessário no build, tsx no desenvolvimento/testes, NestJS/Express no servidor e React/Markdown/highlighting no leitor/Studio. O build do backend agora é somente tsc, sem copiar recursos de execução. O lockfile permanece válido e inalterado.
+Nenhuma dependência de package.json era exclusiva dos exercícios: TypeScript continua necessário no build, tsx no desenvolvimento/testes, NestJS/Express no servidor e React/Markdown/highlighting no leitor/Studio. O build do backend agora é somente tsc, sem copiar recursos de execução. Express está declarado diretamente como dependência de runtime, pois application.ts importa o parser JSON. O lockfile registra essa ligação sem hoisting ou NODE_PATH.
 
-Testes de conteúdo e Studio usam filesystem descartável. O navegador copia content e usa portas 3012/5184; sua readiness consulta /content/courses. Cada rodada recebe diretório de resultados exclusivo .bunkercode/browser-results-*, evitando a limpeza das capturas anteriores pelo Playwright.
+O comando de testes do backend compila antes de executar a suíte. Um teste inicia dist/main.js em subprocesso com ambiente restrito, sem herdar NODE_PATH/NODE_OPTIONS, usando conteúdo isolado e exercitando leitura e escrita protegida por HTTP. Testes de conteúdo e Studio usam filesystem descartável. O navegador copia content e usa portas 3012/5184; sua readiness consulta /content/courses. Cada rodada recebe diretório de resultados exclusivo .bunkercode/browser-results-*, evitando a limpeza das capturas anteriores pelo Playwright.
 
 ## Demolição e dados
 

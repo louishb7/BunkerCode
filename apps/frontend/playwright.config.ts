@@ -32,6 +32,7 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         PORT: "3012",
+        NODE_PATH: "",
         BUNKERCODE_STUDIO_ORIGIN: "http://127.0.0.1:5184",
         BUNKERCODE_CONTENT_DIR: process.env.BUNKERCODE_BROWSER_CONTENT_DIR,
       },

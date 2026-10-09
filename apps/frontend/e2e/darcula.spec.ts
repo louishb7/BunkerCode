@@ -53,6 +53,7 @@ window.__darculaExecuted = true;
 
 ~~~javascript
 const total = (price, count) => price * count;
+const pattern = /reader[a-z]+/gi;
 console.log(total(2, 3));
 ~~~
 
@@ -129,6 +130,10 @@ test("Darcula token colors cover supported languages in both the lesson reader a
       .locator(".lesson-reader code.language-typescript .hljs-comment")
       .first()
       .evaluate((node) => getComputedStyle(node).color),
+    regexp: await page
+      .locator(".lesson-reader .hljs-regexp")
+      .first()
+      .evaluate((node) => getComputedStyle(node).color),
     property: await page
       .locator(".lesson-reader code.language-json .hljs-attr")
       .first()
@@ -155,7 +160,8 @@ test("Darcula token colors cover supported languages in both the lesson reader a
     function: "rgb(247, 208, 100)",
     number: "rgb(104, 151, 187)",
     primitiveType: "rgb(219, 126, 50)",
-    comment: "rgb(128, 128, 128)",
+    comment: "rgb(144, 144, 144)",
+    regexp: "rgb(147, 149, 198)",
     property: "rgb(191, 147, 216)",
     parameter: "rgb(189, 201, 214)",
     sqlOperator: "rgb(169, 183, 198)",
@@ -166,6 +172,14 @@ test("Darcula token colors cover supported languages in both the lesson reader a
   await page.getByRole("button", { name: "Prévia", exact: true }).click();
   await expect(page.locator(".studio-preview .code-block")).toHaveCount(7);
   const previewColors = {
+    comment: await page
+      .locator(".studio-preview .hljs-comment")
+      .first()
+      .evaluate((node) => getComputedStyle(node).color),
+    regexp: await page
+      .locator(".studio-preview .hljs-regexp")
+      .first()
+      .evaluate((node) => getComputedStyle(node).color),
     keyword: await page
       .locator(".studio-preview code.language-typescript .hljs-keyword")
       .first()
@@ -180,11 +194,16 @@ test("Darcula token colors cover supported languages in both the lesson reader a
       .evaluate((node) => getComputedStyle(node).backgroundColor),
   };
   expect(previewColors).toEqual({
+    comment: colors.comment,
+    regexp: colors.regexp,
     keyword: colors.keyword,
     property: colors.property,
     background: colors.background,
   });
 
+  // Only the two audited low-contrast tokens change; the dark code background stays fixed.
+  for (const color of [colors.comment, colors.regexp])
+    expect(contrast(color, colors.background)).toBeGreaterThanOrEqual(4.5);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(
@@ -292,3 +311,16 @@ test("representative TypeScript stays inert, compact and identical across reader
   }
   expect(executionRequests).toEqual([]);
 });
+
+function contrast(foreground: string, background: string) {
+  const luminance = (color: string) => {
+    const [r, g, b] = color.match(/\d+/g)!.map((channel) => {
+      const value = Number(channel) / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  };
+  return (luminance(foreground) + 0.05) / (luminance(background) + 0.05);
+}
