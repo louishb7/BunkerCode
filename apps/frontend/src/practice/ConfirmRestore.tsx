@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 export function ConfirmRestore({
   onConfirm,
@@ -8,8 +9,14 @@ export function ConfirmRestore({
 }) {
   return (
     <AlertDialog.Root>
-      <AlertDialog.Trigger disabled={disabled}>
-        Restaurar inicial
+      <AlertDialog.Trigger
+        disabled={disabled}
+        title="Restaurar código inicial"
+        aria-label="Restaurar código inicial"
+        className="restore-button"
+      >
+        <RotateCcw className="product-icon" aria-hidden="true" />
+        Restaurar
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/70" />

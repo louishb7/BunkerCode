@@ -290,49 +290,6 @@ export default function PracticePanel({
             </button>
           )}
         </div>
-        <button
-          className="format-button"
-          title="Formatar código"
-          aria-label="Formatar código"
-          disabled={!draft.ready || formatting || file === "tests"}
-          onClick={() => setFormatRequest((value) => value + 1)}
-        >
-          <WandSparkles className="product-icon" aria-hidden="true" />
-        </button>
-        {draft.failed && (
-          <span role="alert" className="save-status text-xs text-subtle">
-            {draft.status}
-          </span>
-        )}
-        <div className="flex items-center gap-2">
-          {phase !== "idle" ? (
-            <button
-              aria-label="Cancelar operação"
-              onClick={() => void cancel()}
-              className="text-xs"
-            >
-              <Square className="product-icon" aria-hidden="true" />
-              Cancelar
-            </button>
-          ) : (
-            <button
-              disabled={!draft.ready || sending || phase !== "idle"}
-              onClick={() => void analyze(draft.code)}
-              className="practice-run"
-            >
-              <Play className="product-icon" aria-hidden="true" />
-              Run
-            </button>
-          )}
-          <button
-            disabled={!draft.ready || sending || phase !== "idle"}
-            onClick={() => void submit()}
-            className="product-primary flex items-center gap-1 text-xs"
-          >
-            <Send className="product-icon" aria-hidden="true" />
-            {sending ? "Registrando…" : "Submit"}
-          </button>
-        </div>
       </header>
       {draft.previous && (
         <details className="border-b border-line p-4 text-sm text-subtle">
@@ -376,6 +333,72 @@ export default function PracticePanel({
           onFormatState={() => undefined}
         />
       )}
+      <div role="group" aria-label="Ações do código" className="editor-actions">
+        <button
+          className="format-button"
+          title="Formatar código"
+          aria-label="Formatar código"
+          disabled={!draft.ready || !!draft.conflict || file === "tests"}
+          aria-disabled={formatting}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (!formatting) setFormatRequest((value) => value + 1);
+          }}
+        >
+          <WandSparkles className="product-icon" aria-hidden="true" />
+          Formatar
+        </button>
+        {draft.failed && (
+          <span role="alert" className="save-status text-xs text-subtle">
+            {draft.status}
+          </span>
+        )}
+        <div className="flex items-center gap-2">
+          {phase !== "idle" ? (
+            <button
+              aria-label="Cancelar operação"
+              onClick={() => void cancel()}
+              className="text-xs"
+            >
+              <Square className="product-icon" aria-hidden="true" />
+              Cancelar
+            </button>
+          ) : (
+            <button
+              disabled={!draft.ready || sending || phase !== "idle"}
+              onClick={() => void analyze(draft.code)}
+              className="practice-run"
+            >
+              <Play className="product-icon" aria-hidden="true" />
+              Run
+            </button>
+          )}
+          <button
+            disabled={!draft.ready || sending || phase !== "idle"}
+            onClick={() => void submit()}
+            className="product-primary flex items-center gap-1 text-xs"
+          >
+            <Send className="product-icon" aria-hidden="true" />
+            {sending ? "Registrando…" : "Submit"}
+          </button>
+        </div>
+        <ConfirmRestore
+          disabled={
+            !draft.ready ||
+            !!draft.conflict ||
+            file === "tests" ||
+            formatting ||
+            phase !== "idle" ||
+            sending
+          }
+          onConfirm={() => {
+            draft.change(exercise.starterCode);
+            setResult(undefined);
+            setSubmitted(undefined);
+            setNotice("Código inicial restaurado.");
+          }}
+        />
+      </div>
       <div className="editor-help sr-only" id="editor-keyboard-help">
         Ctrl+Space sugere nomes locais e palavras-chave. Enter aceita. Tab
         indenta; Escape, depois Tab, sai. Ctrl+F busca.
@@ -542,17 +565,6 @@ export default function PracticePanel({
           </div>
         </section>
       )}
-      <details className="border-t border-line px-4 py-3">
-        <summary className="cursor-pointer text-xs text-subtle">
-          Opções do exercício
-        </summary>
-        <div className="mt-3">
-          <ConfirmRestore
-            disabled={!draft.ready || !!draft.conflict}
-            onConfirm={() => draft.change(exercise.starterCode)}
-          />
-        </div>
-      </details>
     </section>
   );
 }

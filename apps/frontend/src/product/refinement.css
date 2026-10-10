@@ -111,23 +111,40 @@
   border-bottom: 1px solid #353c3e;
   padding: 12px 14px;
 }
-.editor-toolbar > div {
-  margin-left: auto;
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #353c3e;
+  padding: 10px 14px;
 }
-.editor-toolbar .save-status {
+.editor-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.editor-actions .save-status {
   flex-basis: 100%;
   order: 3;
   line-height: 1.4;
 }
-.editor-toolbar .format-button {
+.editor-actions button {
   display: inline-flex;
-  padding: 7px;
-}
-.editor-toolbar button {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 7px 10px;
   white-space: nowrap;
 }
-.editor-toolbar button:not(.format-button) {
-  padding: 7px 10px;
+.editor-actions button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: wait;
+}
+.editor-actions .restore-button {
+  color: var(--text-muted);
 }
 .editor-help {
   padding: 8px 14px;

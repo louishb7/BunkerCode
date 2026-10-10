@@ -122,8 +122,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await expect(editor(page)).not.toBeFocused();
   await replaceCode(page, code);
   await saved(page);
-  await page.getByText("Opções do exercício", { exact: true }).click();
-  await page.getByRole("button", { name: "Restaurar inicial" }).click();
+  await page.getByRole("button", { name: "Restaurar código inicial" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Cancelar", exact: true }),
@@ -140,8 +139,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await page.goBack();
   await openCode(page);
   await expect(editor(page)).toContainText("ação");
-  await page.getByText("Opções do exercício", { exact: true }).click();
-  await page.getByRole("button", { name: "Restaurar inicial" }).click();
+  await page.getByRole("button", { name: "Restaurar código inicial" }).click();
   await page
     .getByRole("button", { name: "Restaurar código", exact: true })
     .click();
@@ -386,8 +384,9 @@ for (const width of [390, 768, 1024, 1440])
         await expect(
           page.getByRole("button", { name: "Explicação", exact: true }),
         ).toHaveCount(0);
-        await page.getByText("Opções do exercício", { exact: true }).click();
-        await page.getByRole("button", { name: "Restaurar inicial" }).click();
+        await page
+          .getByRole("button", { name: "Restaurar código inicial" })
+          .click();
         await page.screenshot({
           path: info.outputPath(`restore-${width}.png`),
         });
@@ -493,8 +492,7 @@ test("360px, short viewport and reduced motion retain usable controls and intern
       .locator(".cm-scroller")
       .evaluate((node) => node.scrollWidth > node.clientWidth),
   ).toBe(true);
-  await page.getByText("Opções do exercício", { exact: true }).click();
-  await page.getByRole("button", { name: "Restaurar inicial" }).click();
+  await page.getByRole("button", { name: "Restaurar código inicial" }).click();
   await expect(
     page.getByRole("button", { name: "Cancelar", exact: true }),
   ).toBeVisible();

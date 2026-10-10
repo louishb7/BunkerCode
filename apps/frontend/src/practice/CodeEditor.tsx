@@ -7,7 +7,7 @@ import {
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { formatCode } from "./code-tools";
 import { useEffect, useRef } from "react";
-import { EditorSelection, EditorState } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -19,6 +19,7 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
+  isolateHistory,
   indentWithTab,
 } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
@@ -85,6 +86,7 @@ export function CodeEditor({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const documentRevision = useRef(0);
   const callback = useRef(onChange);
   callback.current = onChange;
   const initial = useRef(code);
@@ -129,8 +131,10 @@ export function CodeEditor({
             spellcheck: "false",
           }),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged)
+            if (update.docChanged) {
+              documentRevision.current++;
               callback.current(update.state.doc.toString());
+            }
           }),
         ],
       }),
@@ -153,32 +157,39 @@ export function CodeEditor({
     if (
       !formatRequest ||
       !editor ||
+      readOnly ||
       (language !== "typescript" && language !== "javascript")
     )
       return;
     const original = editor.state.doc.toString();
-    const selection = editor.state.selection.main;
+    const revision = documentRevision.current;
+    const focusOwner = document.activeElement;
     const controller = new AbortController();
     formatCallback.current(true, "Formatando…");
     void formatCode(original, language, controller.signal)
       .then((formatted) => {
         if (controller.signal.aborted) return;
-        if (editor.state.doc.toString() !== original) {
+        if (documentRevision.current !== revision) {
           formatCallback.current(
             false,
             "O código mudou durante a formatação. Solicite novamente; seu texto foi preservado.",
           );
           return;
         }
-        editor.dispatch({
-          changes: { from: 0, to: editor.state.doc.length, insert: formatted },
-          selection: EditorSelection.range(
-            Math.min(selection.anchor, formatted.length),
-            Math.min(selection.head, formatted.length),
-          ),
-          userEvent: "input.format",
-        });
-        editor.focus();
+        // Patch only changed ranges so unchanged code, selection and viewport survive.
+        // Read selection/scroll now: the user may have moved them while Prettier ran.
+        const changes = editor.state.changes(formatted.changes);
+        if (!changes.empty) {
+          editor.dispatch({
+            changes,
+            selection: editor.state.selection.map(changes),
+            effects: editor.scrollSnapshot().map(changes),
+            annotations: isolateHistory.of("full"),
+            userEvent: "input.format",
+          });
+        }
+        // Return focus for the initiating control, without stealing it from a new context.
+        if (document.activeElement === focusOwner) editor.focus();
         formatCallback.current(false, "Código formatado.");
       })
       .catch((error: unknown) => {
@@ -189,6 +200,6 @@ export function CodeEditor({
           );
       });
     return () => controller.abort();
-  }, [formatRequest, language]);
+  }, [formatRequest, language, readOnly]);
   return <div ref={host} className="code-editor min-w-0 overflow-hidden" />;
 }

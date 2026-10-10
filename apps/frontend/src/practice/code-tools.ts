@@ -1,3 +1,4 @@
+import type { FormattedCode } from "./formatter.worker";
 import type { Compilation } from "./compiler";
 function job<T>(
   worker: Worker,
@@ -55,7 +56,7 @@ export function formatCode(
   language: "typescript" | "javascript",
   signal: AbortSignal,
 ) {
-  return job<string>(
+  return job<FormattedCode>(
     new Worker(new URL("./formatter.worker.ts", import.meta.url), {
       type: "module",
     }),

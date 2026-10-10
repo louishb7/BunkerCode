@@ -521,7 +521,7 @@ html:has(.lesson-index[open]) {
   color: #e8bd68;
   border-bottom: 2px solid #e8bd68;
 }
-.editor-toolbar .practice-run {
+.editor-actions .practice-run {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -532,10 +532,11 @@ html:has(.lesson-index[open]) {
   background: #292f35;
   color: #e8e5de;
 }
-.editor-toolbar .practice-run:hover {
+.editor-actions .practice-run:hover {
   background: #343c44;
 }
-.editor-toolbar button:disabled {
+.editor-toolbar button:disabled,
+.editor-actions button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
