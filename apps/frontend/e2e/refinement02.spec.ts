@@ -50,7 +50,7 @@ test("Home starts with a compact empty calendar, one real total, keyboard access
 }) => {
   await page.goto("/");
   await expect(page.locator("#activity-title")).toHaveText(
-    "0 atividades nos últimos 365 dias",
+    "0 atividades no último ano",
   );
   await visibleCourses(page);
   await expect(page.locator(".heatmap-day")).toHaveCount(365);
@@ -169,7 +169,7 @@ test("the header sums only represented events across New Year, with five levels 
   const before = await localRecords(page);
   await page.reload();
   await expect(page.locator("#activity-title")).toHaveText(
-    "15 atividades nos últimos 365 dias",
+    "15 atividades no último ano",
   );
   await expect(page.locator(".heatmap-day")).toHaveCount(365);
   await expect(page.locator('.heatmap-day[data-day="2025-01-03"]')).toHaveCount(
@@ -287,7 +287,7 @@ test("unavailable local activity never masquerades as a zero total", async ({
   ).toBeVisible();
   await expect(page.locator("#activity-title")).toHaveText("Atividade");
   await expect(page.locator(".heatmap-day")).toHaveCount(0);
-  await expect(page.getByText("0 atividades nos últimos 365 dias")).toHaveCount(
+  await expect(page.getByText("0 atividades no último ano")).toHaveCount(
     0,
   );
   await visibleCourses(page);
@@ -299,7 +299,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     await page.goto("/");
     await visibleCourses(page);
     await expect(page.locator("#activity-title")).toHaveText(
-      "0 atividades nos últimos 365 dias",
+      "0 atividades no último ano",
     );
     await page.screenshot({
       path: info.outputPath(`after-home-empty-${width}.png`),
@@ -325,7 +325,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     await page.goto("/");
     await visibleCourses(page);
     await expect(page.locator("#activity-title")).toHaveText(
-      "3 atividades nos últimos 365 dias",
+      "3 atividades no último ano",
     );
     await expect(
       page.getByRole("link", { name: "Continuar estudando →" }),

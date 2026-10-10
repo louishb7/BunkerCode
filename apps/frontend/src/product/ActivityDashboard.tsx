@@ -4,8 +4,12 @@ const dateLabel = (day: string) =>
   new Date(day + "T12:00:00").toLocaleDateString("pt-BR", {
     day: "numeric",
     month: "short",
-    year: "numeric",
   });
+const monthLabel = (day: string) =>
+  new Date(day + "T12:00:00")
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(/\.$/, "")
+    .replace(/^./, (letter) => letter.toLocaleUpperCase("pt-BR"));
 export function ActivityDashboard() {
   const [records, setRecords] = useState<Activity[]>([]);
   const [error, setError] = useState("");
@@ -65,16 +69,14 @@ export function ActivityDashboard() {
   const focusDay = calendar.days.includes(selected) ? selected : calendar.end;
   const description = (day: string) => {
     const values = groups.get(day) ?? [];
-    const count = (kind: Activity["kind"]) =>
-      values.filter((r) => r.kind === kind).length;
-    return `${dateLabel(day)}: ${values.length} ${values.length === 1 ? "atividade" : "atividades"}. ${count("visit")} acessos, ${count("edit")} edições, ${count("submit")} envios.`;
+    return `${values.length} ${values.length === 1 ? "atividade" : "atividades"} em ${dateLabel(day)}.`;
   };
   return (
     <section aria-labelledby="activity-title" className="activity-dashboard">
       <h2 id="activity-title" className="activity-title">
         {error || loading
           ? "Atividade"
-          : `${period.length} ${period.length === 1 ? "atividade" : "atividades"} nos últimos 365 dias`}
+          : `${period.length} ${period.length === 1 ? "atividade" : "atividades"} no último ano`}
       </h2>
       {error ? (
         <p role="alert" className="text-sm">
@@ -87,7 +89,7 @@ export function ActivityDashboard() {
           <div
             className="heatmap-scroll"
             role="region"
-            aria-label="Calendário dos últimos 365 dias"
+            aria-label="Calendário do último ano"
             tabIndex={0}
           >
             <div
@@ -106,12 +108,7 @@ export function ActivityDashboard() {
                   (week === 0 ? dates[0] : undefined);
                 return (
                   <span key={week}>
-                    {first
-                      ? new Date(first + "T12:00:00").toLocaleDateString(
-                          "pt-BR",
-                          { month: "short" },
-                        )
-                      : ""}
+                    {first ? monthLabel(first) : ""}
                   </span>
                 );
               })}
