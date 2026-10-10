@@ -1,5 +1,13 @@
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { formatCode } from "./code-tools";
 import { useEffect, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -37,10 +45,14 @@ const theme = EditorView.theme(
     ".cm-content": {
       fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
       padding: "18px 0",
-      minHeight: "360px",
+      minHeight: "420px",
       caretColor: "#e8bd68",
     },
-    ".cm-scroller": { overflow: "auto", lineHeight: "1.7", maxHeight: "65dvh" },
+    ".cm-scroller": {
+      overflow: "auto",
+      lineHeight: "1.7",
+      height: "clamp(360px, 50dvh, 650px)",
+    },
     ".cm-gutters": {
       backgroundColor: "#202429",
       color: "#a0a5ac",
@@ -58,16 +70,22 @@ export function CodeEditor({
   code,
   language,
   onChange,
+  formatRequest,
+  onFormatState,
 }: {
   code: string;
   language: "typescript" | "javascript";
   onChange: (code: string) => void;
+  formatRequest: number;
+  onFormatState: (busy: boolean, message: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callback = useRef(onChange);
   callback.current = onChange;
   const initial = useRef(code);
+  const formatCallback = useRef(onFormatState);
+  formatCallback.current = onFormatState;
   useEffect(() => {
     if (!host.current) return;
     const editor = new EditorView({
@@ -81,10 +99,20 @@ export function CodeEditor({
           highlightActiveLine(),
           bracketMatching(),
           indentOnInput(),
+          closeBrackets(),
+          autocompletion(),
+          highlightSelectionMatches(),
           javascript({ typescript: language === "typescript" }),
           syntaxHighlighting(darcula),
           theme,
-          keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+          keymap.of([
+            ...completionKeymap,
+            ...closeBracketsKeymap,
+            indentWithTab,
+            ...defaultKeymap,
+            ...historyKeymap,
+            ...searchKeymap,
+          ]),
           EditorView.contentAttributes.of({
             "aria-label": "Código da solução",
             "aria-describedby": "editor-keyboard-help",
@@ -110,5 +138,42 @@ export function CodeEditor({
         changes: { from: 0, to: editor.state.doc.length, insert: code },
       });
   }, [code]);
+  useEffect(() => {
+    const editor = view.current;
+    if (!formatRequest || !editor) return;
+    const original = editor.state.doc.toString();
+    const selection = editor.state.selection.main;
+    const controller = new AbortController();
+    formatCallback.current(true, "Formatando…");
+    void formatCode(original, language, controller.signal)
+      .then((formatted) => {
+        if (controller.signal.aborted) return;
+        if (editor.state.doc.toString() !== original) {
+          formatCallback.current(
+            false,
+            "O código mudou durante a formatação. Solicite novamente; seu texto foi preservado.",
+          );
+          return;
+        }
+        editor.dispatch({
+          changes: { from: 0, to: editor.state.doc.length, insert: formatted },
+          selection: EditorSelection.range(
+            Math.min(selection.anchor, formatted.length),
+            Math.min(selection.head, formatted.length),
+          ),
+          userEvent: "input.format",
+        });
+        editor.focus();
+        formatCallback.current(false, "Código formatado.");
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          formatCallback.current(
+            false,
+            `Não foi possível formatar: ${error instanceof Error ? error.message : "erro de sintaxe"}`,
+          );
+      });
+    return () => controller.abort();
+  }, [formatRequest, language]);
   return <div ref={host} className="code-editor min-w-0 overflow-hidden" />;
 }

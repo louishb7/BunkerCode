@@ -1,0 +1,15 @@
+{
+  "id": "git",
+  "title": "Git",
+  "description": "Entenda o staging, os commits e as diferenças entre versões.",
+  "lessons": [
+    {
+      "slug": "snapshots",
+      "title": "Diretório, staging e commit"
+    },
+    {
+      "slug": "history",
+      "title": "Histórico e diferenças"
+    }
+  ]
+}

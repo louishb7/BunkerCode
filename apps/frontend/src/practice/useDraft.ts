@@ -1,3 +1,4 @@
+import { localDay, recordActivity } from "../product/activity-store";
 import { useEffect, useState } from "react";
 import type { Exercise } from "./exercise-api";
 import {
@@ -16,6 +17,7 @@ type Snapshot = {
   conflict?: Draft;
   previous?: Draft;
   ready: boolean;
+  activityError?: string;
 };
 // Only pending/failed work is retained across SPA navigation. Successful sessions are released.
 const pending = new Map<string, DraftSession>();
@@ -25,6 +27,7 @@ class DraftSession {
   saved: string;
   writable = false;
   loading = false;
+  activityDay = "";
   listeners = new Set<() => void>();
   constructor(
     readonly scope: string,
@@ -69,6 +72,22 @@ class DraftSession {
     }
   }
   change(code: string) {
+    if (code === this.state.code) return;
+    const day = localDay(new Date());
+    if (this.activityDay !== day) {
+      this.activityDay = day;
+      void recordActivity("edit", this.scope)
+        .then(() => this.publish({ activityError: undefined }))
+        .catch((error: unknown) => {
+          this.activityDay = "";
+          this.publish({
+            activityError:
+              error instanceof Error
+                ? error.message
+                : "Atividade não registrada.",
+          });
+        });
+    }
     this.publish({ code });
     pending.set(draftKey(this.scope, this.exercise.revision), this);
     if (!this.state.failed && !this.state.conflict) void this.flush();

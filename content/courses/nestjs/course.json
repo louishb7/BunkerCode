@@ -1,0 +1,15 @@
+{
+  "id": "nestjs",
+  "title": "NestJS",
+  "description": "Rotas HTTP e injeção de dependência em uma aplicação modular.",
+  "lessons": [
+    {
+      "slug": "controllers",
+      "title": "Controllers e rotas"
+    },
+    {
+      "slug": "providers",
+      "title": "Providers e dependências"
+    }
+  ]
+}

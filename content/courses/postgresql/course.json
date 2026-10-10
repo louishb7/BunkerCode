@@ -1,0 +1,15 @@
+{
+  "id": "postgresql",
+  "title": "PostgreSQL",
+  "description": "Tabelas, tipos e consultas para organizar dados relacionais.",
+  "lessons": [
+    {
+      "slug": "tables",
+      "title": "Tabelas e tipos"
+    },
+    {
+      "slug": "queries",
+      "title": "SELECT, filtros e ordem"
+    }
+  ]
+}

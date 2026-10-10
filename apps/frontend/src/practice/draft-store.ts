@@ -1,3 +1,4 @@
+import { localDatabase } from "../product/local-database";
 export const MAX_DRAFT_BYTES = 64 * 1024;
 export interface Draft {
   schema: 1;
@@ -34,54 +35,11 @@ function valid(value: unknown): value is Draft {
     Number.isFinite(d.updatedAt)
   );
 }
-function database(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("bunkercode-practice", 1);
-    let settled = false;
-    const timer = window.setTimeout(() => {
-      settled = true;
-      reject(
-        new Error(
-          "Armazenamento local indisponível. Copie ou baixe seu código.",
-        ),
-      );
-    }, 4000);
-    request.onupgradeneeded = () => {
-      const store = request.result.createObjectStore("drafts", {
-        keyPath: "key",
-      });
-      store.createIndex("scope", "scope");
-    };
-    request.onerror = () => {
-      clearTimeout(timer);
-      settled = true;
-      reject(request.error);
-    };
-    request.onblocked = () => {
-      clearTimeout(timer);
-      settled = true;
-      reject(
-        new Error(
-          "Feche abas antigas para liberar o armazenamento de rascunhos.",
-        ),
-      );
-    };
-    request.onsuccess = () => {
-      clearTimeout(timer);
-      if (settled) request.result.close();
-      else {
-        settled = true;
-        request.result.onversionchange = () => request.result.close();
-        resolve(request.result);
-      }
-    };
-  });
-}
 export async function loadDraft(
   scope: string,
   revision: string,
 ): Promise<{ current?: Draft; previous?: Draft }> {
-  const db = await database();
+  const db = await localDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("drafts", "readonly");
     const request = tx.objectStore("drafts").index("scope").getAll(scope);
@@ -119,7 +77,7 @@ export async function saveDraft(
     throw new Error(
       "O rascunho excede 64 KiB. O texto continua no editor; copie ou baixe antes de sair.",
     );
-  const db = await database();
+  const db = await localDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("drafts", "readwrite");
     const store = tx.objectStore("drafts");

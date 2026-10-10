@@ -62,7 +62,7 @@ async function records(page: Page) {
     () =>
       new Promise<{ code: string; revision: string; version: number }[]>(
         (resolve, reject) => {
-          const request = indexedDB.open("bunkercode-practice", 1);
+          const request = indexedDB.open("bunkercode-practice", 2);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const db = request.result;
@@ -99,9 +99,12 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await saved(page);
   expect((await records(page))[0]?.code).toBe(code);
   expect(await page.evaluate(() => "__practiceExecuted" in window)).toBe(false);
-  await page
-    .getByRole("button", { name: "Copiar código", exact: true })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "Copiar código", exact: true }),
+  ).toHaveCount(0);
+  await editor(page).click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+c");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
   await editor(page).click();
   await page.keyboard.press("ControlOrMeta+End");
@@ -116,6 +119,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await expect(editor(page)).not.toBeFocused();
   await replaceCode(page, code);
   await saved(page);
+  await page.getByText("Opções do exercício", { exact: true }).click();
   await page.getByRole("button", { name: "Restaurar inicial" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await expect(
@@ -133,6 +137,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await page.goBack();
   await openCode(page);
   await expect(editor(page)).toContainText("ação");
+  await page.getByText("Opções do exercício", { exact: true }).click();
   await page.getByRole("button", { name: "Restaurar inicial" }).click();
   await page
     .getByRole("button", { name: "Restaurar código", exact: true })
@@ -223,7 +228,7 @@ test("storage denial and quota keep code available and downloadable across SPA n
   await page.goto(url);
   await openCode(page);
   await replaceCode(page, "// código sem storage 🧱");
-  await expect(page.getByRole("alert")).toContainText("Copie ou baixe");
+  await expect(page.locator(".save-status")).toContainText("Copie ou baixe");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Baixar código" }).click();
   const download = await downloadPromise;
@@ -263,9 +268,11 @@ test("home validates actual recent destinations and handles unavailable, empty a
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Entenda o código",
+    "Aprenda. Escreva. Explore.",
   );
-  await expect(page.getByText(/Abra sua primeira lição/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Começar um curso/ }),
+  ).toBeVisible();
   await page.goto(url);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Conceito 1",
@@ -288,7 +295,9 @@ test("home validates actual recent destinations and handles unavailable, empty a
     localStorage.setItem("bunkercode:last-lesson:v1", "{invalid"),
   );
   await page.reload();
-  await expect(page.getByText(/Abra sua primeira lição/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Começar um curso/ }),
+  ).toBeVisible();
   await page.route("**/api/content/courses", (route) =>
     route.fulfill({ json: [] }),
   );
@@ -378,6 +387,7 @@ for (const width of [390, 768, 1024, 1440])
             .click();
           await expect(editor(page)).toContainText("Livro");
         }
+        await page.getByText("Opções do exercício", { exact: true }).click();
         await page.getByRole("button", { name: "Restaurar inicial" }).click();
         await page.screenshot({
           path: info.outputPath(`restore-${width}.png`),
@@ -429,7 +439,7 @@ test("corrupt local records are preserved and cannot be overwritten by retry", a
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => {
-        const open = indexedDB.open("bunkercode-practice", 1);
+        const open = indexedDB.open("bunkercode-practice", 2);
         open.onsuccess = () => {
           const db = open.result;
           const tx = db.transaction("drafts", "readwrite");
@@ -445,10 +455,10 @@ test("corrupt local records are preserved and cannot be overwritten by retry", a
   );
   await page.reload();
   await openCode(page);
-  await expect(page.getByRole("alert")).toContainText("incompatível");
+  await expect(page.locator(".save-status")).toContainText("incompatível");
   await replaceCode(page, "// recovery in memory");
   await page.getByRole("button", { name: "Tentar salvar novamente" }).click();
-  await expect(page.getByRole("alert")).toContainText("incompatível");
+  await expect(page.locator(".save-status")).toContainText("incompatível");
   expect((await records(page))[0]?.code).toBe("// original");
 });
 test("oversized code stays available without truncation or false saved state", async ({
@@ -458,7 +468,7 @@ test("oversized code stays available without truncation or false saved state", a
   await openCode(page);
   const code = "//" + "á".repeat(33000);
   await replaceCode(page, code);
-  await expect(page.getByRole("alert")).toContainText("64 KiB");
+  await expect(page.locator(".save-status")).toContainText("64 KiB");
   expect(await records(page)).toHaveLength(0);
   const promised = page.waitForEvent("download");
   await page.getByRole("button", { name: "Baixar código" }).click();
@@ -484,6 +494,7 @@ test("360px, short viewport and reduced motion retain usable controls and intern
       .locator(".cm-scroller")
       .evaluate((node) => node.scrollWidth > node.clientWidth),
   ).toBe(true);
+  await page.getByText("Opções do exercício", { exact: true }).click();
   await page.getByRole("button", { name: "Restaurar inicial" }).click();
   await expect(
     page.getByRole("button", { name: "Cancelar", exact: true }),

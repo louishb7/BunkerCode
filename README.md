@@ -21,7 +21,7 @@ Abra a lição no site e clique em **Editar lição** para escrever no Studio, c
 
 Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. O catálogo descobre a pasta automaticamente. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-O curso TypeScript começa com duas lições **demonstrativas**, prontas para serem substituídas ou ampliadas com suas palavras.
+O catálogo inclui TypeScript e sete cursos introdutórios (JavaScript, Node.js, NestJS, PostgreSQL, Git, Linux e Docker), cada curso novo com duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições.
 
 ## Organização
 
@@ -40,8 +40,18 @@ O curso TypeScript começa com duas lições **demonstrativas**, prontas para se
     pnpm build
     pnpm test:browser
 
-Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. E2E requer Chromium instalado. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
+Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
-O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home retoma o último acesso válido; isso não representa conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O site não executa, compila nem avalia código. Não há banco editorial.
+O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home apresenta atividade real dos últimos 365 dias e uma ação compacta para o último acesso válido; visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit local não avaliado. Blocos Markdown continuam inertes. Não há banco editorial.
 
 Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.
+
+## Run local
+
+Run requer Docker Linux acessível ao processo do backend, cgroup v2 e seccomp. Instale previamente a imagem oficial fixada (o backend não baixa imagens):
+
+    docker pull node@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+
+Reinicie/abra a prática com Docker ativo. `BUNKERCODE_RUNNER_ENABLED=0` desativa Run. Sem os requisitos, a interface explica a indisponibilidade e oferece Compilar e Submit. Não altere permissões do socket Docker apenas para contornar um erro.
+
+Cada execução usa um container novo: sem rede, sem volumes do produto/socket Docker, filesystem da imagem somente de leitura, usuário 65534, capabilities removidas, no-new-privileges, 96 MiB de memória sem swap extra, 0,5 CPU, 32 processos, timeout de 5 s e saída até 32 KiB. `/tmp` é efêmero e limitado a 1 MiB. Run compila um arquivo ES2022 sem imports, DOM ou tipos Node; não é uma IDE de projeto. Submit aceita também soluções com diagnósticos e preserva código/revisão/timestamp, sem afirmar aprovação. [Contratos e limites](docs/architecture/overview.md#refinamento-01-atividade-editor-e-execução).

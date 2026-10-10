@@ -1,0 +1,15 @@
+{
+  "id": "docker",
+  "title": "Docker",
+  "description": "Imagens, containers e a construção de um ambiente reproduzível.",
+  "lessons": [
+    {
+      "slug": "images",
+      "title": "Imagens e containers"
+    },
+    {
+      "slug": "dockerfile",
+      "title": "Um Dockerfile pequeno"
+    }
+  ]
+}

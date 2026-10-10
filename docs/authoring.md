@@ -115,7 +115,7 @@ Sugestão para uma lição: docs: add TypeScript narrowing notes.
 
 O site não avalia sua redação nem certifica compreensão. Seu Git é o histórico autoral. Não existe progresso editorial automático.
 
-## Exercício de escrita opcional
+## Exercício de prática opcional
 
 Crie `content/courses/<curso>/lessons/<lição>/exercise.json` junto ao Markdown. Não é preciso alterar o manifesto nem React/Nest. O exemplo em Valores e tipos está explicitamente identificado como editorial demonstrativo. Ele pede nome, quantidade e disponibilidade de um produto, anotações/inferência e comentário sobre atribuição incompatível.
 
@@ -129,12 +129,14 @@ Campos obrigatórios, sem campos extras:
   "instructions": "Escreva declarações de nome, quantidade e disponibilidade.",
   "language": "typescript",
   "starterCode": "const productName: string = \"\";\n",
-  "expected": "Tipos coerentes. Sem execução ou avaliação automática."
+  "expected": "Tipos coerentes. Compare os diagnósticos; envio não significa avaliação automática."
 }
 ```
 
 `id` segue as regras de slug e deve permanecer estável quando o texto mudar. Linguagem: `typescript` ou `javascript`. Título até 160 caracteres; objetivo até 2000 bytes, instruções até 12000, código inicial até 32768 e resultado esperado até 4000; arquivo completo até 64 KiB, UTF-8 e sem symlink. Código inicial pode ser vazio, os outros textos não. Enunciados são texto simples; não aceitam HTML executável, comandos ou paths. O hash dos bytes identifica a revisão, inclusive mudanças de formatação do JSON.
 
-O aluno escreve em CodeMirror; seu código é texto inerte. Tab indenta e Escape seguido de Tab sai do editor. Copiar e Baixar código preservam o texto fora do site. O rascunho é salvo no IndexedDB deste navegador, até 64 KiB de código, somente com confirmação de transação. Não grava `lesson.md` nem `exercise.json`. A troca de vista mantém editor/undo; reload recupera texto, não promete recuperar seleção/undo.
+O aluno escreve em CodeMirror; o texto só é compilado ou executado após comando explícito, com Run condicionado ao isolamento Docker documentado. Fences Markdown continuam inertes. Tab indenta e Escape seguido de Tab sai do editor. Ctrl+Space sugere nomes locais e palavras-chave; o ícone Formatar usa Prettier sob demanda. Submit preserva uma versão não avaliada no navegador. Copiar e Baixar código aparecem em falhas para recuperação. O rascunho é salvo no IndexedDB deste navegador, até 64 KiB de código, somente com confirmação de transação. Não grava `lesson.md` nem `exercise.json`. A troca de vista mantém editor/undo; reload recupera texto, não promete recuperar seleção/undo.
 
 Se o enunciado mudar, a solução anterior continua guardada e aparece para revisão. Restaurar inicial exige confirmação. Duas abas são protegidas por revisão transacional: uma edição obsoleta abre comparação, sem sobrescrever silenciosamente. Em caso de erro, copie ou baixe antes de fechar/recarregar. Armazenamento local pode ser negado, atingir quota ou ser removido; não é backup. Não há sincronização nem entrega/correção automática.
+
+Os sete cursos novos são introdutórios demonstrativos, com duas lições por tecnologia e referências consultadas. Não exigem dependências de runtime da tecnologia para leitura. Compilação/Run só se aplicam a exercícios explícitos TypeScript/JavaScript; nenhum exercício foi adicionado automaticamente às novas lições.

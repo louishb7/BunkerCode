@@ -17,22 +17,3 @@
     left: 40px;
   }
 }
-
-.home-course-card .course-artwork {
-  min-height: 100px;
-}
-.home-course-card .course-artwork svg.relative {
-  width: 56px;
-  height: 56px;
-  margin: 20px 0;
-}
-@media (max-width: 767px) {
-  .course-page .course-artwork {
-    min-height: 96px;
-  }
-  .course-page .course-artwork svg.relative {
-    width: 64px;
-    height: 64px;
-    margin: 16px 0;
-  }
-}

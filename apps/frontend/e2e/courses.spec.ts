@@ -5,6 +5,22 @@ import { execFileSync } from "node:child_process";
 
 const content = process.env.BUNKERCODE_BROWSER_CONTENT_DIR!;
 const courseRoot = join(content, "courses/typescript");
+let originalExample: string;
+test.beforeAll(async () => {
+  const file = join(courseRoot, "lessons/values-and-types/lesson.md");
+  originalExample = await readFile(file, "utf8");
+  await writeFile(
+    file,
+    "# Valores e tipos\n\n~~~typescript\nconst remainingStock: number = 3;\n~~~\n\n[TypeScript Handbook: Everyday Types](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html)\n",
+  );
+});
+test.afterAll(async () => {
+  await writeFile(
+    join(courseRoot, "lessons/values-and-types/lesson.md"),
+    originalExample,
+  );
+});
+
 test("authored courses render Markdown, highlight code, navigate in manifest order and refresh without rebuild", async ({
   page,
 }, testInfo) => {

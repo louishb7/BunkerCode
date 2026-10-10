@@ -8,7 +8,7 @@ Um valor existe durante a execução do programa. Um tipo ajuda a descrever quai
 
 O TypeScript pode inferir um tipo a partir da atribuição. Uma anotação também pode deixar a intenção explícita:
 
-```typescript
+```
 let remainingStock: number = 3;
 const productName = "Notebook";
 const available: boolean = remainingStock > 0;

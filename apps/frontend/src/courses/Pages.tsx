@@ -40,15 +40,9 @@ export function CoursesPage() {
             adicionar conteúdo.
           </p>
         ) : (
-          <div
-            className={`course-list grid gap-6 ${data.length > 1 ? "md:grid-cols-2" : ""}`}
-          >
+          <div className="course-list grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {data.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                featured={data.length === 1}
-              />
+              <CourseCard key={course.id} course={course} />
             ))}
           </div>
         )}

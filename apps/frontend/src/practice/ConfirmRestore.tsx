@@ -18,9 +18,9 @@ export function ConfirmRestore({
             Restaurar código inicial?
           </AlertDialog.Title>
           <AlertDialog.Description className="text-sm leading-relaxed text-subtle">
-            O código desta revisão será substituído pelo exemplo inicial. Copie
-            ou baixe sua solução antes de continuar. Revisões editoriais
-            anteriores permanecem guardadas.
+            O código desta revisão será substituído pelo exemplo inicial.
+            Registre sua solução com Submit ou selecione e copie o texto antes
+            de continuar. Revisões editoriais anteriores permanecem guardadas.
           </AlertDialog.Description>
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>

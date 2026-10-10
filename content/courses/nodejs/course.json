@@ -1,0 +1,15 @@
+{
+  "id": "nodejs",
+  "title": "Node.js",
+  "description": "Entenda o runtime e organize código JavaScript em módulos explícitos.",
+  "lessons": [
+    {
+      "slug": "runtime",
+      "title": "JavaScript fora do navegador"
+    },
+    {
+      "slug": "modules",
+      "title": "Módulos e responsabilidades"
+    }
+  ]
+}

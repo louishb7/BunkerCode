@@ -29,7 +29,8 @@ export async function createApplication(quiet = false) {
     if (
       req.method !== "GET" &&
       req.method !== "HEAD" &&
-      req.path.toLowerCase().startsWith("/content/courses")
+      (req.path.toLowerCase().startsWith("/content/courses") ||
+        req.path.toLowerCase().startsWith("/practice"))
     ) {
       let localHost = false;
       try {
@@ -66,6 +67,7 @@ export async function createApplication(quiet = false) {
   });
   // Markdown can expand through JSON escapes; the decoded byte limit remains 256 KiB.
   app.use("/content/courses", json({ limit: 1600 * 1024 }));
+  app.use("/practice", json({ limit: 800 * 1024 }));
   app.enableShutdownHooks();
   return app;
 }

@@ -1,3 +1,4 @@
+import { recordActivity } from "../product/activity-store";
 import {
   memo,
   lazy,
@@ -41,6 +42,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   const id = lesson.course.id,
     slug = lesson.slug;
   const focusCode = useRef(false);
+  const [activityError, setActivityError] = useState("");
   const codePanel = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<"explanation" | "code">("explanation");
   const { data: practice, error: practiceError } = useContent(
@@ -59,7 +61,23 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
       codePanel.current?.scrollIntoView({ block: "start" });
     }
   }, [view]);
-  useEffect(() => rememberLesson(id, slug), [id, slug]);
+  useEffect(() => {
+    rememberLesson(id, slug);
+    let alive = true;
+    void recordActivity("visit", JSON.stringify([id, slug])).catch(
+      (failure: unknown) => {
+        if (alive)
+          setActivityError(
+            failure instanceof Error
+              ? failure.message
+              : "Atividade não registrada.",
+          );
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [id, slug]);
   const body = lessonBody(lesson.markdown, lesson.title);
   return (
     <div className={`reader-layout ${exercise ? "practice-layout" : ""}`}>
@@ -100,6 +118,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
               Código
             </button>
           </div>
+        )}
+        {activityError && (
+          <p role="status" className="text-xs text-subtle">
+            Acesso não registrado: {activityError}
+          </p>
         )}
         <div className={exercise ? "study-panels" : ""} data-view={view}>
           <article className="study-explanation">

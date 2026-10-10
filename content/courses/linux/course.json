@@ -1,0 +1,15 @@
+{
+  "id": "linux",
+  "title": "Linux",
+  "description": "Diretórios, caminhos e composição segura de comandos no terminal.",
+  "lessons": [
+    {
+      "slug": "paths",
+      "title": "Diretórios e caminhos"
+    },
+    {
+      "slug": "pipes",
+      "title": "Pipes e fluxo de texto"
+    }
+  ]
+}

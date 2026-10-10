@@ -1,0 +1,15 @@
+{
+  "id": "javascript",
+  "title": "JavaScript",
+  "description": "Valores, funções e escopo para escrever programas pequenos e previsíveis.",
+  "lessons": [
+    {
+      "slug": "values",
+      "title": "Valores e variáveis"
+    },
+    {
+      "slug": "functions",
+      "title": "Funções e escopo"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Arquitetura atual do BunkerCode
 
-Data: 2026-10-09. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. A prática não reativa a execução aposentada no MVP 02.
+Data: 2026-10-09. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. O Refinamento 01 adiciona atividade local, compilação, execução isolada e submissão não avaliada, com módulos específicos; a infraestrutura aposentada no MVP 02 permanece removida.
 
 BunkerCode é uma plataforma pessoal e aberta para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
 
@@ -129,7 +129,7 @@ Home/Cursos ficam no bundle inicial. Leitor, Markdown e Studio continuam lazy; `
 
 ### Rascunhos de prática
 
-`bunkercode-practice` é um IndexedDB novo e específico do navegador. Store `drafts`, schema 1. A chave contém produto, curso, lição, ID de exercício e revisão editorial. Cada registro armazena texto, versão inteira e timestamp; limite de 64 KiB por código. A conclusão da transação confirma o estado salvo, nunca apenas o estado React. Escritas são serializadas e coalescem digitação ocorrida durante uma gravação.
+`bunkercode-practice` é um IndexedDB novo e específico do navegador. Store `drafts`, registros schema 1, dentro do banco versão 2. O upgrade cria `activity` e `submissions` sem reescrever rascunhos existentes. A chave contém produto, curso, lição, ID de exercício e revisão editorial. Cada registro armazena texto, versão inteira e timestamp; limite de 64 KiB por código. A conclusão da transação confirma o estado salvo, nunca apenas o estado React. Escritas são serializadas e coalescem digitação ocorrida durante uma gravação.
 
 Cada gravação lê a revisão esperada e faz o put na mesma transação readwrite. Uma aba obsoleta entra em conflito e mantém seu código, mostrando a versão salva separadamente. A escolha explícita de manter ou carregar ainda é protegida por nova comparação na gravação. Eventos de storage não são usados como trava.
 
@@ -141,4 +141,38 @@ O último acesso usa uma chave separada `bunkercode:last-lesson:v1` no localStor
 
 ## Próximo passo
 
-Revisar visualmente o MVP 03 e o exemplo editorial de Valores e tipos; decidir a revisão didática de Union types. Execução, avaliação automática, autenticação, sincronização e métricas de conclusão continuam fora do produto.
+Revisar a Home com atividade real, os cursos introdutórios e o workspace do Refinamento 01; conferir a disponibilidade/limites de Docker e os registros locais. Revisões pedagógicas das lições autorais continuam a critério do autor. Avaliação automática, autenticação, sincronização e métricas de conclusão continuam fora do produto.
+
+## Refinamento 01: atividade, editor e execução
+
+A Home compacta apresenta atividade antes do grid de cursos. Continuar estudando é um link, validado pelo manifesto. Os cards de apresentação/retomada e a contagem isolada foram removidos. O catálogo tem oito tecnologias; sete novos cursos contêm duas lições cada, com fontes técnicas nas referências. Figuras são SVGs locais: sete da coleção Simple Icons com origem fixada e o Slonik de três cores da wiki PostgreSQL. Licença CC0 da coleção, atribuição CC BY 3.0 de Git, MIT de JavaScript e diretrizes de marcas estão registradas em `public/technologies/README.md`; não implicam afiliação ou endosso. Não há molduras duplas.
+
+### Atividade local
+
+IndexedDB `bunkercode-practice`, versão 2, mantém `drafts` e adiciona `activity` e `submissions`. A abertura fecha conexões em versionchange e informa bloqueio por abas antigas; nada é descartado. SQLite legado continua intocado.
+
+`activity` registra schema, chave, tipo, scope, dia local, timestamp real e timezone de origem. Acesso: só após receber lição válida, uma vez por curso/lição/dia. Edição: mudança real do documento, uma vez por exercício/dia; abrir/recuperar sem editar não conta. A comparação de existência e o add ficam na mesma transação readwrite, evitando duplicidade entre abas. Cada Submit confirmado cria um evento próprio na mesma transação de sua solução. Eventos antigos são mantidos; somente a apresentação filtra 365 dias inclusivos. Dias avançam por calendário local, sem somar blocos fixos de 24 horas; timezone e dia do evento são preservados se o perfil mudar de fuso. BroadcastChannel, evento local, foco e atualização por minuto recarregam a Home, sem telemetria externa.
+
+Intensidade representa a soma de eventos no dia (0, 1, 2, 3, 4+). Estatísticas: dias ativos, lições distintas acessadas, exercícios distintos editados e quantidade de soluções enviadas dentro do período. Não há XP, ranking, streak ou conclusão. Falha de leitura é explícita; não se mostra zero como sucesso após falha. O heatmap tem meses, legenda, informação por dia via nome acessível/title e navegação por setas com um único dia na ordem de Tab.
+
+### Editor e ferramentas
+
+CodeMirror mantém Darcula e acrescenta autocomplete por árvore sintática/escopo local do pacote JavaScript, palavras-chave, fechamento de delimitadores e busca. Sugestões não oferecem IntelliSense semântico ou LSP. Ctrl+Space abre, Enter aceita, Ctrl+F busca; Tab/Escape e undo/redo permanecem.
+
+Formatter Prettier standalone com plugins TypeScript/Babel/ESTree roda em worker iniciado somente pelo ícone Formatar. A alteração entra no histórico e recupera foco. Erro de sintaxe mantém o código. Se o aluno editar durante a formatação, o resultado antigo não substitui o documento. Copiar/Baixar aparecem somente em falha de armazenamento/envio. Reinício está em Opções do exercício, com confirmação Radix.
+
+Compilar/Run capturam um snapshot explícito. A API oficial TypeScript 5.9 gera diagnósticos sintáticos e semânticos com strict e bibliotecas ECMAScript ES2022 locais; console possui uma declaração mínima. Não há DOM, tipos Node, imports externos, resolução de projeto ou acesso ao disco. JavaScript usa allowJs/checkJs. Emissão só ocorre sem diagnósticos. Compilar não executa. O worker de compilação nasce sob demanda, possui limite de entrada de 64 KiB e timeout/cancelamento de 15 s. Não há análise a cada tecla. Resultados exibem versão antiga quando o editor muda; troca de rota aborta a ferramenta.
+
+### Run e fronteira de isolamento
+
+Endpoints: GET `/practice/runtime`, POST `/practice/runs`, DELETE `/practice/runs/:id`. Comandos exigem o mesmo Host local, Origin exato, JSON, cabeçalho local e metadata same-origin do Studio. A API valida campos, tamanho, UUID, curso/lição/exercício conhecido e revisão editorial atual. Não há path, imagem, comando Docker ou opções livres no payload. Respostas associam UUID e SHA-256 do source solicitado; o cliente verifica essa identidade.
+
+O backend chama Docker CLI com argumentos fixos, sem shell, apenas para criar/iniciar/encerrar um container. Código via stdin é executado dentro da imagem oficial Node.js fixada por digest. O processo NestJS não avalia nem compila o código. Cada execução usa imagem readonly, UID/GID 65534, capabilities ALL removidas, no-new-privileges, seccomp padrão, rede none, nenhum volume/socket/arquivo/env do servidor, cgroup v2: 96 MiB, swap igual à memória, 0,5 CPU, 32 PIDs e 64 descritores. Há apenas tmpfs /tmp de 1 MiB, noexec/nosuid. Arquivos públicos da imagem são legíveis; não há filesystem editorial. O runtime Node dentro do container dispõe das suas APIs, sujeitas à fronteira do container; isso não é um simulador de APIs.
+
+Timeout de execução 5 s, saída stdout/stderr conjunta até 32 KiB, duas execuções simultâneas e até 60 iniciações/minuto por processo backend. Exceções/exit status são reais. Limite de saída, cancelamento, desconexão e shutdown interrompem o container; a resposta só confirma término após remoção. Falha de limpeza suspende Run até reiniciar/verificar Docker. Não se herdam credenciais do backend no ambiente do container. Não existem processos de estudante no host. A imagem precisa estar instalada; não há pull automático. Ausência dos requisitos deixa Run indisponível com razão explícita, sem botão fictício.
+
+Containers compartilham o kernel do host: esta fronteira é destinada à instalação pessoal local, com Docker/kernel atualizados. Não equivale a isolamento de microVM nem autoriza expor o runner à internet ou a usuários hostis. Acesso ao daemon Docker é uma capacidade administrativa do backend; não há socket montado no container. [Segurança Docker](https://docs.docker.com/engine/security/) e [limites de recursos](https://docs.docker.com/engine/containers/resource_constraints/). Worker de análise é uma separação de desempenho; nunca foi usado como sandbox para executar estudante.
+
+### Submit local
+
+`submissions` registra ID UUID, schema 1, curso, lição, exercício, scope, revisão editorial, código, timestamp e estado `unassessed`. Append-only: repetição intencional cria outro registro; nada apaga ou substitui o rascunho. Código até 64 KiB. Add da solução e evento submit são atômicos. A interface confirma somente em transaction.oncomplete e oferece histórico/revisões, sem nota ou conclusão. Erro preserva texto e oferece exportação. A política permite enviar código com diagnósticos: é um snapshot escolhido pelo aluno, não um resultado de avaliação. Resultados de compilação/Run são transitórios e independentes.
