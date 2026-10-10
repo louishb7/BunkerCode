@@ -190,7 +190,7 @@ test("the header sums only represented events across New Year, with five levels 
         (sum, node) =>
           sum +
           Number(
-            node.getAttribute("aria-label")?.match(/: (\d+) atividade/)?.[1] ??
+            node.getAttribute("aria-label")?.match(/^(\d+) atividade/)?.[1] ??
               0,
           ),
         0,
@@ -209,7 +209,7 @@ test("the header sums only represented events across New Year, with five levels 
     expect(green!).toBeGreaterThan(blue!);
   }
   expect(await page.locator(".heatmap-months span").allTextContents()).toEqual(
-    expect.arrayContaining(["dez.", "jan."]),
+    expect.arrayContaining(["Dez", "Jan"]),
   );
   expect(await localRecords(page)).toEqual(before);
   await page.goto("/courses");
@@ -287,9 +287,7 @@ test("unavailable local activity never masquerades as a zero total", async ({
   ).toBeVisible();
   await expect(page.locator("#activity-title")).toHaveText("Atividade");
   await expect(page.locator(".heatmap-day")).toHaveCount(0);
-  await expect(page.getByText("0 atividades no último ano")).toHaveCount(
-    0,
-  );
+  await expect(page.getByText("0 atividades no último ano")).toHaveCount(0);
   await visibleCourses(page);
 });
 
@@ -317,9 +315,13 @@ for (const width of [390, 768, 1280, 1440, 1920])
     await editor.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.insertText('const produto = "Livro";');
-    await expect(
-      page.getByText("Rascunho salvo neste navegador.", { exact: true }),
-    ).toBeVisible();
+    await expect
+      .poll(async () =>
+        ((await localRecords(page)).activity ?? []).some(
+          (value) => (value as { kind: string }).kind === "edit",
+        ),
+      )
+      .toBe(true);
     await page.getByRole("button", { name: "Submit", exact: true }).click();
     await expect(page.getByText(/Solução registrada em/)).toBeVisible();
     await page.goto("/");

@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "dev": "concurrently -k -n backend,frontend -c cyan,green \"pnpm --filter @bunkercode/backend dev\" \"pnpm --filter @bunkercode/frontend dev\"",
+    "dev": "pnpm --filter @bunkercode/content build && concurrently -k -n backend,frontend -c cyan,green \"pnpm --filter @bunkercode/backend dev\" \"pnpm --filter @bunkercode/frontend dev\"",
     "lint": "eslint .",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm --filter @bunkercode/backend test && node --test --test-isolation=none scripts/*.test.mjs",
+    "typecheck": "pnpm --filter @bunkercode/content build && pnpm -r --if-present typecheck",
+    "test": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/backend test && node --test --test-isolation=none scripts/*.test.mjs && pnpm --filter @bunkercode/backend exec tsx --test ../frontend/e2e/visual-markdown.test.ts",
     "build": "pnpm -r --if-present build",
     "test:browser": "pnpm build && pnpm --filter @bunkercode/frontend test:browser",
     "lesson:new": "node scripts/new-lesson.mjs"

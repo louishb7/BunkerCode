@@ -16,6 +16,7 @@ process.env.BUNKERCODE_BROWSER_OUTPUT_DIR ??= mkdtempSync(
 );
 export default defineConfig({
   testDir: "./e2e",
+  testMatch: "**/*.spec.ts",
   workers: 1,
   timeout: 45000,
   outputDir: process.env.BUNKERCODE_BROWSER_OUTPUT_DIR,

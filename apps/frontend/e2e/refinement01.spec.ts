@@ -9,9 +9,13 @@ async function code(page: Page, value: string) {
   await editor(page).click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(value);
-  await expect(
-    page.getByText("Rascunho salvo neste navegador.", { exact: true }),
-  ).toBeVisible();
+  await expect
+    .poll(async () =>
+      (await records(page, "drafts")).some(
+        (item) => (item as { code: string }).code === value,
+      ),
+    )
+    .toBe(true);
 }
 async function open(page: Page) {
   await page.goto(lesson);
@@ -349,7 +353,7 @@ test("actual semantic and syntax diagnostics are shown and become stale after ed
 }) => {
   await open(page);
   await code(page, "const product: string = 3;");
-  await page.getByRole("button", { name: "Compilar", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(page.getByText(/TS2322 · semantic · 1:/)).toBeVisible();
   await expect(
     page.getByText(/Type 'number' is not assignable to type 'string'/),
@@ -358,14 +362,16 @@ test("actual semantic and syntax diagnostics are shown and become stale after ed
   await expect(
     page.getByText(/O código foi editado após esta análise/),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Compilar", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Compilação concluída sem diagnósticos neste ambiente.", {
-      exact: true,
-    }),
+    page
+      .getByText(
+        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
+      )
+      .first(),
   ).toBeVisible();
   await code(page, "const broken = ;");
-  await page.getByRole("button", { name: "Compilar", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(page.locator(".diagnostics")).toContainText("syntax");
 });
 test("Run captures genuine console, errors and cancellation without modifying editorial Markdown", async ({
@@ -442,12 +448,15 @@ test("JavaScript compile and run work, and unavailable Run remains explicit with
     }),
   );
   await page.reload();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Run intentionally unavailable in isolated test"),
+    page.getByText("Run intentionally unavailable in isolated test", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Run", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.getByText(/Solução registrada em/)).toBeVisible();
 });
@@ -590,7 +599,7 @@ test("program output is rendered as text and module imports receive real diagnos
   );
   await expect(page.locator(".results-panel img")).toHaveCount(0);
   await code(page, 'import fs from "node:fs";');
-  await page.getByRole("button", { name: "Compilar", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(page.locator(".diagnostics")).toContainText(
     "Cannot find module 'node:fs'",
   );
@@ -652,14 +661,16 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Cancelar operação" }).click();
   await expect(
-    page.getByRole("button", { name: "Compilar", exact: true }),
+    page.getByRole("button", { name: "Run", exact: true }),
   ).toBeVisible();
   await code(page, 'console.log("new compilation");');
-  await page.getByRole("button", { name: "Compilar", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Compilação concluída sem diagnósticos neste ambiente.", {
-      exact: true,
-    }),
+    page
+      .getByText(
+        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
+      )
+      .first(),
   ).toBeVisible();
   release();
   await page.waitForResponse(
@@ -667,8 +678,10 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
       r.request().method() === "DELETE" && r.url().includes("/practice/runs/"),
   );
   await expect(
-    page.getByText("Compilação concluída sem diagnósticos neste ambiente.", {
-      exact: true,
-    }),
+    page
+      .getByText(
+        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
+      )
+      .first(),
   ).toBeVisible();
 });

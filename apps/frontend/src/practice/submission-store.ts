@@ -11,7 +11,7 @@ export interface Submission {
   revision: string;
   code: string;
   at: number;
-  state: "unassessed";
+  state: "unassessed" | "passed" | "failed";
 }
 export async function submitSolution(
   course: string,
@@ -19,6 +19,7 @@ export async function submitSolution(
   exercise: string,
   revision: string,
   code: string,
+  state: Submission["state"] = "unassessed",
 ): Promise<Submission> {
   if (new TextEncoder().encode(code).length > MAX_DRAFT_BYTES)
     throw new Error("A solução excede 64 KiB. Seu código foi preservado.");
@@ -33,7 +34,7 @@ export async function submitSolution(
     revision,
     code,
     at: Date.now(),
-    state: "unassessed",
+    state,
   };
   const db = await localDatabase();
   return new Promise((resolve, reject) => {
@@ -68,7 +69,9 @@ function valid(value: unknown): value is Submission {
     new TextEncoder().encode(s.code).length <= MAX_DRAFT_BYTES &&
     typeof s.at === "number" &&
     Number.isFinite(s.at) &&
-    s.state === "unassessed" &&
+    (s.state === "unassessed" ||
+      s.state === "passed" ||
+      s.state === "failed") &&
     s.scope === draftScope(s.course, s.lesson, s.exercise)
   );
 }

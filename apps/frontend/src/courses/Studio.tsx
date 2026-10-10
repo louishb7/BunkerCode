@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useParams } from "react-router";
 import { lessonPath, useContent, incompatibleContent } from "./api";
 import { Page } from "./Page";
@@ -14,6 +21,8 @@ import {
   type MarkdownRevision,
 } from "./studio-api";
 import "./studio.css";
+
+const VisualEditor = lazy(() => import("../studio/VisualEditor"));
 
 interface EditorPosition {
   start: number;
@@ -100,14 +109,14 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [current, setCurrent] = useState<MarkdownRevision | null>(null);
-  const [view, setView] = useState<"edit" | "preview">("edit");
+  const [view, setView] = useState<"visual" | "edit" | "preview">("visual");
   const [storageError, setStorageError] = useState("");
   const editor = useRef<HTMLTextAreaElement>(null);
   const editingPosition = useRef<EditorPosition | null>(null);
-  const viewScroll = useRef({ edit: 0, preview: 0 });
+  const viewScroll = useRef({ visual: 0, edit: 0, preview: 0 });
   const changingView = useRef(false);
   const alive = useRef(true);
-  function changeView(next: "edit" | "preview") {
+  function changeView(next: "visual" | "edit" | "preview") {
     if (view === next) return;
     viewScroll.current[view] = window.scrollY;
     const input = editor.current;
@@ -243,8 +252,8 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         <p className="eyebrow">Studio · autoria local</p>
         <h1>{lesson.title}</h1>
         <p>
-          Escreva em Markdown, revise a prévia e salve no mesmo arquivo que você
-          abre no VS Code.
+          Escreva diretamente na lição. O arquivo Markdown só muda quando você
+          salva.
         </p>
       </header>
       <div className="studio-controls">
@@ -255,10 +264,16 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
             aria-label="Visualização do Studio"
           >
             <button
+              aria-pressed={view === "visual"}
+              onClick={() => changeView("visual")}
+            >
+              Editor visual
+            </button>
+            <button
               aria-pressed={view === "edit"}
               onClick={() => changeView("edit")}
             >
-              Editar Markdown
+              Editar fonte Markdown
             </button>
             <button
               aria-pressed={view === "preview"}
@@ -327,6 +342,28 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
             </button>
           </div>
         </section>
+      )}
+      {view === "visual" && (
+        <Suspense fallback={<p role="status">Carregando editor visual…</p>}>
+          <fieldset
+            disabled={saving}
+            inert={saving}
+            className="visual-editor-fieldset"
+          >
+            <VisualEditor
+              source={buffer.markdown}
+              disabled={saving}
+              onChange={(markdown) => {
+                if (
+                  buffer.baseMarkdown.includes("\r\n") &&
+                  !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
+                )
+                  markdown = markdown.replaceAll("\n", "\r\n");
+                changeBuffer({ ...buffer, markdown });
+              }}
+            />
+          </fieldset>
+        </Suspense>
       )}
       <section className="studio-edit-panel" hidden={view !== "edit"}>
         <label htmlFor="lesson-markdown">Markdown completo</label>

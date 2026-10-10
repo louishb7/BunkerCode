@@ -52,10 +52,13 @@ async function replaceCode(page: Page, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(text);
 }
-async function saved(page: Page) {
-  await expect(
-    page.getByText("Rascunho salvo neste navegador.", { exact: true }),
-  ).toBeVisible();
+async function saved(page: Page, expected?: string) {
+  const code = expected ?? (await editor(page).innerText());
+  await expect
+    .poll(async () =>
+      (await records(page)).some((value) => value.code === code),
+    )
+    .toBe(true);
 }
 async function records(page: Page) {
   return page.evaluate(
@@ -130,7 +133,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await page.reload();
   await openCode(page);
   await expect(editor(page)).toContainText("ação");
-  await page.getByRole("link", { name: /Próxima/ }).click();
+  await page.getByRole("link", { name: /^Próxima →/ }).click();
   await expect(
     page.getByRole("textbox", { name: "Código da solução" }),
   ).toHaveCount(0);
@@ -142,7 +145,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await page
     .getByRole("button", { name: "Restaurar código", exact: true })
     .click();
-  await saved(page);
+  await saved(page, JSON.parse(definition).starterCode as string);
   expect((await records(page))[0]?.code).toBe(
     JSON.parse(definition).starterCode,
   );
@@ -236,7 +239,7 @@ test("storage denial and quota keep code available and downloadable across SPA n
   expect(await readFile((await download.path())!, "utf8")).toBe(
     "// código sem storage 🧱",
   );
-  await page.getByRole("link", { name: /Próxima/ }).click();
+  await page.getByRole("link", { name: /^Próxima →/ }).click();
   await page.goBack();
   await openCode(page);
   await expect(editor(page)).toContainText("código sem storage");
@@ -322,6 +325,9 @@ test("malformed optional exercise remains recoverable without blocking reading o
     "A leitura continua disponível",
   );
   await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Markdown completo", exact: true }),
   ).toBeVisible();
@@ -376,15 +382,10 @@ for (const width of [390, 768, 1024, 1440])
           path: info.outputPath(`editor-${width}.png`),
           fullPage: true,
         });
-        if (width < 1200) {
-          await page
-            .getByRole("button", { name: "Explicação", exact: true })
-            .click();
-          await page
-            .getByRole("button", { name: "Código", exact: true })
-            .click();
-          await expect(editor(page)).toContainText("Livro");
-        }
+        await expect(editor(page)).toContainText("Livro");
+        await expect(
+          page.getByRole("button", { name: "Explicação", exact: true }),
+        ).toHaveCount(0);
         await page.getByText("Opções do exercício", { exact: true }).click();
         await page.getByRole("button", { name: "Restaurar inicial" }).click();
         await page.screenshot({
@@ -500,7 +501,7 @@ test("360px, short viewport and reduced motion retain usable controls and intern
   await page.screenshot({ path: info.outputPath("short-360.png") });
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await page.setViewportSize({ width: 720, height: 450 });
-  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await expect(page.locator(".study-explanation")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -512,22 +513,25 @@ test("360px, short viewport and reduced motion retain usable controls and intern
   });
 });
 
-test("mobile practice action reveals and focuses the code panel after layout updates", async ({
+test("mobile reading and code remain visible without view toggles", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
-  await expect(page.locator(".cm-editor")).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Escrever solução", exact: true })
-    .click();
-  await expect(page.locator(".study-code")).toBeFocused();
+  await expect(page.locator(".study-explanation")).toBeVisible();
   await expect(editor(page)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Código", exact: true }),
+  ).toHaveCount(0);
   expect(
     await page
       .locator(".study-code")
       .evaluate((node) => node.getBoundingClientRect().top),
-  ).toBeLessThan(40);
+  ).toBeGreaterThan(
+    await page
+      .locator(".study-explanation")
+      .evaluate((node) => node.getBoundingClientRect().bottom),
+  );
 });
 
 test("200 percent CSS zoom preserves product controls and study reflow", async ({

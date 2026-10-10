@@ -40,11 +40,11 @@ Os testes/smokes usam BUNKERCODE_CONTENT_DIR para uma cópia descartável do dir
 
 1. Inicie `pnpm dev` e abra a lição em `http://127.0.0.1:5173`.
 2. Clique em **Editar lição**. O Studio mantém o curso/título e carrega o Markdown completo, inclusive o primeiro heading e os fences.
-3. Edite na área **Markdown completo** e alterne para **Prévia**. O renderer é o mesmo do leitor; HTML bruto e links inseguros continuam filtrados. Blocos de código não são executados.
+3. Escreva no **Editor visual**. Use a toolbar e o controle de inserção para código, notas e quizzes. **Editar fonte Markdown** é a opção avançada/fallback; **Prévia** é secundária. Consulte [Studio visual e blocos editoriais](visual-authoring.md).
 4. Clique em **Salvar alterações**. Aguarde **Salvo no arquivo.**; a resposta confirma a gravação física. Durante a gravação o texto fica bloqueado para a confirmação corresponder exatamente ao que foi enviado.
 5. Use **Voltar à lição**. A leitura atualizada não depende de rebuild. Abra `content/courses/<id>/lessons/<slug>/lesson.md` no VS Code e confira `git diff`/`git status` no checkout principal antes de fazer seu commit.
 
-O editor usa quebra **visual** de linha (`wrap="soft"`), inclusive em código longo, mantendo fonte monoespaçada e indentação. Não insere quebras no Markdown por largura da tela. Na alternância entre Editar e Prévia, mantém seleção/caret e scroll interno do textarea e registra uma posição de página para cada vista. O foco permanece no botão acionado; Tab permite voltar ao campo. Essas posições duram enquanto a página de edição estiver montada; navegação/reload recupera o texto pelo rascunho, sem prometer restauração do caret.
+A opção de fonte Markdown usa quebra **visual** de linha (`wrap="soft"`), inclusive em código longo, mantendo fonte monoespaçada e indentação. Não insere quebras no Markdown por largura da tela. Na alternância entre Editar e Prévia, mantém seleção/caret e scroll interno do textarea e registra uma posição de página para cada vista. O foco permanece no botão acionado; Tab permite voltar ao campo. Essas posições duram enquanto a página de edição estiver montada; navegação/reload recupera o texto pelo rascunho, sem prometer restauração do caret.
 
 Salvar, os controles de vista e o estado ficam juntos numa toolbar persistente durante a rolagem da página. Em viewports com altura de até 500 px, ela permanece no fluxo do documento para não ocupar a área curta de edição. O arquivo continua mudando somente por **Salvar alterações**, depois da confirmação física; não há autosave canônico.
 
@@ -119,7 +119,7 @@ O site não avalia sua redação nem certifica compreensão. Seu Git é o histó
 
 Crie `content/courses/<curso>/lessons/<lição>/exercise.json` junto ao Markdown. Não é preciso alterar o manifesto nem React/Nest. O exemplo em Valores e tipos está explicitamente identificado como editorial demonstrativo. Ele pede nome, quantidade e disponibilidade de um produto, anotações/inferência e comentário sobre atribuição incompatível.
 
-Campos obrigatórios, sem campos extras:
+Campos obrigatórios; o campo opcional `tests` está documentado em [avaliação mínima](visual-authoring.md#avaliação-mínima-de-exercícios):
 
 ```json
 {
@@ -135,8 +135,8 @@ Campos obrigatórios, sem campos extras:
 
 `id` segue as regras de slug e deve permanecer estável quando o texto mudar. Linguagem: `typescript` ou `javascript`. Título até 160 caracteres; objetivo até 2000 bytes, instruções até 12000, código inicial até 32768 e resultado esperado até 4000; arquivo completo até 64 KiB, UTF-8 e sem symlink. Código inicial pode ser vazio, os outros textos não. Enunciados são texto simples; não aceitam HTML executável, comandos ou paths. O hash dos bytes identifica a revisão, inclusive mudanças de formatação do JSON.
 
-O aluno escreve em CodeMirror; o texto só é compilado ou executado após comando explícito, com Run condicionado ao isolamento Docker documentado. Fences Markdown continuam inertes. Tab indenta e Escape seguido de Tab sai do editor. Ctrl+Space sugere nomes locais e palavras-chave; o ícone Formatar usa Prettier sob demanda. Submit preserva uma versão não avaliada no navegador. Copiar e Baixar código aparecem em falhas para recuperação. O rascunho é salvo no IndexedDB deste navegador, até 64 KiB de código, somente com confirmação de transação. Não grava `lesson.md` nem `exercise.json`. A troca de vista mantém editor/undo; reload recupera texto, não promete recuperar seleção/undo.
+O aluno escreve em CodeMirror; o texto só é compilado ou executado após comando explícito, com Run condicionado ao isolamento Docker documentado. Fences Markdown continuam inertes. Tab indenta e Escape seguido de Tab sai do editor. Ctrl+Space sugere nomes locais e palavras-chave; o ícone Formatar usa Prettier sob demanda. Submit revalida a versão e registra o resultado local. Sem teste configurado ou runner disponível, continua não avaliada. Copiar e Baixar código aparecem em falhas para recuperação. O rascunho é salvo no IndexedDB deste navegador, até 64 KiB de código, somente com confirmação de transação. Não grava `lesson.md` nem `exercise.json`. A troca entre arquivos de prática mantém o editor/undo; reload recupera texto, não promete recuperar seleção/undo.
 
-Se o enunciado mudar, a solução anterior continua guardada e aparece para revisão. Restaurar inicial exige confirmação. Duas abas são protegidas por revisão transacional: uma edição obsoleta abre comparação, sem sobrescrever silenciosamente. Em caso de erro, copie ou baixe antes de fechar/recarregar. Armazenamento local pode ser negado, atingir quota ou ser removido; não é backup. Não há sincronização nem entrega/correção automática.
+Se o enunciado mudar, a solução anterior continua guardada e aparece para revisão. Restaurar inicial exige confirmação. Duas abas são protegidas por revisão transacional: uma edição obsoleta abre comparação, sem sobrescrever silenciosamente. Em caso de erro, copie ou baixe antes de fechar/recarregar. Armazenamento local pode ser negado, atingir quota ou ser removido; não é backup. Não há sincronização nem entrega remota. A avaliação local opcional compara somente a saída configurada.
 
 Os sete cursos novos são introdutórios demonstrativos, com duas lições por tecnologia e referências consultadas. Não exigem dependências de runtime da tecnologia para leitura. Compilação/Run só se aplicam a exercícios explícitos TypeScript/JavaScript; nenhum exercício foi adicionado automaticamente às novas lições.

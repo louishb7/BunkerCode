@@ -158,6 +158,9 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await expect(page.getByRole("main")).toBeFocused();
   await expect(page).toHaveURL(lesson(1));
   await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   await expect(page).toHaveTitle(
     "Studio · Lição de teste 1 · Curso de leitura · BunkerCode",
   );
@@ -176,6 +179,9 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   ).toBeFocused();
   await page.getByRole("link", { name: "Voltar à lição", exact: true }).click();
   await page.goBack();
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   await expect(editor).toHaveValue(draft + "Ainda editando.");
   await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
 });
@@ -199,7 +205,7 @@ async function measure(prose: Locator) {
   }));
 }
 for (const width of [390, 768, 1024, 1440])
-  test(`reader and preview share effective measure at ${width}px with an overlay index`, async ({
+  test(`reader and preview retain readable typography at ${width}px with an overlay index`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 960 });
@@ -211,10 +217,9 @@ for (const width of [390, 768, 1024, 1440])
     const readerTitle = await titlePresentation(
       page.locator(".lesson-heading h1"),
     );
-    expect(reader.width).toBeCloseTo(
-      Math.min(750, width - (width <= 700 ? 40 : 56)),
-      0,
-    );
+    // The reader now shares desktop width with its resizable outline.
+    expect(reader.width).toBeGreaterThan(width < 700 ? 300 : 600);
+    expect(reader.width).toBeLessThanOrEqual(800);
     expect(
       await page
         .getByRole("heading", { level: 1 })
@@ -233,10 +238,14 @@ for (const width of [390, 768, 1024, 1440])
     await page.keyboard.press("Escape");
     expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
     await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+      .click();
     await page.getByRole("button", { name: "Prévia", exact: true }).click();
-    expect(await measure(page.locator(".studio-preview .prose"))).toEqual(
-      reader,
-    );
+    const preview = await measure(page.locator(".studio-preview .prose"));
+    expect(preview.fontSize).toBe(reader.fontSize);
+    expect(preview.lineHeight).toBe(reader.lineHeight);
+    expect(preview.width).toBeLessThanOrEqual(750);
     expect(
       await titlePresentation(page.locator(".studio-preview-title")),
     ).toEqual(readerTitle);

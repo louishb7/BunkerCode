@@ -3,7 +3,9 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  optimizeDeps: { include: ["@bunkercode/content"] },
   build: {
+    commonjsOptions: { include: [/node_modules/, /packages\/content\/dist/] },
     manifest: true,
     rollupOptions: {
       output: {

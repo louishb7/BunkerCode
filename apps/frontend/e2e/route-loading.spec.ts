@@ -53,6 +53,9 @@ test("catalog defers reader, Markdown and Studio chunks; pending routes remain a
       page.getByRole("navigation", { name: "Navegação principal" }),
     ).toBeVisible();
     release();
+    await page
+      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+      .click();
     const input = page.getByRole("textbox", {
       name: "Markdown completo",
       exact: true,
@@ -66,6 +69,9 @@ test("catalog defers reader, Markdown and Studio chunks; pending routes remain a
       .getByRole("link", { name: "Voltar à lição", exact: true })
       .click();
     await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+      .click();
     await expect(input).toHaveValue(draft);
     await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
   } finally {
@@ -77,6 +83,9 @@ test("failed route chunk exposes recovery and reload preserves the existing draf
   page,
 }) => {
   await page.goto(lesson + "/edit");
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   const input = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -103,6 +112,9 @@ test("failed route chunk exposes recovery and reload preserves the existing draf
   );
   await page.unroute("**/" + studio.file);
   await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   await expect(input).toHaveValue(draft);
   await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
 });

@@ -1,3 +1,4 @@
+import { validateEditorial } from "@bunkercode/content";
 import {
   constants,
   openSync,
@@ -52,6 +53,13 @@ function input(value: unknown): MarkdownRevision {
     throw new BadRequestException(
       "O Markdown deve ser texto Unicode válido, sem bytes nulos.",
     );
+  try {
+    validateEditorial(body.markdown);
+  } catch (error) {
+    throw new BadRequestException(
+      error instanceof Error ? error.message : "Bloco editorial inválido.",
+    );
+  }
   return { markdown: body.markdown, version: body.version };
 }
 function conflict(): never {

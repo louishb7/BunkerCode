@@ -66,7 +66,7 @@ async function available() {
     return {
       available: false,
       reason:
-        "Run indisponível: requer Docker Linux com cgroup v2, seccomp e a imagem Node.js documentada. Use Compilar; consulte a configuração no README.",
+        "Run indisponível: requer Docker Linux com cgroup v2, seccomp e a imagem Node.js documentada. Run pode analisar a compilação local; consulte a configuração no README.",
     };
   }
 }

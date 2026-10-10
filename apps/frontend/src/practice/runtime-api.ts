@@ -9,6 +9,7 @@ export interface RunResult {
   stdout: string;
   stderr: string;
   exitCode: number | null;
+  assessment?: "passed" | "failed";
 }
 const headers = {
   "content-type": "application/json",
@@ -60,6 +61,9 @@ export async function runSolution(
     throw new Error("Resposta de execução incompatível.");
   const r = result as Partial<RunResult>;
   if (
+    (r.assessment !== undefined &&
+      r.assessment !== "passed" &&
+      r.assessment !== "failed") ||
     r.id !== value.id ||
     typeof r.sourceHash !== "string" ||
     !/^[a-f0-9]{64}$/.test(r.sourceHash) ||

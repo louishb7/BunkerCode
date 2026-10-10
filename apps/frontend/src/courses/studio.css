@@ -180,3 +180,172 @@
     position: static;
   }
 }
+.visual-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #353c3e;
+}
+.visual-toolbar button,
+.visual-toolbar select,
+.insertion-control button,
+.block-actions button {
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 5px;
+  color: #c8c9c7;
+}
+.visual-toolbar button:hover,
+.insertion-control button:hover,
+.block-actions button:hover {
+  background: #ffffff0a;
+  color: #e8bd68;
+}
+.visual-document {
+  min-height: 440px;
+  padding: 24px 0;
+  outline: none;
+}
+.visual-document:focus-visible {
+  box-shadow: -2px 0 #e8bd68;
+}
+.visual-document > * {
+  min-width: 0;
+}
+.visual-document .ProseMirror-selectednode {
+  outline: 1px solid #e8bd68;
+}
+.visual-document .block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.visual-document
+  :is(input:not([type="radio"]):not([type="checkbox"]), textarea, select) {
+  background: #181d21;
+  color: #e8e5de;
+  border: 1px solid #454b50;
+  border-radius: 5px;
+  padding: 8px;
+  width: 100%;
+  font: inherit;
+}
+.visual-document textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+.visual-document label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  margin: 10px 0;
+}
+.visual-document label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+}
+.quiz-author {
+  border-left: 2px solid #e8bd68;
+  padding: 12px 18px;
+  margin: 28px 0;
+}
+.quiz-author fieldset {
+  border: 0;
+  padding: 0;
+}
+.quiz-author-option {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0;
+}
+.quiz-author-option input[type="radio"] {
+  accent-color: #e8bd68;
+}
+.visual-document .code-language select {
+  width: auto;
+  font-size: 12px;
+}
+.insertion-control {
+  position: sticky;
+  bottom: 12px;
+  width: fit-content;
+  margin: 12px auto;
+  background: #202429;
+  border: 1px solid #45453c;
+  border-radius: 8px;
+  padding: 4px;
+  font-size: 13px;
+  z-index: 3;
+}
+.insertion-control > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.insertion-control [role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+}
+.visual-document .code-block pre {
+  min-height: 70px;
+}
+.visual-editor-fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.visual-document .code-editor .cm-scroller {
+  height: auto;
+  min-height: 100px;
+  max-height: 420px;
+}
+.visual-document .code-editor .cm-content {
+  min-height: 100px;
+}
+/* A small insertion gutter follows the selected block and never covers its fields. */
+.visual-studio {
+  position: relative;
+  padding-left: 40px;
+}
+.insertion-control {
+  position: absolute;
+  left: 0;
+  bottom: auto;
+  margin: 0;
+  width: 34px;
+  padding: 0;
+  z-index: 3;
+}
+.insertion-control > button {
+  width: 34px;
+  min-height: 40px;
+  justify-content: center;
+}
+.insertion-control [role="group"] {
+  position: absolute;
+  left: 38px;
+  top: 0;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid #45453c;
+  background: #202429;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px #0006;
+}
+.insertion-control [role="group"] button {
+  width: 100%;
+  text-align: left;
+}
+.visual-toolbar select {
+  background: #1a1e22;
+  color: #e8e5de;
+  border: 1px solid #454b50;
+}
+.studio-heading h1 {
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}

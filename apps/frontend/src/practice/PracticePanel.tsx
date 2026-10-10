@@ -44,6 +44,7 @@ export default function PracticePanel({
 }) {
   const draft = useDraft(course, lesson, exercise);
   const [notice, setNotice] = useState("");
+  const [file, setFile] = useState<"solution" | "tests">("solution");
   const [formatRequest, setFormatRequest] = useState(0);
   const [formatting, setFormatting] = useState(false);
   const [runtime, setRuntime] = useState<RuntimeStatus>();
@@ -119,12 +120,13 @@ export default function PracticePanel({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice("Download do código solicitado.");
   }
-  async function analyze(execute: boolean) {
-    const source = draft.code;
+  async function analyze(
+    source: string,
+  ): Promise<Submission["state"] | undefined> {
     const controller = new AbortController();
     const current = {
       controller,
-      id: execute ? crypto.randomUUID() : undefined,
+      id: crypto.randomUUID(),
       finished: false,
     };
     job.current = current;
@@ -143,15 +145,15 @@ export default function PracticePanel({
           compilation,
           message: "Erros de compilação. O código não foi executado.",
         });
-        return;
+        return "unassessed";
       }
-      if (!execute || !current.id) {
+      if (!runtime?.available) {
         setResult({
           source,
           compilation,
-          message: "Compilação concluída sem diagnósticos neste ambiente.",
+          message: `Compilação concluída sem diagnósticos neste ambiente. Runner indisponível: ${runtime?.reason || runtimeError || "ainda não confirmado"}. Sem avaliação completa.`,
         });
-        return;
+        return "unassessed";
       }
       setPhase("running");
       setResult({
@@ -179,7 +181,19 @@ export default function PracticePanel({
         cancelled: "Execução cancelada.",
         "output-limit": "Limite de saída excedido (32 KiB).",
       };
-      setResult({ source, compilation, run, message: messages[run.state] });
+      const assessment = exercise.tests ? run.assessment : undefined;
+      setResult({
+        source,
+        compilation,
+        run,
+        message:
+          assessment === "passed"
+            ? "Testes aprovados · progresso local."
+            : assessment === "failed"
+              ? "Testes falharam."
+              : messages[run.state],
+      });
+      return assessment ?? "unassessed";
     } catch (error) {
       if (alive.current && !controller.signal.aborted)
         setResult({
@@ -189,6 +203,7 @@ export default function PracticePanel({
               ? error.message
               : "Falha ao analisar código.",
         });
+      return controller.signal.aborted ? undefined : "unassessed";
     } finally {
       if (alive.current && job.current === current) {
         setPhase("idle");
@@ -223,12 +238,15 @@ export default function PracticePanel({
     setSending(true);
     setSubmitError("");
     try {
+      const state = await analyze(code);
+      if (!alive.current || state === undefined) return;
       const value = await submitSolution(
         course,
         lesson,
         exercise.id,
         exercise.revision,
         code,
+        state,
       );
       if (alive.current) {
         setSubmitted(value);
@@ -251,26 +269,41 @@ export default function PracticePanel({
       className="practice-panel overflow-hidden rounded-xl border border-line bg-surface"
     >
       <header className="editor-toolbar">
-        <span className="flex items-center gap-2 font-mono text-xs text-subtle">
-          <FileCode2 className="product-icon text-gold" aria-hidden="true" />
-          {filename}
-          <span className="hidden sm:inline">· {exercise.language}</span>
-        </span>
+        <div
+          role="group"
+          aria-label="Arquivos do exercício"
+          className="editor-files"
+        >
+          <button
+            aria-pressed={file === "solution"}
+            onClick={() => setFile("solution")}
+          >
+            <FileCode2 className="product-icon" aria-hidden="true" />
+            {filename}
+          </button>
+          {exercise.tests && (
+            <button
+              aria-pressed={file === "tests"}
+              onClick={() => setFile("tests")}
+            >
+              testes.json
+            </button>
+          )}
+        </div>
         <button
           className="format-button"
           title="Formatar código"
           aria-label="Formatar código"
-          disabled={!draft.ready || formatting}
+          disabled={!draft.ready || formatting || file === "tests"}
           onClick={() => setFormatRequest((value) => value + 1)}
         >
           <WandSparkles className="product-icon" aria-hidden="true" />
         </button>
-        <span
-          role={draft.failed ? "alert" : "status"}
-          className="save-status text-xs text-subtle"
-        >
-          {draft.status}
-        </span>
+        {draft.failed && (
+          <span role="alert" className="save-status text-xs text-subtle">
+            {draft.status}
+          </span>
+        )}
         <div className="flex items-center gap-2">
           {phase !== "idle" ? (
             <button
@@ -282,28 +315,17 @@ export default function PracticePanel({
               Cancelar
             </button>
           ) : (
-            <>
-              <button
-                disabled={!draft.ready}
-                onClick={() => void analyze(false)}
-                className="text-xs"
-              >
-                Compilar
-              </button>
-              {runtime?.available && (
-                <button
-                  disabled={!draft.ready}
-                  onClick={() => void analyze(true)}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <Play className="product-icon" aria-hidden="true" />
-                  Run
-                </button>
-              )}
-            </>
+            <button
+              disabled={!draft.ready || sending || phase !== "idle"}
+              onClick={() => void analyze(draft.code)}
+              className="practice-run"
+            >
+              <Play className="product-icon" aria-hidden="true" />
+              Run
+            </button>
           )}
           <button
-            disabled={!draft.ready || sending}
+            disabled={!draft.ready || sending || phase !== "idle"}
             onClick={() => void submit()}
             className="product-primary flex items-center gap-1 text-xs"
           >
@@ -325,23 +347,36 @@ export default function PracticePanel({
           </pre>
         </details>
       )}
-      {draft.ready ? (
+      <div hidden={file !== "solution"}>
+        {draft.ready ? (
+          <CodeEditor
+            code={draft.code}
+            language={exercise.language}
+            onChange={draft.change}
+            formatRequest={formatRequest}
+            onFormatState={(busy, message) => {
+              setFormatting(busy);
+              setNotice(message);
+            }}
+          />
+        ) : (
+          <p role="status" className="p-4">
+            Abrindo rascunho…
+          </p>
+        )}
+      </div>
+      {exercise.tests && file === "tests" && (
         <CodeEditor
-          code={draft.code}
-          language={exercise.language}
-          onChange={draft.change}
-          formatRequest={formatRequest}
-          onFormatState={(busy, message) => {
-            setFormatting(busy);
-            setNotice(message);
-          }}
+          code={JSON.stringify(exercise.tests, null, 2)}
+          language="javascript"
+          readOnly
+          label="Testes públicos, somente leitura"
+          onChange={() => undefined}
+          formatRequest={0}
+          onFormatState={() => undefined}
         />
-      ) : (
-        <p role="status" className="p-4">
-          Abrindo rascunho…
-        </p>
       )}
-      <div className="editor-help" id="editor-keyboard-help">
+      <div className="editor-help sr-only" id="editor-keyboard-help">
         Ctrl+Space sugere nomes locais e palavras-chave. Enter aceita. Tab
         indenta; Escape, depois Tab, sai. Ctrl+F busca.
       </div>
@@ -353,109 +388,113 @@ export default function PracticePanel({
           {notice}
         </p>
       )}
-      <section aria-label="Compilação e resultados" className="results-panel">
-        <header className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="m-0 text-sm">Compilação e resultados</h2>
-          <span className="text-xs text-subtle">
-            ES2022 · arquivo único · sem imports/DOM/Node types
-          </span>
-        </header>
-        <p role="status" className="text-sm">
-          {result?.message ??
-            "Pronto para compilar ou executar. Submit registra uma solução não avaliada."}
-        </p>
-        {result && result.source !== draft.code && (
-          <p className="text-xs text-gold">
-            O código foi editado após esta análise. O resultado pertence à
-            versão anterior.
+      {(result || submitted || submitError) && (
+        <section aria-label="Compilação e resultados" className="results-panel">
+          <p role="status" className="text-sm">
+            {result?.message ??
+              "Pronto para compilar ou executar. Submit registra uma solução não avaliada."}
           </p>
-        )}
-        {result?.compilation && (
-          <>
-            <p className="text-xs text-subtle">
-              TypeScript {result.compilation.version} · análise sintática e
-              semântica com bibliotecas ES2022.
+          {result && result.source !== draft.code && (
+            <p className="text-xs text-gold">
+              O código foi editado após esta análise. O resultado pertence à
+              versão anterior.
             </p>
-            {result.compilation.diagnostics.length > 0 && (
-              <ul className="diagnostics">
-                {result.compilation.diagnostics.map((item, i) => (
-                  <li key={i}>
-                    <span className="font-mono text-gold">
-                      TS{item.code} · {item.category}
-                      {item.line ? ` · ${item.line}:${item.column}` : ""}
-                    </span>
-                    <p>{item.message}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {!result.compilation.diagnostics.length && (
-              <details>
-                <summary className="cursor-pointer text-xs text-subtle">
-                  JavaScript gerado
-                </summary>
-                <pre className="result-output">
-                  {result.compilation.javascript}
-                </pre>
-              </details>
-            )}
-          </>
-        )}
-        {result?.run && (
-          <div>
-            <h3 className="text-xs text-subtle">Saída do programa</h3>
-            <pre className="result-output">
-              {result.run.stdout || "Sem saída em stdout."}
-            </pre>
-            {result.run.stderr && (
-              <pre className="result-output text-[#e49e82]">
-                {result.run.stderr}
+          )}
+          {result?.compilation && (
+            <details open={result.compilation.diagnostics.length > 0}>
+              <summary>Detalhes da verificação</summary>
+              <p className="text-xs text-subtle">
+                TypeScript {result.compilation.version} · análise sintática e
+                semântica com bibliotecas ES2022.
+              </p>
+              {result.compilation.diagnostics.length > 0 && (
+                <ul className="diagnostics">
+                  {result.compilation.diagnostics.map((item, i) => (
+                    <li key={i}>
+                      <span className="font-mono text-gold">
+                        TS{item.code} · {item.category}
+                        {item.line ? ` · ${item.line}:${item.column}` : ""}
+                      </span>
+                      <p>{item.message}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!result.compilation.diagnostics.length && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-subtle">
+                    JavaScript gerado
+                  </summary>
+                  <pre className="result-output">
+                    {result.compilation.javascript}
+                  </pre>
+                </details>
+              )}
+            </details>
+          )}
+          {result?.run && (
+            <div>
+              <h3 className="text-xs text-subtle">Saída do programa</h3>
+              <pre className="result-output">
+                {result.run.stdout || "Sem saída em stdout."}
               </pre>
-            )}
-          </div>
-        )}
-        {runtime?.available === false && (
-          <p className="text-xs text-subtle">{runtime.reason}</p>
-        )}
-        {runtimeError && <p className="text-xs text-subtle">{runtimeError}</p>}
-        {submitted && (
-          <p role="status" className="text-sm text-gold">
-            Solução registrada em{" "}
-            {new Date(submitted.at).toLocaleString("pt-BR")}. Não avaliada
-            automaticamente.
-            {submitted.code !== draft.code
-              ? " Você continuou editando o rascunho."
-              : ""}
-          </p>
-        )}
-        {submitError && (
-          <p role="alert" className="text-sm">
-            {submitError} Seu código continua no editor.
-          </p>
-        )}
-        <p className="text-xs text-subtle">
-          Submit preserva o código exato, mesmo com erros de compilação. Envio
-          não significa aprovação ou conclusão.
-        </p>
-        {!!submissions.length && (
-          <details>
-            <summary className="cursor-pointer text-sm">
-              Envios locais ({submissions.length})
-            </summary>
-            {submissions.map((value) => (
-              <details key={value.id} className="mt-3">
-                <summary className="cursor-pointer text-xs">
-                  {new Date(value.at).toLocaleString("pt-BR")} · não avaliada
-                  {value.revision !== exercise.revision
-                    ? " · revisão anterior"
-                    : ""}
-                </summary>
-                <pre className="result-output">{value.code}</pre>
-              </details>
-            ))}
-          </details>
-        )}
-      </section>
+              {result.run.stderr && (
+                <pre className="result-output text-[#e49e82]">
+                  {result.run.stderr}
+                </pre>
+              )}
+            </div>
+          )}
+          {runtime?.available === false && (
+            <p className="text-xs text-subtle">{runtime.reason}</p>
+          )}
+          {runtimeError && (
+            <p className="text-xs text-subtle">{runtimeError}</p>
+          )}
+          {submitted && (
+            <p role="status" className="text-sm text-gold">
+              Solução registrada em{" "}
+              {new Date(submitted.at).toLocaleString("pt-BR")}.{" "}
+              {submitted.state === "passed"
+                ? "Concluída pelos testes configurados · progresso local."
+                : submitted.state === "failed"
+                  ? "Testes falharam; atividade não concluída."
+                  : "Não avaliada automaticamente."}
+              {submitted.code !== draft.code
+                ? " Você continuou editando o rascunho."
+                : ""}
+            </p>
+          )}
+          {submitError && (
+            <p role="alert" className="text-sm">
+              {submitError} Seu código continua no editor.
+            </p>
+          )}
+        </section>
+      )}
+      {!!submissions.length && (
+        <details>
+          <summary className="cursor-pointer text-sm">
+            Envios locais ({submissions.length})
+          </summary>
+          {submissions.map((value) => (
+            <details key={value.id} className="mt-3">
+              <summary className="cursor-pointer text-xs">
+                {new Date(value.at).toLocaleString("pt-BR")} ·{" "}
+                {value.state === "passed"
+                  ? "aprovada nos testes locais"
+                  : value.state === "failed"
+                    ? "testes falharam"
+                    : "não avaliada"}
+                {value.revision !== exercise.revision
+                  ? " · revisão anterior"
+                  : ""}
+              </summary>
+              <pre className="result-output">{value.code}</pre>
+            </details>
+          ))}
+        </details>
+      )}
       {(draft.failed || submitError) && (
         <section
           aria-label="Recuperação do código"

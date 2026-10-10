@@ -41,6 +41,9 @@ for (const width of [390, 1280])
       await writeFile(file, encode(source));
       await page.setViewportSize({ width, height: 900 });
       await page.goto(url);
+      await page
+        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+        .click();
       const input = page.locator("#lesson-markdown");
       await expect(input).toHaveValue(source);
       await expect(input).toHaveAttribute("wrap", "soft");
@@ -88,11 +91,14 @@ for (const width of [390, 1280])
         path: info.outputPath(`preview-sticky-${ending}-${width}.png`),
       });
       await page
-        .getByRole("button", { name: "Editar Markdown", exact: true })
+        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
         .click();
       await expect(input).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Editar Markdown", exact: true }),
+        page.getByRole("button", {
+          name: "Editar fonte Markdown",
+          exact: true,
+        }),
       ).toBeFocused();
       expect(
         await input.evaluate((node: HTMLTextAreaElement) => ({
@@ -106,7 +112,7 @@ for (const width of [390, 1280])
       await page.getByRole("button", { name: "Prévia", exact: true }).click();
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1200);
       await page
-        .getByRole("button", { name: "Editar Markdown", exact: true })
+        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
         .click();
       await input.focus();
       await page.keyboard.type("Revisão 12. ");
@@ -138,6 +144,9 @@ test("short viewport leaves Studio controls in document flow", async ({
   await writeFile(file, source);
   await page.setViewportSize({ width: 390, height: 420 });
   await page.goto(url);
+  await page
+    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
+    .click();
   await expect(page.locator("#lesson-markdown")).toHaveValue(source);
   expect(
     await page

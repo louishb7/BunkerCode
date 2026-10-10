@@ -1,3 +1,4 @@
+import { compileAssessment } from "./assessment";
 import {
   Body,
   Controller,
@@ -67,7 +68,23 @@ export class PracticeController implements OnApplicationShutdown {
     };
     response.on("close", disconnect);
     try {
-      return await runCode(id!, source!, javascript!, abort.signal);
+      const compiled = definition.tests
+        ? await compileAssessment(source!, definition.language, abort.signal)
+        : javascript!;
+      const result = await runCode(id!, source!, compiled, abort.signal);
+      return {
+        ...result,
+        ...(definition.tests
+          ? {
+              assessment:
+                result.state === "success"
+                  ? result.stdout === definition.tests.expected
+                    ? "passed"
+                    : "failed"
+                  : "failed",
+            }
+          : {}),
+      };
     } finally {
       response.off("close", disconnect);
     }

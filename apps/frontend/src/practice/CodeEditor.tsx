@@ -72,9 +72,13 @@ export function CodeEditor({
   onChange,
   formatRequest,
   onFormatState,
+  readOnly = false,
+  label = "Código da solução",
 }: {
   code: string;
-  language: "typescript" | "javascript";
+  readOnly?: boolean;
+  label?: string;
+  language: string;
   onChange: (code: string) => void;
   formatRequest: number;
   onFormatState: (busy: boolean, message: string) => void;
@@ -84,6 +88,7 @@ export function CodeEditor({
   const callback = useRef(onChange);
   callback.current = onChange;
   const initial = useRef(code);
+  initial.current = code;
   const formatCallback = useRef(onFormatState);
   formatCallback.current = onFormatState;
   useEffect(() => {
@@ -93,6 +98,8 @@ export function CodeEditor({
       state: EditorState.create({
         doc: initial.current,
         extensions: [
+          EditorState.readOnly.of(readOnly),
+          EditorView.editable.of(!readOnly),
           lineNumbers(),
           history(),
           drawSelection(),
@@ -102,7 +109,9 @@ export function CodeEditor({
           closeBrackets(),
           autocompletion(),
           highlightSelectionMatches(),
-          javascript({ typescript: language === "typescript" }),
+          ...(language === "typescript" || language === "javascript"
+            ? [javascript({ typescript: language === "typescript" })]
+            : []),
           syntaxHighlighting(darcula),
           theme,
           keymap.of([
@@ -114,7 +123,8 @@ export function CodeEditor({
             ...searchKeymap,
           ]),
           EditorView.contentAttributes.of({
-            "aria-label": "Código da solução",
+            "aria-label": label,
+            "aria-readonly": String(readOnly),
             "aria-describedby": "editor-keyboard-help",
             spellcheck: "false",
           }),
@@ -130,7 +140,7 @@ export function CodeEditor({
       view.current = null;
       editor.destroy();
     };
-  }, [language]);
+  }, [language, readOnly, label]);
   useEffect(() => {
     const editor = view.current;
     if (editor && editor.state.doc.toString() !== code)
@@ -140,7 +150,12 @@ export function CodeEditor({
   }, [code]);
   useEffect(() => {
     const editor = view.current;
-    if (!formatRequest || !editor) return;
+    if (
+      !formatRequest ||
+      !editor ||
+      (language !== "typescript" && language !== "javascript")
+    )
+      return;
     const original = editor.state.doc.toString();
     const selection = editor.state.selection.main;
     const controller = new AbortController();

@@ -1,3 +1,4 @@
+import { parseOutputTest, type OutputTest } from "@bunkercode/content";
 import {
   constants,
   openSync,
@@ -21,6 +22,7 @@ export interface Exercise {
   starterCode: string;
   expected: string;
   revision: string;
+  tests?: OutputTest;
 }
 const limit = 64 * 1024;
 function invalid(): never {
@@ -39,6 +41,7 @@ export function parseExercise(value: unknown): Omit<Exercise, "revision"> {
     "language",
     "starterCode",
     "expected",
+    "tests",
   ];
   if (
     Object.keys(item).some((key) => !fields.includes(key)) ||
@@ -65,6 +68,7 @@ export function parseExercise(value: unknown): Omit<Exercise, "revision"> {
     instructions: text("instructions", 12000),
     starterCode: text("starterCode", 32768, true),
     expected: text("expected", 4000),
+    ...(item.tests === undefined ? {} : { tests: parseOutputTest(item.tests) }),
   };
 }
 export function loadExercise(

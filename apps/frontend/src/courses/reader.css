@@ -311,9 +311,6 @@ html:has(.lesson-index[open]) {
   .reader-layout {
     padding: 28px var(--reading-gutter) 60px;
   }
-  .prose {
-    font-size: 16px;
-  }
   .prose h2 {
     font-size: 22px;
   }
@@ -343,34 +340,222 @@ html:has(.lesson-index[open]) {
 .study-code {
   align-self: start;
 }
-.workspace-switch button[aria-pressed="true"] {
-  border-color: var(--accent);
+/* Content-driven study workspace. The prose and code color tokens remain shared. */
+.lesson-reader {
+  max-width: 1120px;
+}
+.practice-workspace {
+  max-width: 1560px;
+}
+.study-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+.study-divider {
+  display: none;
+}
+.study-explanation {
+  position: relative;
+  padding-top: 6px;
+}
+.study-explanation > .prose {
+  font-size: var(--prose-size, 17px);
+  max-width: 75ch;
+}
+.reading-tone-1 > .prose {
+  color: #c8c9c7;
+}
+.reading-tone-2 > .prose {
+  color: #e2d3b9;
+}
+.reading-settings {
+  float: right;
+  position: relative;
+  z-index: 2;
+  font-size: 14px;
+}
+.reading-settings summary {
+  cursor: pointer;
+  padding: 10px;
   color: var(--accent);
-  background: #29251f;
 }
-@media (min-width: 1200px) {
-  .practice-workspace .study-panels {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+.reading-settings > div {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  width: 240px;
+  padding: 18px;
+  border: 1px solid #45453c;
+  border-radius: 8px;
+  background: #202429;
+  box-shadow: 0 8px 30px #0006;
+}
+.reading-settings label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.lesson-outline {
+  font-size: 14px;
+  color: #b3b5b4;
+}
+.lesson-outline summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 0;
+  color: var(--accent);
+}
+.lesson-outline nav {
+  display: grid;
+  gap: 14px;
+  padding: 14px 0;
+}
+.lesson-outline a {
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.inline-exercise {
+  margin-top: 40px;
+  border-left: 2px solid var(--accent);
+  padding: 4px 0 4px 22px;
+}
+.inline-quiz {
+  min-width: 0;
+  margin: 28px 0;
+  padding: 18px 0;
+  border: 0;
+  border-top: 1px solid #4e4533;
+}
+.inline-quiz legend {
+  font-weight: 600;
+  padding: 0 8px 0 0;
+}
+.quiz-option {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px;
+  cursor: pointer;
+}
+.quiz-option input {
+  accent-color: #e8bd68;
+}
+.inline-quiz button {
+  margin: 12px 0 0;
+  padding: 8px 16px;
+  min-height: 44px;
+  border: 1px solid #66533e;
+  border-radius: 6px;
+  color: #e8bd68;
+}
+.editorial-note {
+  margin: 24px 0;
+  padding: 16px 20px;
+  border-left: 2px solid #b68658;
+  background: #1c2023;
+}
+.editorial-note p {
+  white-space: pre-wrap;
+  margin-bottom: 0;
+}
+@media (min-width: 1000px) {
+  .study-split {
+    grid-template-columns:
+      minmax(0, calc(var(--article-share) - 26px))
+      12px minmax(180px, 1fr);
+    gap: 20px;
   }
-  .practice-workspace .study-code {
+  .programming-split {
+    grid-template-columns:
+      minmax(0, calc(var(--article-share) - 26px))
+      12px minmax(0, 1fr);
+  }
+  .study-split.without-sidebar {
+    display: block;
+    max-width: 750px;
+    margin: auto;
+  }
+  .study-divider {
+    display: block;
+    width: 12px;
+    touch-action: none;
+    cursor: col-resize;
+    border-radius: 4px;
+    background: linear-gradient(
+      to right,
+      transparent 5px,
+      #343b42 5px,
+      #343b42 6px,
+      transparent 6px
+    );
+  }
+  .study-divider:hover,
+  .study-divider:focus-visible {
+    background-color: #e8bd6815;
+    outline: 1px solid #e8bd68;
+  }
+  .study-code,
+  .study-outline {
     position: sticky;
-    top: 20px;
-  }
-  .workspace-switch {
-    display: none;
-  }
-}
-@media (max-width: 1199px) {
-  .practice-workspace {
-    max-width: var(--reading-width);
-  }
-  .study-panels[data-view="explanation"] .study-code,
-  .study-panels[data-view="code"] .study-explanation {
-    display: none;
+    top: 24px;
+    align-self: start;
+    min-width: 0;
   }
 }
-@media (max-height: 500px) {
-  .practice-workspace .study-code {
-    position: static;
-  }
+.editor-files {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.editor-files button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  min-height: 40px;
+  color: #a9afb6;
+  font-size: 12px;
+}
+.editor-files button[aria-pressed="true"] {
+  color: #e8bd68;
+  border-bottom: 2px solid #e8bd68;
+}
+.editor-toolbar .practice-run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #4c555e;
+  border-radius: 6px;
+  background: #292f35;
+  color: #e8e5de;
+}
+.editor-toolbar .practice-run:hover {
+  background: #343c44;
+}
+.editor-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.practice-panel .results-panel {
+  padding: 12px 18px;
+  font-size: 14px;
+}
+.practice-panel > details {
+  padding: 12px 18px;
+}
+.lesson-context-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lesson-context-actions > a {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  min-width: 36px;
+  text-decoration: none;
+  color: var(--accent);
 }
