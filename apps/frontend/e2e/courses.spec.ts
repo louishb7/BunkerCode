@@ -117,7 +117,8 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     "# Primeira nota\n\nCurso novo sem alteração em React ou Nest.",
   );
   await page.goto("/courses");
-  await page.getByRole("link", { name: /^Arquitetura/ }).click();
+  await expect(page.getByRole("link", { name: /^Arquitetura/ })).toHaveCount(0);
+  await page.goto("/courses/architecture");
   await page.getByRole("link", { name: "01 Primeira nota" }).click();
   await expect(
     page.getByText("Curso novo sem alteração em React ou Nest."),

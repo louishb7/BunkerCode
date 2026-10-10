@@ -1,7 +1,7 @@
 {
   "id": "javascript",
-  "title": "JavaScript",
-  "description": "Valores, funções e escopo para escrever programas pequenos e previsíveis.",
+  "title": "JavaScript Essencial",
+  "description": "Valores, funções e escopo: uma base introdutória de JavaScript para começar TypeScript.",
   "lessons": [
     {
       "slug": "values",

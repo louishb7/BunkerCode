@@ -32,7 +32,7 @@ Os dois exemplos iniciais do curso TypeScript estão identificados como demonstr
 
 Abra http://127.0.0.1:5173, selecione TypeScript e a lição. A API fica em 127.0.0.1:3001.
 
-Se você editou no VS Code, salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto e novos cursos também aparecem após refresh. No Studio, a prévia usa o rascunho; somente o botão de salvamento escreve no disco.
+Se você editou no VS Code, salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto aparecem após refresh. Cursos novos ficam disponíveis pela API e rota direta; a seleção da Home/catálogo segue a [política editorial de visibilidade](product/course-visibility.md). No Studio, a prévia usa o rascunho; somente o botão de salvamento escreve no disco.
 
 Os testes/smokes usam BUNKERCODE_CONTENT_DIR para uma cópia descartável do diretório content, sem alterar o conteúdo canônico. Normalmente você não precisa configurar essa variável.
 

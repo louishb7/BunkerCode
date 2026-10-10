@@ -43,17 +43,14 @@ async function records(page: Page, store: string) {
     store,
   );
 }
-test("empty dashboard has exactly 365 real calendar days, zeros, months and contextual courses", async ({
+test("empty calendar has exactly 365 real days, zero activities, months and contextual courses", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.locator(".heatmap-day")).toHaveCount(365);
-  await expect(page.locator(".activity-stats dd")).toHaveText([
-    "0",
-    "0",
-    "0",
-    "0",
-  ]);
+  await expect(page.locator("#activity-title")).toHaveText(
+    "0 atividades nos últimos 365 dias",
+  );
   await expect(
     page.getByText("Retome de onde parou", { exact: true }),
   ).toHaveCount(0);
@@ -61,7 +58,7 @@ test("empty dashboard has exactly 365 real calendar days, zeros, months and cont
     0,
   );
   await expect(
-    page.getByRole("link", { name: /Começar um curso/ }),
+    page.getByRole("link", { name: /Explorar cursos/ }),
   ).toBeVisible();
   expect(await page.locator(".heatmap-months span").allTextContents()).toEqual(
     expect.arrayContaining(["jan.", "jul."]),
@@ -110,12 +107,9 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     }),
   ]);
   await page.goto("/");
-  await expect(page.locator(".activity-stats dd")).toHaveText([
-    "1",
-    "1",
-    "0",
-    "0",
-  ]);
+  await expect(page.locator("#activity-title")).toHaveText(
+    "1 atividade nos últimos 365 dias",
+  );
   await expect(
     page.getByRole("link", { name: /Continuar estudando/ }),
   ).toHaveAttribute("href", lesson);
@@ -126,12 +120,9 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     .poll(async () => (await records(page, "activity")).length)
     .toBe(2);
   await page.goto("/");
-  await expect(page.locator(".activity-stats dd")).toHaveText([
-    "2",
-    "1",
-    "0",
-    "0",
-  ]);
+  await expect(page.locator("#activity-title")).toHaveText(
+    "2 atividades nos últimos 365 dias",
+  );
 });
 test("calendar crosses leap year and DST without duplicate or missing days", async ({
   page,
@@ -185,12 +176,9 @@ test("edits and submissions produce distinct genuine activity, with historical o
     page.getByText("Envios locais (2)", { exact: true }),
   ).toBeVisible();
   await page.goto("/");
-  await expect(page.locator(".activity-stats dd")).toHaveText([
-    "1",
-    "1",
-    "1",
-    "2",
-  ]);
+  await expect(page.locator("#activity-title")).toHaveText(
+    "4 atividades nos últimos 365 dias",
+  );
   expect((await records(page, "activity")).length).toBe(4);
   await expect(page.locator(".heat-4[data-day]")).toHaveCount(1);
 });
@@ -552,12 +540,9 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
       await page.goto(url);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (name === "home-activity")
-        await expect(page.locator(".activity-stats dd")).toHaveText([
-          "1",
-          "1",
-          "1",
-          "1",
-        ]);
+        await expect(page.locator("#activity-title")).toHaveText(
+          "3 atividades nos últimos 365 dias",
+        );
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -606,7 +591,9 @@ test("program output is rendered as text and module imports receive real diagnos
   await expect(page.locator(".results-panel img")).toHaveCount(0);
   await code(page, 'import fs from "node:fs";');
   await page.getByRole("button", { name: "Compilar", exact: true }).click();
-  await expect(page.locator(".diagnostics")).toContainText("Cannot find module 'node:fs'");
+  await expect(page.locator(".diagnostics")).toContainText(
+    "Cannot find module 'node:fs'",
+  );
 });
 test.describe("local timezone calendar", () => {
   test.use({ timezoneId: "America/New_York" });
@@ -629,12 +616,9 @@ test.describe("local timezone calendar", () => {
       .toBe(2);
     await page.goto("/");
     await expect(page.locator(".heatmap-day")).toHaveCount(365);
-    await expect(page.locator(".activity-stats dd")).toHaveText([
-      "2",
-      "1",
-      "0",
-      "0",
-    ]);
+    await expect(page.locator("#activity-title")).toHaveText(
+      "2 atividades nos últimos 365 dias",
+    );
     expect(await records(page, "activity")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

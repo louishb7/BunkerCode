@@ -21,7 +21,7 @@ Abra a lição no site e clique em **Editar lição** para escrever no Studio, c
 
 Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. O catálogo descobre a pasta automaticamente. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-O catálogo inclui TypeScript e sete cursos introdutórios (JavaScript, Node.js, NestJS, PostgreSQL, Git, Linux e Docker), cada curso novo com duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições.
+A descoberta inicial mostra JavaScript Essencial, TypeScript, Node.js e NestJS, nesta ordem. PostgreSQL, Git, Linux e Docker permanecem no conteúdo/API e nas rotas diretas, temporariamente ocultos da Home e do catálogo. Os sete cursos introdutórios têm duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições. [Política de visibilidade](docs/product/course-visibility.md).
 
 ## Organização
 
@@ -42,7 +42,7 @@ O catálogo inclui TypeScript e sete cursos introdutórios (JavaScript, Node.js,
 
 Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
-O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home apresenta atividade real dos últimos 365 dias e uma ação compacta para o último acesso válido; visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit local não avaliado. Blocos Markdown continuam inertes. Não há banco editorial.
+O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home começa com um calendário verde compacto e o total real de atividades dos últimos 365 dias, seguido dos quatro cursos da seleção editorial e uma ação discreta para o último acesso válido; visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit local não avaliado. Blocos Markdown continuam inertes. Não há banco editorial.
 
 Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.
 

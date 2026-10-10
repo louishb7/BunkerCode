@@ -145,7 +145,7 @@ Revisar a Home com atividade real, os cursos introdutórios e o workspace do Ref
 
 ## Refinamento 01: atividade, editor e execução
 
-A Home compacta apresenta atividade antes do grid de cursos. Continuar estudando é um link, validado pelo manifesto. Os cards de apresentação/retomada e a contagem isolada foram removidos. O catálogo tem oito tecnologias; sete novos cursos contêm duas lições cada, com fontes técnicas nas referências. Figuras são SVGs locais: sete da coleção Simple Icons com origem fixada e o Slonik de três cores da wiki PostgreSQL. Licença CC0 da coleção, atribuição CC BY 3.0 de Git, MIT de JavaScript e diretrizes de marcas estão registradas em `public/technologies/README.md`; não implicam afiliação ou endosso. Não há molduras duplas.
+A Home compacta apresenta atividade antes do grid de cursos. Continuar estudando é um link, validado pelo manifesto. Os cards de apresentação/retomada e a contagem isolada foram removidos. O conteúdo tem oito tecnologias; sete cursos introdutórios contêm duas lições cada, com fontes técnicas nas referências. A descoberta inicial da Home/catálogo é limitada a JavaScript Essencial, TypeScript, Node.js e NestJS, conforme a [política editorial](../product/course-visibility.md). IDs/rotas dos demais continuam disponíveis. Figuras são SVGs locais: sete da coleção Simple Icons com origem fixada e o Slonik de três cores da wiki PostgreSQL. Licença CC0 da coleção, atribuição CC BY 3.0 de Git, MIT de JavaScript e diretrizes de marcas estão registradas em `public/technologies/README.md`; não implicam afiliação ou endosso. Não há molduras duplas.
 
 ### Atividade local
 
@@ -153,7 +153,7 @@ IndexedDB `bunkercode-practice`, versão 2, mantém `drafts` e adiciona `activit
 
 `activity` registra schema, chave, tipo, scope, dia local, timestamp real e timezone de origem. Acesso: só após receber lição válida, uma vez por curso/lição/dia. Edição: mudança real do documento, uma vez por exercício/dia; abrir/recuperar sem editar não conta. A comparação de existência e o add ficam na mesma transação readwrite, evitando duplicidade entre abas. Cada Submit confirmado cria um evento próprio na mesma transação de sua solução. Eventos antigos são mantidos; somente a apresentação filtra 365 dias inclusivos. Dias avançam por calendário local, sem somar blocos fixos de 24 horas; timezone e dia do evento são preservados se o perfil mudar de fuso. BroadcastChannel, evento local, foco e atualização por minuto recarregam a Home, sem telemetria externa.
 
-Intensidade representa a soma de eventos no dia (0, 1, 2, 3, 4+). Estatísticas: dias ativos, lições distintas acessadas, exercícios distintos editados e quantidade de soluções enviadas dentro do período. Não há XP, ranking, streak ou conclusão. Falha de leitura é explícita; não se mostra zero como sucesso após falha. O heatmap tem meses, legenda, informação por dia via nome acessível/title e navegação por setas com um único dia na ordem de Tab.
+Intensidade verde representa a soma de eventos no dia (0, 1, 2, 3, 4+), com células fixas de 11 px e 3 px de intervalo. O cabeçalho mostra somente a quantidade total de eventos no período; indicadores adicionais não são exibidos. O refinamento visual não altera os critérios, stores ou registros existentes. Não há XP, ranking, streak ou conclusão. Falha de leitura é explícita; não se mostra zero como sucesso após falha. O heatmap tem meses, legenda, informação por dia via nome acessível/title e navegação por setas com um único dia na ordem de Tab.
 
 ### Editor e ferramentas
 

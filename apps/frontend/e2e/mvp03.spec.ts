@@ -267,11 +267,9 @@ test("home validates actual recent destinations and handles unavailable, empty a
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Aprenda. Escreva. Explore.",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Início");
   await expect(
-    page.getByRole("link", { name: /Começar um curso/ }),
+    page.getByRole("link", { name: /Explorar cursos/ }),
   ).toBeVisible();
   await page.goto(url);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
@@ -296,13 +294,13 @@ test("home validates actual recent destinations and handles unavailable, empty a
   );
   await page.reload();
   await expect(
-    page.getByRole("link", { name: /Começar um curso/ }),
+    page.getByRole("link", { name: /Explorar cursos/ }),
   ).toBeVisible();
   await page.route("**/api/content/courses", (route) =>
     route.fulfill({ json: [] }),
   );
   await page.reload();
-  await expect(page.getByText(/Nenhum curso publicado/)).toBeVisible();
+  await expect(page.getByText(/Nenhum curso disponível/)).toBeVisible();
   await page.unroute("**/api/content/courses");
   await page.route("**/api/content/courses", (route) =>
     route.fulfill({ status: 503, body: "Offline" }),

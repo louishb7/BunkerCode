@@ -50,6 +50,19 @@ for (const width of [390, 768, 1440])
     page,
   }, info) => {
     await page.setViewportSize({ width, height: 900 });
+    // Exercise the unchanged card's long-title layout inside the editorial selection.
+    await page.route("**/api/content/courses", async (route) => {
+      const response = await route.fetch();
+      const courses = (await response.json()) as {
+        id: string;
+        title: string;
+      }[];
+      await route.fulfill({
+        json: courses.map((item) =>
+          item.id === "typescript" ? { ...item, title } : item,
+        ),
+      });
+    });
     await page.goto("/courses");
     await expect(
       page.getByRole("heading", { name: "Cursos", exact: true }),
@@ -72,7 +85,12 @@ for (const width of [390, 768, 1440])
       fullPage: true,
     });
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(`/courses/${course}`);
+    await expect(page).toHaveURL("/courses/typescript");
+    await expect(
+      page.getByRole("heading", { name: "TypeScript", exact: true }),
+    ).toBeFocused();
+    // Hidden fixture courses still retain their direct route, ordering and focus.
+    await page.goto(`/courses/${course}`);
     await expect(
       page.getByRole("heading", { name: title, exact: true }),
     ).toBeFocused();
@@ -108,7 +126,7 @@ test("empty catalog and empty course expose readable states without dead start a
     route.fulfill({ json: [] }),
   );
   await page.goto("/courses");
-  await expect(page.getByText(/Nenhum curso publicado/)).toBeVisible();
+  await expect(page.getByText(/Nenhum curso disponível/)).toBeVisible();
   await expect(page.locator(".course-card")).toHaveCount(0);
   await page.unroute("**/api/content/courses");
   await page.goto("/courses/empty-refinement");

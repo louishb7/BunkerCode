@@ -11,10 +11,12 @@ import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
 import { CourseCard } from "../product/CourseCard";
 import { CourseArtwork } from "../product/CourseArtwork";
+import { discoverableCourses } from "../product/course-visibility";
 
 export function CoursesPage() {
   const { data, error } = useContent("", parseCourses);
   if (!data) return <ContentStatus error={error} />;
+  const courses = discoverableCourses(data);
   return (
     <Page title="Cursos" className="product-page catalog-page">
       <header className="mb-8">
@@ -31,17 +33,16 @@ export function CoursesPage() {
             Disponíveis
           </h2>
           <span className="text-sm text-subtle">
-            {data.length} {data.length === 1 ? "curso" : "cursos"}
+            {courses.length} {courses.length === 1 ? "curso" : "cursos"}
           </span>
         </div>
-        {data.length === 0 ? (
+        {courses.length === 0 ? (
           <p className="empty-content rounded-xl border border-line p-8 text-subtle">
-            Nenhum curso publicado. Seus cursos aparecerão aqui quando você
-            adicionar conteúdo.
+            Nenhum curso disponível nesta seleção.
           </p>
         ) : (
           <div className="course-list grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {data.map((course) => (
+            {courses.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
