@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -41,9 +42,7 @@ for (const width of [390, 1280])
       await writeFile(file, encode(source));
       await page.setViewportSize({ width, height: 900 });
       await page.goto(url);
-      await page
-        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-        .click();
+      await studioView(page, "Editar fonte Markdown");
       const input = page.locator("#lesson-markdown");
       await expect(input).toHaveValue(source);
       await expect(input).toHaveAttribute("wrap", "soft");
@@ -74,11 +73,9 @@ for (const width of [390, 1280])
       await page.screenshot({
         path: info.outputPath(`editor-wrap-${ending}-${width}.png`),
       });
-      await page.getByRole("button", { name: "Prévia", exact: true }).click();
+      await studioView(page, "Prévia");
       await expect(input).not.toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Prévia", exact: true }),
-      ).toBeFocused();
+      await expect(page.locator(".studio-options > summary")).toBeFocused();
       await expect(page.locator(".studio-preview pre code")).toContainText(
         "function explain()",
       );
@@ -91,16 +88,9 @@ for (const width of [390, 1280])
       await page.screenshot({
         path: info.outputPath(`preview-sticky-${ending}-${width}.png`),
       });
-      await page
-        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-        .click();
+      await studioView(page, "Editar fonte Markdown");
       await expect(input).toBeVisible();
-      await expect(
-        page.getByRole("button", {
-          name: "Editar fonte Markdown",
-          exact: true,
-        }),
-      ).toBeFocused();
+      await expect(page.locator(".studio-options > summary")).toBeFocused();
       expect(
         await input.evaluate((node: HTMLTextAreaElement) => ({
           start: node.selectionStart,
@@ -112,11 +102,9 @@ for (const width of [390, 1280])
       await expect
         .poll(() => page.evaluate(() => window.scrollY))
         .toBe(editingScroll);
-      await page.getByRole("button", { name: "Prévia", exact: true }).click();
+      await studioView(page, "Prévia");
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1200);
-      await page
-        .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-        .click();
+      await studioView(page, "Editar fonte Markdown");
       await input.focus();
       await page.keyboard.type("Revisão 12. ");
       const expected =
@@ -147,9 +135,7 @@ test("short viewport leaves Studio controls in document flow", async ({
   await writeFile(file, source);
   await page.setViewportSize({ width: 390, height: 420 });
   await page.goto(url);
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(page.locator("#lesson-markdown")).toHaveValue(source);
   expect(
     await page

@@ -6,14 +6,13 @@ import {
   type ReactNode,
 } from "react";
 import { Link, NavLink } from "react-router";
-import { ArrowLeft, ArrowRight, BookOpen } from "lucide-react";
-import { LessonIndex } from "../courses/LessonIndex";
-import { lessonPath, type Lesson } from "../courses/api";
+import { BookOpen } from "lucide-react";
+type HeaderLesson = { course: { id: string; title: string } };
 import { Insignia } from "./Brand";
 
 const LessonNavigation = createContext<{
-  lesson: Lesson | null;
-  setLesson: (lesson: Lesson | null) => void;
+  lesson: HeaderLesson | null;
+  setLesson: (lesson: HeaderLesson | null) => void;
 }>({ lesson: null, setLesson: () => undefined });
 
 export function LessonNavigationProvider({
@@ -21,7 +20,7 @@ export function LessonNavigationProvider({
 }: {
   children: ReactNode;
 }) {
-  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [lesson, setLesson] = useState<HeaderLesson | null>(null);
   return (
     <LessonNavigation.Provider value={{ lesson, setLesson }}>
       {children}
@@ -29,7 +28,7 @@ export function LessonNavigationProvider({
   );
 }
 
-export function useLessonNavigation(lesson: Lesson) {
+export function useLessonNavigation(lesson: HeaderLesson) {
   const { setLesson } = useContext(LessonNavigation);
   useEffect(() => {
     setLesson(lesson);
@@ -51,72 +50,47 @@ export function SiteHeader() {
             Bunker<span className="text-gold">Code</span>
           </span>
         </Link>
-        {lesson ? (
-          <nav
-            className="header-lesson-nav"
-            aria-label="Navegação entre lições"
-          >
-            <Link
-              aria-label={`Abrir curso ${lesson.course.title}`}
-              className="header-course"
-              to={"/courses/" + encodeURIComponent(lesson.course.id)}
-              title={lesson.course.title}
-            >
-              <BookOpen size={18} aria-hidden="true" />
-              <span>{lesson.course.title}</span>
-            </Link>
-            <LessonIndex course={lesson.course} />
-            <div className="header-neighbors">
-              {lesson.previous ? (
-                <Link
-                  aria-label="Lição anterior"
-                  title={lesson.previous.title}
-                  to={lessonPath(lesson.course.id, lesson.previous.slug)}
-                >
-                  <ArrowLeft size={18} aria-hidden="true" />
-                  <span>Anterior</span>
-                </Link>
-              ) : (
-                <span className="disabled-neighbor" aria-hidden="true">
-                  <ArrowLeft size={18} />
-                </span>
-              )}
-              {lesson.next ? (
-                <Link
-                  aria-label="Próxima lição"
-                  title={lesson.next.title}
-                  to={lessonPath(lesson.course.id, lesson.next.slug)}
-                >
-                  <span>Próxima</span>
-                  <ArrowRight size={18} aria-hidden="true" />
-                </Link>
-              ) : (
-                <span className="disabled-neighbor" aria-hidden="true">
-                  <ArrowRight size={18} />
-                </span>
-              )}
-            </div>
-          </nav>
-        ) : (
-          <nav
-            aria-label="Navegação principal"
-            className="flex h-full items-center gap-4 text-sm sm:gap-6"
-          >
-            <NavLink
-              to="/"
-              end
-              className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
-            >
-              Início
-            </NavLink>
-            <NavLink
-              to="/courses"
-              className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
-            >
-              Cursos
-            </NavLink>
-          </nav>
-        )}
+        <nav
+          className={
+            lesson
+              ? "header-lesson-nav"
+              : "flex h-full items-center gap-4 text-sm sm:gap-6"
+          }
+          aria-label="Navegação principal"
+        >
+          {lesson ? (
+            <>
+              <Link
+                aria-label={`Abrir curso ${lesson.course.title}`}
+                className="header-course"
+                to={"/courses/" + encodeURIComponent(lesson.course.id)}
+                title={lesson.course.title}
+              >
+                <BookOpen size={18} aria-hidden="true" />
+                <span>{lesson.course.title}</span>
+              </Link>
+              <Link to="/" className="header-home">
+                Início
+              </Link>
+            </>
+          ) : (
+            <>
+              <NavLink
+                to="/"
+                end
+                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
+              >
+                Início
+              </NavLink>
+              <NavLink
+                to="/courses"
+                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
+              >
+                Cursos
+              </NavLink>
+            </>
+          )}
+        </nav>
       </div>
     </header>
   );

@@ -103,9 +103,9 @@ export function ReadingArticle({ children }: { children: ReactNode }) {
                 value={tone}
                 onChange={(e) => save(size, Number(e.target.value))}
               >
-                <option value="0">Grafite</option>
-                <option value="1">Suave</option>
-                <option value="2">Quente</option>
+                <option value="0">Padrão BunkerCode</option>
+                <option value="1">Azul profundo</option>
+                <option value="2">Alto contraste</option>
               </select>
             </label>
             <button onClick={() => save(17, 0)}>Restaurar padrões</button>

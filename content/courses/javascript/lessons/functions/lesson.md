@@ -22,6 +22,14 @@ O exemplo demonstrativo calcula 36 e 16 em chamadas independentes. `subtotal` s�
 
 Uma função também pode ser um valor atribuído a uma variável: `const double = (value) => value * 2;`. A forma de seta não exige um corpo com chaves para uma expressão simples. Ao usar chaves, escreva `return` quando precisar entregar um valor.
 
+## Pratique com entradas diferentes
+
+No workspace ao lado, implemente `totalPrice`. Run chama a função com os casos públicos; Submit reavalia e registra uma solução local. Os exemplos desta página continuam texto inerte.
+
+```bunker-exercise
+{"kind":"exercise"}
+```
+
 ## Para revisar
 O cálculo depende somente dos parâmetros ou consulta variáveis externas? Separar entradas explícitas facilita explicar e testar a operação.
 

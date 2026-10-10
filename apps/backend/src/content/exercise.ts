@@ -1,4 +1,4 @@
-import { parseOutputTest, type OutputTest } from "@bunkercode/content";
+import { parseExerciseTests, type ExerciseTests } from "@bunkercode/content";
 import {
   constants,
   openSync,
@@ -22,7 +22,7 @@ export interface Exercise {
   starterCode: string;
   expected: string;
   revision: string;
-  tests?: OutputTest;
+  tests?: ExerciseTests;
 }
 const limit = 64 * 1024;
 function invalid(): never {
@@ -68,7 +68,9 @@ export function parseExercise(value: unknown): Omit<Exercise, "revision"> {
     instructions: text("instructions", 12000),
     starterCode: text("starterCode", 32768, true),
     expected: text("expected", 4000),
-    ...(item.tests === undefined ? {} : { tests: parseOutputTest(item.tests) }),
+    ...(item.tests === undefined
+      ? {}
+      : { tests: parseExerciseTests(item.tests) }),
   };
 }
 export function loadExercise(

@@ -1,9 +1,36 @@
 {
   "id": "product-values",
-  "title": "Descreva um produto com tipos",
-  "objective": "Praticar anotações explícitas e inferência usando string, number e boolean. Exemplo editorial demonstrativo.",
-  "instructions": "Declare productName com o nome de um produto (string) e remainingStock com sua quantidade em estoque (number). Depois, derive available comparando remainingStock com zero, sem escrever true ou false diretamente. Adicione uma anotação explícita em pelo menos uma variável e deixe o TypeScript inferir outra. Por fim, escreva um comentário explicando por que atribuir uma string a remainingStock violaria seu tipo.",
+  "title": "Disponibilidade de estoque",
+  "objective": "Implementar uma função tipada que derive a disponibilidade de um produto a partir do estoque.",
+  "instructions": "Implemente isAvailable(remainingStock: number): boolean. Retorne true somente quando o estoque for maior que zero. Zero e valores negativos retornam false. Use o parâmetro no cálculo e retorne o boolean; imprimir um resultado não resolve o exercício. Os casos públicos incluem estoque positivo, zero e negativo. Não use export; a função deve estar no escopo superior da solução.",
   "language": "typescript",
-  "starterCode": "// Complete as declarações com valores coerentes.\nconst productName: string = \"\";\nlet remainingStock: number = 0;\n\n// Derive available a partir de remainingStock.\n\n// Explique aqui uma atribuição incompatível com o tipo.\n",
-  "expected": "Seu código deve representar nome, quantidade e disponibilidade com tipos coerentes. Confira se a disponibilidade muda quando o estoque é zero e se seu comentário distingue valor de tipo. Use os diagnósticos e, quando Run estiver disponível, explore o resultado. Submit registra sua versão sem avaliação automática."
+  "starterCode": "function isAvailable(remainingStock: number): boolean {\n  // Derive o resultado a partir do estoque.\n  return false;\n}\n",
+  "expected": "A função deve responder corretamente aos quatro casos públicos de estoque, com um retorno booleano e sem erros de compilação.",
+  "tests": {
+    "kind": "function",
+    "version": 1,
+    "function": "isAvailable",
+    "cases": [
+      {
+        "name": "Estoque positivo deve retornar true",
+        "args": [3],
+        "expected": true
+      },
+      {
+        "name": "Estoque igual a zero deve retornar false",
+        "args": [0],
+        "expected": false
+      },
+      {
+        "name": "Estoque negativo deve retornar false",
+        "args": [-2],
+        "expected": false
+      },
+      {
+        "name": "Uma unidade deve estar disponível",
+        "args": [1],
+        "expected": true
+      }
+    ]
+  }
 }

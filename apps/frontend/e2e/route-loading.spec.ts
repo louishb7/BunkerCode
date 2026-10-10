@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -6,11 +7,15 @@ interface Asset {
   file: string;
   imports?: string[];
   css?: string[];
+  name?: string;
+  isDynamicEntry?: boolean;
 }
 const manifest = JSON.parse(
   await readFile(resolve("dist/.vite/manifest.json"), "utf8"),
 ) as Record<string, Asset>;
-const studio = manifest["src/courses/Studio.tsx"]!;
+const studio = Object.values(manifest).find(
+  (asset) => asset.name === "Studio" && asset.isDynamicEntry,
+)!;
 const reader = manifest["src/courses/LessonPage.tsx"]!;
 const markdown = Object.values(manifest).find((asset) =>
   /\/Markdown-.*\.js$/.test(asset.file),
@@ -53,9 +58,7 @@ test("catalog defers reader, Markdown and Studio chunks; pending routes remain a
       page.getByRole("navigation", { name: "Navegação principal" }),
     ).toBeVisible();
     release();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
+    await studioView(page, "Editar fonte Markdown");
     const input = page.getByRole("textbox", {
       name: "Markdown completo",
       exact: true,
@@ -69,9 +72,7 @@ test("catalog defers reader, Markdown and Studio chunks; pending routes remain a
       .getByRole("link", { name: "Voltar à lição", exact: true })
       .click();
     await page.getByRole("link", { name: "Editar lição", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
+    await studioView(page, "Editar fonte Markdown");
     await expect(input).toHaveValue(draft);
     await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
   } finally {
@@ -83,9 +84,7 @@ test("failed route chunk exposes recovery and reload preserves the existing draf
   page,
 }) => {
   await page.goto(lesson + "/edit");
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   const input = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -112,9 +111,7 @@ test("failed route chunk exposes recovery and reload preserves the existing draf
   );
   await page.unroute("**/" + studio.file);
   await page.getByRole("button", { name: "Tentar novamente" }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(input).toHaveValue(draft);
   await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
 });

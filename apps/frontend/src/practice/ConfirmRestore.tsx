@@ -3,9 +3,11 @@ import * as AlertDialog from "@radix-ui/react-alert-dialog";
 export function ConfirmRestore({
   onConfirm,
   disabled,
+  iconOnly = false,
 }: {
   onConfirm: () => void;
   disabled: boolean;
+  iconOnly?: boolean;
 }) {
   return (
     <AlertDialog.Root>
@@ -16,7 +18,7 @@ export function ConfirmRestore({
         className="restore-button"
       >
         <RotateCcw className="product-icon" aria-hidden="true" />
-        Restaurar
+        {!iconOnly && "Restaurar"}
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/70" />

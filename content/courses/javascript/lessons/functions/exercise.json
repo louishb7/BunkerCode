@@ -1,0 +1,36 @@
+{
+  "id": "total-price",
+  "title": "Calcule o total da compra",
+  "objective": "Extrair um cálculo de preço para uma função com entradas explícitas e retorno numérico.",
+  "instructions": "Implemente totalPrice(unitPrice, quantity). Multiplique o preço unitário pela quantidade e retorne o total. Quantidade zero deve resultar em zero; preços decimais também são aceitos. A função deve usar os parâmetros, não imprimir um total fixo. Não use export; mantenha a função no escopo superior da solução.",
+  "language": "javascript",
+  "starterCode": "/** @param {number} unitPrice @param {number} quantity */\nfunction totalPrice(unitPrice, quantity) {\n  // Calcule e retorne o total.\n  return 0;\n}\n",
+  "expected": "Retorno numérico correto em quatro casos públicos: duas compras diferentes, quantidade zero e preço decimal.",
+  "tests": {
+    "kind": "function",
+    "version": 1,
+    "function": "totalPrice",
+    "cases": [
+      {
+        "name": "Três unidades de doze custam 36",
+        "args": [12, 3],
+        "expected": 36
+      },
+      {
+        "name": "Duas unidades de oito custam 16",
+        "args": [8, 2],
+        "expected": 16
+      },
+      {
+        "name": "Quantidade zero não cobra nada",
+        "args": [12, 0],
+        "expected": 0
+      },
+      {
+        "name": "Preço decimal permanece numérico",
+        "args": [2.5, 4],
+        "expected": 10
+      }
+    ]
+  }
+}

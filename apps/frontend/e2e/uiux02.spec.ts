@@ -26,7 +26,9 @@ for (const width of [390, 1280, 1440, 1920]) {
       expect(homeBox!.width).toBeGreaterThanOrEqual(44);
       expect(homeBox!.height).toBeGreaterThanOrEqual(44);
       await expect(
-        header.getByRole("button", { name: "Lições", exact: true }),
+        page
+          .locator(".workspace-navigation")
+          .getByRole("button", { name: "Lições", exact: true }),
       ).toBeVisible();
       await expect(header.locator(".header-course")).toHaveAttribute(
         "href",
@@ -51,7 +53,12 @@ for (const width of [390, 1280, 1440, 1920]) {
       await expect(page.locator(".study-explanation")).toHaveClass(
         /reading-tone-2/,
       );
-      const divider = page.getByRole("separator");
+      const divider = page.getByRole("separator", {
+        name: programming
+          ? "Largura do artigo e editor"
+          : "Largura do artigo e sumário",
+        exact: true,
+      });
       if (width >= 1000) {
         await expect(divider).toBeVisible();
         const panel = page.locator(".study-explanation");

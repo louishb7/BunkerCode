@@ -1,3 +1,4 @@
+import type { TestReport } from "@bunkercode/content";
 export interface RuntimeStatus {
   available: boolean;
   reason: string;
@@ -10,6 +11,8 @@ export interface RunResult {
   stderr: string;
   exitCode: number | null;
   assessment?: "passed" | "failed";
+  revision: string;
+  testReport?: TestReport;
 }
 const headers = {
   "content-type": "application/json",
@@ -65,6 +68,7 @@ export async function runSolution(
       r.assessment !== "passed" &&
       r.assessment !== "failed") ||
     r.id !== value.id ||
+    r.revision !== value.revision ||
     typeof r.sourceHash !== "string" ||
     !/^[a-f0-9]{64}$/.test(r.sourceHash) ||
     typeof r.stdout !== "string" ||
@@ -75,6 +79,31 @@ export async function runSolution(
     (r.exitCode !== null && !Number.isSafeInteger(r.exitCode))
   )
     throw new Error("Resposta de execução incompatível.");
+  if (r.testReport !== undefined) {
+    const report = r.testReport;
+    if (
+      !report ||
+      !Number.isSafeInteger(report.total) ||
+      report.total < 1 ||
+      report.total > 16 ||
+      !Number.isSafeInteger(report.passed) ||
+      report.passed < 0 ||
+      report.passed > report.total ||
+      !Array.isArray(report.cases) ||
+      report.cases.length !== report.total ||
+      report.cases.some(
+        (item) =>
+          !item ||
+          typeof item.name !== "string" ||
+          typeof item.passed !== "boolean" ||
+          typeof item.expected !== "string" ||
+          (item.actual !== undefined && typeof item.actual !== "string") ||
+          (item.error !== undefined && typeof item.error !== "string"),
+      ) ||
+      report.cases.filter((item) => item.passed).length !== report.passed
+    )
+      throw new Error("Relatório de testes incompatível.");
+  }
   const hash = Array.from(
     new Uint8Array(
       await crypto.subtle.digest(

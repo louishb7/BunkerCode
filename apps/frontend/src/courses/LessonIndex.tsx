@@ -10,6 +10,7 @@ export function LessonIndex({ course }: { course: Course }) {
     <>
       <button
         className="lesson-index-trigger"
+        title="Selecionar lição"
         aria-expanded={open}
         aria-controls="lesson-index"
         onClick={() => {

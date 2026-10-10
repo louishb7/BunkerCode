@@ -312,12 +312,6 @@ html:has(.lesson-index[open]) {
   font-size: var(--prose-size, 17px);
   max-width: 75ch;
 }
-.reading-tone-1 > .prose {
-  color: #c8c9c7;
-}
-.reading-tone-2 > .prose {
-  color: #e2d3b9;
-}
 .reading-settings {
   float: right;
   position: relative;
@@ -571,7 +565,6 @@ html:has(.lesson-index[open]) {
   .header-lesson-nav {
     gap: 8px;
   }
-  .header-course span,
   .header-neighbors a span {
     display: none;
   }
@@ -589,6 +582,245 @@ html:has(.lesson-index[open]) {
 }
 @media (max-width: 400px) {
   .site-header-content > a > .brand-wordmark {
-    display: none;
+    display: inline;
+    font-size: 14px;
   }
+}
+
+/* Refinement 03: a continuous workspace with one measurable divider. */
+.reader-layout {
+  padding-top: 20px;
+}
+.practice-layout {
+  padding: 16px 16px 48px;
+}
+.practice-workspace {
+  max-width: 1720px;
+}
+.header-home {
+  margin-left: auto;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+.header-course {
+  min-height: 44px;
+  overflow: hidden;
+}
+.workspace-navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+.workspace-navigation > a,
+.workspace-navigation > button {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 5px;
+}
+.workspace-navigation > a:hover {
+  background: #ffffff08;
+}
+.workspace-navigation > button:disabled {
+  color: #676e73;
+  opacity: 0.65;
+  cursor: default;
+}
+.workspace-navigation .lesson-index-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #3c444a;
+  border-radius: 5px;
+  margin-right: 4px;
+}
+.programming-split {
+  gap: 0;
+  border: 1px solid #31393e;
+  border-radius: 8px;
+  overflow: clip;
+}
+.programming-split .study-explanation {
+  padding: 18px 24px 28px;
+}
+.programming-split .study-code {
+  padding: 10px 12px 12px;
+  min-width: 0;
+}
+.programming-split .lesson-heading .eyebrow {
+  margin-top: 0;
+}
+@media (min-width: 1000px) {
+  .programming-split {
+    grid-template-columns: minmax(0, var(--article-weight)) 8px minmax(
+        0,
+        var(--sidebar-weight)
+      );
+    column-gap: 0;
+  }
+  .programming-split .study-divider {
+    width: 8px;
+    background: transparent;
+    position: relative;
+    border: 0;
+  }
+  .programming-split .study-divider::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 3px;
+    width: 1px;
+    background: #3b444a;
+  }
+  .programming-split .study-divider:hover::before,
+  .programming-split .study-divider:focus-visible::before {
+    background: var(--accent);
+    width: 2px;
+  }
+}
+@media (max-width: 999px) {
+  .programming-split .study-explanation {
+    padding: 16px;
+  }
+  .programming-split .study-code {
+    border-top: 1px solid #31393e;
+    padding: 12px;
+  }
+}
+
+/* The code and its current result share a stable, independently resized workspace. */
+.workspace-panels {
+  display: grid;
+  grid-template-rows:
+    auto minmax(0, 3fr)
+    auto 8px minmax(0, 2fr);
+  height: clamp(460px, calc(100dvh - 170px), 800px);
+  min-height: 460px;
+}
+.workspace-editor,
+.workspace-code-slot,
+.workspace-code-slot > div:not([hidden]) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace-code-slot > [hidden] {
+  display: none;
+}
+.workspace-code-slot .code-editor,
+.workspace-code-slot .cm-editor,
+.workspace-code-slot .cm-scroller {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+.workspace-code-slot .cm-content {
+  min-height: 100%;
+}
+.workspace-results {
+  overflow: auto;
+  min-height: 0;
+}
+.workspace-results .results-panel {
+  border: 0;
+  padding: 12px 16px;
+}
+.result-heading {
+  margin: 0;
+  font-size: 13px;
+  color: #d9dfe4;
+  font-weight: 600;
+}
+.workspace-height-divider {
+  cursor: row-resize;
+  touch-action: none;
+  position: relative;
+  background: #20252a;
+}
+.workspace-height-divider::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #414a53;
+}
+.workspace-height-divider:hover::before,
+.workspace-height-divider:focus-visible::before {
+  background: var(--accent);
+  height: 2px;
+}
+.practice-panel .editor-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 9px;
+}
+.practice-panel .code-primary-actions,
+.practice-panel .code-utilities {
+  margin-left: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: center;
+}
+.practice-panel .code-primary-actions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 5px;
+}
+.practice-panel .code-utilities button {
+  padding: 6px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  display: grid;
+  place-items: center;
+}
+.practice-panel .practice-run {
+  border: 1px solid #515963;
+  background: #282e35;
+}
+.practice-panel .editor-toolbar {
+  padding: 7px 10px;
+}
+.reading-tone-0 {
+  background: #191e23;
+}
+.reading-tone-1 {
+  background: #111b2a;
+}
+.reading-tone-2 {
+  background: #080c10;
+}
+.reading-tone-1 > .prose {
+  color: #e2e8f0;
+}
+.reading-tone-2 > .prose {
+  color: #f4f6f8;
+}
+.reading-tone-1 > .prose :is(h1, h2, h3, h4) {
+  color: #f0f4fa;
+}
+.reading-tone-2 > .prose :is(h1, h2, h3, h4) {
+  color: #fff;
+}
+.reading-tone-1 > .prose :is(blockquote, figcaption) {
+  color: #bdc9d9;
+}
+.reading-tone-2 > .prose :is(blockquote, figcaption) {
+  color: #d5dce5;
+}
+.reading-tone-1 > .prose a,
+.reading-tone-2 > .prose a {
+  color: #eac17b;
 }

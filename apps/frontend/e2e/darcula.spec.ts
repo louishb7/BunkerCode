@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test, type Locator } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -96,6 +97,10 @@ test("Darcula token colors cover supported languages in both the lesson reader a
 }) => {
   await page.goto(lesson);
   await expect(page.locator(".lesson-reader .code-block")).toHaveCount(7);
+  await expect(page.locator(".lesson-reader .code-block").first()).toHaveCSS(
+    "background-color",
+    "rgb(35, 39, 44)",
+  );
 
   const colors = {
     background: await page
@@ -169,7 +174,7 @@ test("Darcula token colors cover supported languages in both the lesson reader a
   });
 
   await page.goto(studio);
-  await page.getByRole("button", { name: "Prévia", exact: true }).click();
+  await studioView(page, "Prévia");
   await expect(page.locator(".studio-preview .code-block")).toHaveCount(7);
   const previewColors = {
     comment: await page
@@ -256,8 +261,7 @@ test("representative TypeScript stays inert, compact and identical across reader
       [studio, ".studio-preview"],
     ] as const) {
       await page.goto(url);
-      if (url === studio)
-        await page.getByRole("button", { name: "Prévia", exact: true }).click();
+      if (url === studio) await studioView(page, "Prévia");
       const prose = page.locator(selector);
       await expect(prose.locator(".code-block")).toHaveCount(7);
       const current = await presentation(prose);

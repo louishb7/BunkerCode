@@ -1,3 +1,4 @@
+import { studioTools } from "./studio-controls";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -62,6 +63,7 @@ test("link popover preserves selection, validates URL, edits, cancels and remove
   await page.goto(url);
   await expect(page.locator(".visual-document")).toBeVisible();
   await selectReference(page);
+  await studioTools(page);
   await page.getByRole("button", { name: "Link", exact: true }).click();
   const form = page.getByRole("form", { name: "Editar link", exact: true });
   await form.getByLabel("URL", { exact: true }).fill("javascript:alert(1)");
@@ -76,6 +78,7 @@ test("link popover preserves selection, validates URL, edits, cancels and remove
   );
   await expect(link).toHaveText("referência");
   await link.click();
+  await studioTools(page);
   await page.getByRole("button", { name: "Link", exact: true }).click();
   await expect(form.getByLabel("URL", { exact: true })).toHaveValue(
     "https://example.com/reference",
@@ -86,6 +89,7 @@ test("link popover preserves selection, validates URL, edits, cancels and remove
   await page.keyboard.press("Escape");
   await expect(form).toHaveCount(0);
   await expect(link).toHaveText("referência");
+  await studioTools(page);
   await page.getByRole("button", { name: "Link", exact: true }).focus();
   await page.keyboard.press("Enter");
   await form
@@ -95,11 +99,13 @@ test("link popover preserves selection, validates URL, edits, cancels and remove
   await expect(
     page.locator('.visual-document a[href="https://example.com/changed"]'),
   ).toHaveText("referência");
+  await studioTools(page);
   await page.getByRole("button", { name: "Link", exact: true }).click();
   await form.getByRole("button", { name: "Remover link", exact: true }).click();
   await expect(page.locator(".visual-document a")).toHaveCount(0);
   await page.locator(".visual-document p").first().click();
   await page.keyboard.press("End");
+  await studioTools(page);
   await page.getByRole("button", { name: "Link", exact: true }).click();
   await form
     .getByLabel("URL", { exact: true })
@@ -120,6 +126,7 @@ for (const width of [390, 1440]) {
     const doc = page.locator(".visual-document");
     await expect(doc).toBeVisible();
     if (width === 390) {
+      await studioTools(page);
       await page.getByRole("button", { name: "Link", exact: true }).click();
       const popover = await page
         .getByRole("form", { name: "Editar link", exact: true })
@@ -159,7 +166,7 @@ for (const width of [390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await plus.click();
-    await page.locator(".studio-heading").click();
+    await page.locator(".studio-controls").click();
     await doc.locator("h2").click();
     await expect(menu).toHaveCount(0);
     const code = page.getByRole("textbox", {

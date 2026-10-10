@@ -19,6 +19,7 @@ import {
 import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
 import { useLessonNavigation } from "../product/SiteHeader";
+import { LessonNavigation } from "./LessonNavigation";
 import { Markdown, lessonBody } from "./Markdown";
 
 const LessonMarkdown = memo(Markdown);
@@ -103,6 +104,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             Acesso não registrado: {activityError}
           </p>
         )}
+        {!exercise && <LessonNavigation lesson={lesson} />}
         <StudySplit
           key={exercise ? "practice" : "reading"}
           practice={!!exercise}
@@ -153,7 +155,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           }
           right={
             exercise ? (
-              <div aria-label="Área de código" className="min-w-0">
+              <div
+                aria-label="Área de código"
+                className="programming-workspace min-w-0"
+              >
+                <LessonNavigation lesson={lesson} />
                 <Suspense
                   fallback={<p role="status">Carregando editor de código…</p>}
                 >

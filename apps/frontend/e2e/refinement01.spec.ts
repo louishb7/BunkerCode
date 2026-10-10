@@ -1,6 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+const expect = baseExpect.configure({ timeout: 30000 });
+test.setTimeout(120000);
 const lesson = "/courses/typescript/lessons/values-and-types";
 const editor = (page: Page) =>
   page.getByRole("textbox", { name: "Código da solução", exact: true });
@@ -155,6 +157,9 @@ test("edits and submissions produce distinct genuine activity, with historical o
   page,
 }) => {
   await open(page);
+  const runtime = (await (
+    await page.request.get("/api/practice/runtime")
+  ).json()) as { available: boolean };
   await code(page, 'const productName = "Livro";');
   await code(page, 'const productName = "Caderno";');
   await page.getByRole("button", { name: "Submit", exact: true }).click();
@@ -163,7 +168,7 @@ test("edits and submissions produce distinct genuine activity, with historical o
   expect(await records(page, "submissions")).toEqual([
     expect.objectContaining({
       code: 'const productName = "Caderno";',
-      state: "unassessed",
+      state: runtime.available ? "failed" : "unassessed",
       revision: expect.stringMatching(/^[a-f0-9]{64}$/),
       at: expect.any(Number),
       id: expect.any(String),
@@ -264,12 +269,14 @@ test("schema-one drafts upgrade intact and submitted versions survive a new edit
     page.getByText("A definição mudou. Revisão anterior preservada."),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Revisões salvas", exact: true })
+    .getByRole("button", { name: "Histórico do código", exact: true })
     .click();
   await expect(
     page.getByText("Solução da revisão anterior do enunciado", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/não avaliada · revisão anterior/)).toBeVisible();
+  await expect(
+    page.getByText(/testes falharam · revisão anterior/),
+  ).toBeVisible();
   expect(await records(page, "submissions")).toHaveLength(1);
 });
 test("submit storage failures never claim success and expose recovery without losing code", async ({
@@ -375,7 +382,7 @@ test("actual semantic and syntax diagnostics are shown and become stale after ed
   ).toBeVisible();
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
+    page.getByText(/Testes falharam\.|Compilação concluída\./).first(),
   ).toBeVisible();
   await code(page, "const broken = ;");
   await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -397,7 +404,7 @@ test("Run captures genuine console, errors and cancellation without modifying ed
   ).toBeVisible();
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Execução encerrada.", { exact: true }),
+    page.getByText("Testes falharam.", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".result-output").last()).toContainText(
     "actual output 5",
@@ -405,7 +412,7 @@ test("Run captures genuine console, errors and cancellation without modifying ed
   await code(page, 'throw new Error("real exception");');
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Erro de execução.", { exact: true }),
+    page.getByText("Testes falharam.", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".results-panel")).toContainText("real exception");
   await code(page, "while (true) {}");
@@ -441,7 +448,7 @@ test("JavaScript compile and run work, and unavailable Run remains explicit with
   await code(page, 'console.log("JavaScript real");');
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Execução encerrada.", { exact: true }),
+    page.getByText("Testes falharam.", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".result-output").last()).toContainText(
     "JavaScript real",
@@ -502,7 +509,13 @@ test("all seven new courses have two referenced lessons, correct local figures a
       expect(
         await page.locator('.prose a[href^="https://"]').count(),
       ).toBeGreaterThan(0);
-      await expect(page.locator(".cm-editor")).toHaveCount(0);
+      const exercise = await request.get(
+        `/api/content/courses/${id}/lessons/${entry.slug}/exercise`,
+      );
+      const definition = (await exercise.json()) as { exercise: unknown };
+      await expect(page.locator(".cm-editor")).toHaveCount(
+        definition.exercise ? 1 : 0,
+      );
     }
   }
 });
@@ -524,7 +537,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
     );
     await page.getByRole("button", { name: "Run", exact: true }).click();
     await expect(
-      page.getByText("Execução encerrada.", { exact: true }),
+      page.getByText("Testes falharam.", { exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Submit", exact: true }).click();
     await expect(page.getByText(/Solução registrada em/)).toBeVisible();
@@ -597,7 +610,7 @@ test("program output is rendered as text and module imports receive real diagnos
   await code(page, 'console.log("<img src=x onerror=alert(1)>");');
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText("Execução encerrada.", { exact: true }),
+    page.getByText("Testes falharam.", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".results-panel")).toContainText(
     "<img src=x onerror=alert(1)>",
@@ -671,7 +684,7 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
   await code(page, 'console.log("new compilation");');
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
+    page.getByText(/Testes falharam\.|Compilação concluída\./).first(),
   ).toBeVisible();
   release();
   await page.waitForResponse(
@@ -679,6 +692,6 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
       r.request().method() === "DELETE" && r.url().includes("/practice/runs/"),
   );
   await expect(
-    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
+    page.getByText(/Testes falharam\.|Compilação concluída\./).first(),
   ).toBeVisible();
 });

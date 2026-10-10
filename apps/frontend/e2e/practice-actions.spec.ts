@@ -158,7 +158,9 @@ test("restore needs confirmation, persists starter code, preserves submissions a
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(solution(page)).toHaveText(initial, { useInnerText: true });
   await expect.poll(() => savedCodes(page)).toContain(initial);
-  await expect(page.locator(".results-panel")).toHaveCount(0);
+  await expect(page.locator(".results-panel")).toContainText(
+    "Aguardando execução",
+  );
   expect(await submissions(page)).toEqual(history);
   await solution(page).focus();
   await page.keyboard.press("ControlOrMeta+z");
@@ -286,14 +288,14 @@ for (const width of [390, 1280, 1440, 1920]) {
       name: "Restaurar código inicial",
       exact: true,
     });
-    await expect(actions.getByRole("button")).toHaveCount(4);
+    await expect(actions.getByRole("button")).toHaveCount(5);
     await expect(format(page)).toHaveAttribute("title", "Formatar código");
     await expect(restore).toHaveAttribute("title", "Restaurar código inicial");
     await expect(format(page).locator("svg")).toHaveClass(
       /lucide-wand-sparkles/,
     );
     await expect(restore.locator("svg")).toHaveClass(/lucide-rotate-ccw/);
-    await expect(page.locator(".editor-toolbar button")).toHaveCount(1);
+    await expect(page.locator(".editor-toolbar button")).toHaveCount(2);
     await expect(
       page.getByText("Opções do exercício", { exact: true }),
     ).toHaveCount(0);

@@ -54,23 +54,43 @@ Antes de abrir visualmente, a conversão é comparada pela estrutura dos tokens 
 
 O pacote pequeno `@bunkercode/content` centraliza validação de quizzes, notas, marcadores e testes públicos no frontend/backend. Ele é compilado antes dos comandos raiz. Tiptap não é carregado na Home ou no leitor. Sanitização e Highlight.js continuam no leitor; CodeMirror usa o tema Darcula nos editores.
 
-## Avaliação mínima de exercícios
+## Avaliação pública de exercícios
 
-`exercise.json` pode acrescentar um campo opcional:
+`exercise.json` mantém `tests` opcional. O formato legado `{"kind":"stdout","expected":"42\n"}` compara stdout exato, incluindo quebras de linha, após execução bem-sucedida. Use-o quando a saída for o objetivo. Para comportamento de uma função JS/TS, use a extensão versionada:
 
 ```json
-"tests": { "kind": "stdout", "expected": "42\n" }
+"tests": {
+  "kind": "function",
+  "version": 1,
+  "function": "isAvailable",
+  "cases": [
+    { "name": "Estoque positivo", "args": [3], "expected": true },
+    { "name": "Estoque zero", "args": [0], "expected": false },
+    { "name": "Estoque negativo", "args": [-2], "expected": false }
+  ]
+}
 ```
 
-O teste compara exatamente stdout UTF-8, incluindo quebras de linha, após um processo encerrado com sucesso. A aba `testes.json` mostra essa definição real, somente leitura. Não há testes privados neste recorte. `expected` continua sendo orientação editorial; somente `tests` define avaliação automatizada.
+A função deve estar no escopo superior, como declaração ou variável, sem `export`/imports, e retornar um valor JSON síncrono. São admitidos 1–16 casos com nomes únicos de até 200 caracteres, até oito argumentos por caso, valores JSON finitos, até oito níveis de estruturas, 2.000 valores e 16.000 caracteres para a suíte. Campos extras e chaves de protótipo são recusados. A comparação é estrutural e exata; não há tolerância numérica implícita. `expected` editorial permanece orientação; apenas `tests` define aprovação. A aba real `testes.json` é somente leitura. Não há testes privados.
 
-Run compila o snapshot e, se disponível, executa no Docker restrito. Submit repete a verificação da solução atual antes de registrar o resultado. Para exercícios com teste, o backend recompila a fonte em um worker de compilação, ignora o JavaScript fornecido pelo navegador e compara a saída no servidor. O worker só analisa TypeScript/JavaScript: não executa o programa. Compilação tem limite de 64 KiB, 15 segundos, dois workers simultâneos e 128 MiB de heap por worker. O Docker mantém seus próprios limites de execução.
+Run captura o código, compila e executa explicitamente. Submit repete tudo para o snapshot atual, mesmo sem Run anterior. Para exercícios avaliáveis, o backend recompila a fonte em worker e ignora o JavaScript do cliente. Esse worker só compila: não executa o programa. Compilação admite até 64 KiB, 15 segundos, dois workers e 128 MiB de heap por worker. A função e o harness público executam exclusivamente no Docker restrito, mantendo timeout/cancelamento/rede/recursos existentes. Dentro do container, `node:vm` separa o escopo da solução do controle dos casos; **Docker é a fronteira de segurança**, não o VM. Não há execução de fonte no NestJS nem no navegador.
 
-Os novos registros locais podem ser `passed`, `failed` ou `unassessed`. Envios antigos `unassessed` não são migrados nem reinterpretados. Compilação sem erro e exit code zero, isoladamente, não aprovam. Runner indisponível ou exercício sem testes suficientes não concluem a atividade. Editar torna o resultado anterior obsoleto; o histórico continua associado à fonte exata enviada.
+O harness chama a função com argumentos e devolve valores reais/erros por protocolo identificado aleatoriamente. O backend valida o protocolo e compara os retornos aos critérios lidos do arquivo; imprimir a resposta esperada sem implementar a função falha. O resultado inclui UUID, hash SHA-256 da fonte, revisão do exercício, contagem e feedback por caso. O frontend verifica identidade/revisão e mostra esperado/recebido ou erro. Interrupção, erro ou protocolo incompleto nunca aprovam.
 
-Esse modelo verifica apenas a saída definida. Não avalia estilo, processo de raciocínio ou uso de uma técnica específica e pode ser satisfeito por saída fixa. Não é avaliação certificadora nem prevenção de fraude. Conclusão é progresso local, com dados locais modificáveis pelo dono do navegador; não há certificado nem autoridade remota de progresso. Atividades de leitura e quizzes não ganham conclusão automática.
+Os registros continuam `passed`, `failed` ou `unassessed`, no mesmo IndexedDB. Somente todos os critérios aprovados concluem localmente; código com falha de compilação ou runner indisponível é `unassessed`. Uma edição posterior marca o resultado como antigo, e Submit sempre revalida. Registros anteriores `unassessed` não são migrados nem reinterpretados. O histórico guarda fonte/revisão/timestamp, não duplica todo o relatório de execução.
 
+Inventário deste refinamento: existia apenas `typescript/values-and-types/exercise.json`, sem critérios automatizados. Ele agora avalia `isAvailable`, preservando o ID `product-values`, com estoque positivo/zero/negativo/uma unidade. Foi acrescentado `javascript/functions/exercise.json`, ID `total-price`, com compras distintas, quantidade zero e preço decimal. Todos os exercícios ativos possuem quatro casos públicos. Não foram removidos cursos ou lições.
 
-### Revisões da prática
+O modelo verifica comportamento público, não estilo, técnica específica ou compreensão. Os casos são visíveis e permitem uma função que codifique suas entradas; isso não é certificação nem prevenção de fraude. Funções assíncronas, módulos, dependências e dezenas de linguagens estão fora do escopo. O limite de 64 KiB do programa também inclui o harness; fontes próximas do limite podem ser recusadas com erro explícito.
 
-**Revisões salvas** abre sob demanda as submissões e a solução de uma revisão editorial anterior. Ao fechar ou pressionar Escape, o foco volta ao controle. A contagem de envios e os avisos editoriais antigos não ocupam a interface principal; os dados permanecem no mesmo IndexedDB. Compilação, execução e avaliação aparecem somente após uma ação, com detalhes expansíveis; falhas de gravação/conflitos mantêm recuperação contextual.
+### Workspace e histórico
+
+O painel **Resultado — Aguardando execução** existe desde a abertura. Código, barra única e resultados compõem uma área estável. O divisor horizontal ajusta alturas medidas do container, reservando espaço às abas/barra; mantém pelo menos 140 px de código e 120 px de resultado na composição normal. ↑/↓ ajustam, Home/End levam aos limites, Enter ou duplo clique restauram 60%; a preferência é local. A largura artigo/workspace continua independente. O CodeMirror permanece montado durante o redimensionamento e a consulta do histórico.
+
+**Histórico do código** alterna o painel inferior, com scroll interno, snapshots somente leitura e metadados. Não usa modal nem restaura automaticamente versões antigas. Restaurar o starter continua exigindo confirmação e preserva submissões. Recuperação de falhas/quota e conflitos continua contextual.
+
+As tonalidades **Padrão BunkerCode**, **Azul profundo** e **Alto contraste** usam superfícies e foregrounds coerentes. Os antigos índices locais 0/1/2 passam às novas paletas sem perder tamanho do texto. O tema Darcula dos editores permanece independente.
+
+### Composição do Studio
+
+A barra compacta reúne voltar, slug da lição, estado, Mais opções e Salvar. O documento possui seu título editorial uma vez. A sidebar contém inserção, formatação acessível por teclado e estrutura real dos headings; a estrutura abre sob demanda e leva ao trecho escolhido. Seleção de texto mostra a toolbar, que também pode permanecer aberta explicitamente. O + segue a geometria do bloco e nunca abre sozinho. Quizzes não selecionados mostram a apresentação do aluno; seus campos e configurações aparecem apenas ao selecionar/editar. Em mobile, as ferramentas formam uma faixa curta, sem três colunas permanentes. Em janela de até 500 px de altura os controles deixam de ser sticky. Fonte, prévia, journal, CRLF, undo e protocolo de salvamento físico/conflito continuam preservados.

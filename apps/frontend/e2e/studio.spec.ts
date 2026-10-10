@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -27,9 +28,7 @@ test("Studio previews inert Markdown, waits for real disk confirmation and works
   });
   await page.goto(reader);
   await page.getByRole("link", { name: "Editar lição" }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   const input = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -43,7 +42,7 @@ test("Studio previews inert Markdown, waits for real disk confirmation and works
     '# Valores e tipos\n\n## Minha revisão no Studio\n\nExplicação autoral com ação e acentos.\n\n~~~typescript\nconst count: number = 3;\n~~~\n\n<script>window.__studioExecuted=true</script>\n<img src=x onerror="window.__studioExecuted=true">\n\n[Link inseguro](javascript:alert(1))\n\n[Data URL](data:text/html,attack)\n';
   await input.fill(markdown);
   await expect(page.getByRole("status")).toHaveText("Alterações não salvas.");
-  await page.getByRole("button", { name: "Prévia", exact: true }).click();
+  await studioView(page, "Prévia");
   await expect(
     page.getByRole("heading", { name: "Minha revisão no Studio" }),
   ).toBeVisible();
@@ -67,9 +66,7 @@ test("Studio previews inert Markdown, waits for real disk confirmation and works
     path: info.outputPath("studio-preview-desktop.png"),
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(input).toHaveValue(markdown);
   expect(
@@ -120,12 +117,8 @@ test("two tabs keep the losing draft and require reviewing the current version b
 }) => {
   const second = await context.newPage();
   await Promise.all([page.goto(editor), second.goto(editor)]);
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
-  await second
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
+  await studioView(second, "Editar fonte Markdown");
   const firstInput = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -171,9 +164,7 @@ test("network failures preserve drafts across navigation and a lost success resp
   page,
 }) => {
   await page.goto(editor);
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   const input = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -190,9 +181,7 @@ test("network failures preserve drafts across navigation and a lost success resp
   expect(await readFile(file, "utf8")).toBe(original);
   await page.getByRole("link", { name: "Voltar à lição" }).click();
   await page.getByRole("link", { name: "Editar lição" }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(input).toHaveValue(draft);
   await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
   await page.unroute(putPath);
@@ -208,9 +197,7 @@ test("network failures preserve drafts across navigation and a lost success resp
   expect(await readFile(file, "utf8")).toBe(draft);
   await page.getByRole("link", { name: "Voltar à lição" }).click();
   await page.getByRole("link", { name: "Editar lição" }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(input).toHaveValue(draft);
   await expect(
     page.getByRole("heading", { name: "Conflito de edição" }),
@@ -247,9 +234,7 @@ test("unavailable content and write errors are explicit while preview remains us
     await page.goto(editor);
     await expect(page.getByText("Carregando conteúdo…")).toBeVisible();
     release();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
+    await studioView(page, "Editar fonte Markdown");
     await expect(
       page.getByRole("textbox", { name: "Markdown completo", exact: true }),
     ).toHaveValue(original);
@@ -277,7 +262,7 @@ test("unavailable content and write errors are explicit while preview remains us
     page.getByRole("textbox", { name: "Markdown completo", exact: true }),
   ).toHaveValue(draft);
   expect(await readFile(file, "utf8")).toBe(original);
-  await page.getByRole("button", { name: "Prévia", exact: true }).click();
+  await studioView(page, "Prévia");
   await expect(
     page.getByRole("heading", { name: "Texto sem confirmação" }),
   ).toBeVisible();
@@ -289,9 +274,7 @@ test("leaving during a save cannot clear a newer tab draft, and CRLF survives br
   const crlf = original.replace(/\r?\n/g, "\r\n");
   await writeFile(file, crlf);
   await page.goto(editor);
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   const input = page.getByRole("textbox", {
     name: "Markdown completo",
     exact: true,
@@ -316,9 +299,7 @@ test("leaving during a save cannot clear a newer tab draft, and CRLF survives br
     await expect(page.getByRole("status")).toHaveText("Salvando…");
     await page.getByRole("link", { name: "Voltar à lição" }).click();
     await page.getByRole("link", { name: "Editar lição" }).click();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
+    await studioView(page, "Editar fonte Markdown");
     await expect(input).toHaveValue(pending);
     await input.fill(newer);
     const confirmation = page.waitForResponse(
@@ -333,9 +314,7 @@ test("leaving during a save cannot clear a newer tab draft, and CRLF survives br
     await expect(page.getByRole("status")).toHaveText("Alterações não salvas.");
     await page.getByRole("link", { name: "Voltar à lição" }).click();
     await page.getByRole("link", { name: "Editar lição" }).click();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
+    await studioView(page, "Editar fonte Markdown");
     await expect(input).toHaveValue(newer);
     await expect(
       page.getByRole("heading", { name: "Conflito de edição" }),

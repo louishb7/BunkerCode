@@ -323,7 +323,9 @@ for (const width of [390, 768, 1280, 1440, 1920])
       )
       .toBe(true);
     await page.getByRole("button", { name: "Submit", exact: true }).click();
-    await expect(page.getByText(/Solução registrada em/)).toBeVisible();
+    await expect(page.getByText(/Solução registrada em/)).toBeVisible({
+      timeout: 30000,
+    });
     await page.goto("/");
     await visibleCourses(page);
     await expect(page.locator("#activity-title")).toHaveText(

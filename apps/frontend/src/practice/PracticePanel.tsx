@@ -14,6 +14,7 @@ import type { Compilation } from "./compiler";
 import { compile } from "./code-tools";
 import { CodeEditor } from "./CodeEditor";
 import { useDraft } from "./useDraft";
+import { WorkspacePanels } from "./WorkspacePanels";
 import { ConfirmRestore } from "./ConfirmRestore";
 import { draftScope } from "./draft-store";
 import {
@@ -56,7 +57,7 @@ export default function PracticePanel({
   const [submitError, setSubmitError] = useState("");
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState<Submission>();
-  const history = useRef<HTMLDialogElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const alive = useRef(true);
   const job = useRef<
     { controller: AbortController; id?: string; finished: boolean } | undefined
@@ -132,6 +133,7 @@ export default function PracticePanel({
       finished: false,
     };
     job.current = current;
+    setShowHistory(false);
     setPhase("compiling");
     setResult({ source, message: "Compilando…" });
     try {
@@ -270,284 +272,334 @@ export default function PracticePanel({
       aria-label="Editor de prática"
       className="practice-panel overflow-hidden rounded-xl border border-line bg-surface"
     >
-      <header className="editor-toolbar">
-        <div
-          role="group"
-          aria-label="Arquivos do exercício"
-          className="editor-files"
-        >
-          <button
-            aria-pressed={file === "solution"}
-            onClick={() => setFile("solution")}
-          >
-            <FileCode2 className="product-icon" aria-hidden="true" />
-            {filename}
-          </button>
-          {exercise.tests && (
-            <button
-              aria-pressed={file === "tests"}
-              onClick={() => setFile("tests")}
-            >
-              testes.json
-            </button>
-          )}
-        </div>
-      </header>
-      <div hidden={file !== "solution"}>
-        {draft.ready ? (
-          <CodeEditor
-            code={draft.code}
-            language={exercise.language}
-            onChange={draft.change}
-            formatRequest={formatRequest}
-            onFormatState={(busy, message) => {
-              setFormatting(busy);
-              setNotice(message);
-            }}
-          />
-        ) : (
-          <p role="status" className="p-4">
-            Abrindo rascunho…
-          </p>
-        )}
-      </div>
-      {exercise.tests && file === "tests" && (
-        <CodeEditor
-          code={JSON.stringify(exercise.tests, null, 2)}
-          language="javascript"
-          readOnly
-          label="Testes públicos, somente leitura"
-          onChange={() => undefined}
-          formatRequest={0}
-          onFormatState={() => undefined}
-        />
-      )}
-      <div role="group" aria-label="Ações do código" className="editor-actions">
-        <div className="code-utilities">
-          <ConfirmRestore
-            disabled={
-              !draft.ready ||
-              !!draft.conflict ||
-              file === "tests" ||
-              formatting ||
-              phase !== "idle" ||
-              sending
-            }
-            onConfirm={() => {
-              draft.change(exercise.starterCode);
-              setResult(undefined);
-              setSubmitted(undefined);
-              setNotice("Código inicial restaurado.");
-            }}
-          />
-          <button
-            className="format-button"
-            title="Formatar código"
-            aria-label="Formatar código"
-            disabled={!draft.ready || !!draft.conflict || file === "tests"}
-            aria-disabled={formatting}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              if (!formatting) setFormatRequest((value) => value + 1);
-            }}
-          >
-            <WandSparkles className="product-icon" aria-hidden="true" />
-            Formatar
-          </button>
-        </div>
-        <div className="code-primary-actions">
-          {phase !== "idle" ? (
-            <button
-              aria-label="Cancelar operação"
-              onClick={() => void cancel()}
-              className="text-xs"
-            >
-              <Square className="product-icon" aria-hidden="true" />
-              Cancelar
-            </button>
-          ) : (
-            <button
-              disabled={!draft.ready || sending || phase !== "idle"}
-              onClick={() => void analyze(draft.code)}
-              className="practice-run"
-            >
-              <Play className="product-icon" aria-hidden="true" />
-              Run
-            </button>
-          )}
-          <button
-            disabled={!draft.ready || sending || phase !== "idle"}
-            onClick={() => void submit()}
-            className="product-primary flex items-center gap-1 text-xs"
-          >
-            <Send className="product-icon" aria-hidden="true" />
-            {sending ? "Registrando…" : "Submit"}
-          </button>
-        </div>
-      </div>
-      {draft.failed && (
-        <span role="alert" className="save-status text-xs text-subtle">
-          {draft.status}
-        </span>
-      )}
-      <div className="editor-help sr-only" id="editor-keyboard-help">
-        Ctrl+Space sugere nomes locais e palavras-chave. Enter aceita. Tab
-        indenta; Escape, depois Tab, sai. Ctrl+F busca.
-      </div>
-      {notice && (
-        <p
-          role="status"
-          className="m-0 border-t border-line px-4 py-2 text-xs text-gold"
-        >
-          {notice}
-        </p>
-      )}
-      {(result || submitted || submitError) && (
-        <section aria-label="Compilação e resultados" className="results-panel">
-          <p role="status" className="text-sm">
-            {result?.message ??
-              "Pronto para compilar ou executar. Submit registra uma solução não avaliada."}
-          </p>
-          {result && result.source !== draft.code && (
-            <p className="text-xs text-gold">
-              O código foi editado após esta análise. O resultado pertence à
-              versão anterior.
-            </p>
-          )}
-          {result?.compilation && (
-            <details open={result.compilation.diagnostics.length > 0}>
-              <summary>Detalhes da verificação</summary>
-              <p className="text-xs text-subtle">
-                TypeScript {result.compilation.version} · análise sintática e
-                semântica com bibliotecas ES2022.
-              </p>
-              {result.compilation.diagnostics.length > 0 && (
-                <ul className="diagnostics">
-                  {result.compilation.diagnostics.map((item, i) => (
-                    <li key={i}>
-                      <span className="font-mono text-gold">
-                        TS{item.code} · {item.category}
-                        {item.line ? ` · ${item.line}:${item.column}` : ""}
-                      </span>
-                      <p>{item.message}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {!result.compilation.diagnostics.length && (
-                <details>
-                  <summary className="cursor-pointer text-xs text-subtle">
-                    JavaScript gerado
-                  </summary>
-                  <pre className="result-output">
-                    {result.compilation.javascript}
-                  </pre>
-                </details>
-              )}
-            </details>
-          )}
-          {result?.run && (
-            <div>
-              <h3 className="text-xs text-subtle">Saída do programa</h3>
-              <pre className="result-output">
-                {result.run.stdout || "Sem saída em stdout."}
-              </pre>
-              {result.run.stderr && (
-                <pre className="result-output text-[#e49e82]">
-                  {result.run.stderr}
-                </pre>
-              )}
-            </div>
-          )}
-          {runtime?.available === false && (
-            <p className="text-xs text-subtle">{runtime.reason}</p>
-          )}
-          {runtimeError && (
-            <p className="text-xs text-subtle">{runtimeError}</p>
-          )}
-          {submitted && (
-            <p role="status" className="text-sm text-gold">
-              Solução registrada em{" "}
-              {new Date(submitted.at).toLocaleString("pt-BR")}.{" "}
-              {submitted.state === "passed"
-                ? "Concluída pelos testes configurados · progresso local."
-                : submitted.state === "failed"
-                  ? "Testes falharam; atividade não concluída."
-                  : "Não avaliada automaticamente."}
-              {submitted.code !== draft.code
-                ? " Você continuou editando o rascunho."
-                : ""}
-            </p>
-          )}
-          {submitError && (
-            <p role="alert" className="text-sm">
-              {submitError} Seu código continua no editor.
-            </p>
-          )}
-        </section>
-      )}
-      {(draft.previous || submissions.length > 0) && (
-        <div className="practice-revisions">
-          <button type="button" onClick={() => history.current?.showModal()}>
-            <History size={16} aria-hidden="true" />
-            Revisões salvas
-          </button>
-          <dialog
-            ref={history}
-            className="practice-history"
-            aria-labelledby="practice-history-title"
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              if (
-                event.target === event.currentTarget &&
-                (event.clientX < rect.left ||
-                  event.clientX > rect.right ||
-                  event.clientY < rect.top ||
-                  event.clientY > rect.bottom)
-              )
-                history.current?.close();
-            }}
-          >
-            <div className="practice-history-heading">
-              <h2 id="practice-history-title">Revisões salvas</h2>
-              <button autoFocus onClick={() => history.current?.close()}>
-                Fechar
-              </button>
-            </div>
-            {draft.previous && (
-              <details>
-                <summary>Solução da revisão anterior do enunciado</summary>
-                <p>
-                  O enunciado mudou. Compare sua solução preservada com a
-                  definição atual.
+      <WorkspacePanels
+        tabs={
+          <>
+            <header className="editor-toolbar">
+              <div
+                role="group"
+                aria-label="Arquivos do exercício"
+                className="editor-files"
+              >
+                <button
+                  aria-pressed={file === "solution"}
+                  onClick={() => setFile("solution")}
+                >
+                  <FileCode2 className="product-icon" aria-hidden="true" />
+                  {filename}
+                </button>
+                {exercise.tests && (
+                  <button
+                    aria-pressed={file === "tests"}
+                    onClick={() => setFile("tests")}
+                  >
+                    testes.json
+                  </button>
+                )}
+              </div>
+            </header>
+          </>
+        }
+        editor={
+          <div className="workspace-code-slot">
+            <div hidden={file !== "solution"}>
+              {draft.ready ? (
+                <CodeEditor
+                  code={draft.code}
+                  language={exercise.language}
+                  onChange={draft.change}
+                  formatRequest={formatRequest}
+                  onFormatState={(busy, message) => {
+                    setFormatting(busy);
+                    setNotice(message);
+                  }}
+                />
+              ) : (
+                <p role="status" className="p-4">
+                  Abrindo rascunho…
                 </p>
-                <pre className="result-output">{draft.previous.code}</pre>
-              </details>
+              )}
+            </div>
+            {exercise.tests && file === "tests" && (
+              <CodeEditor
+                code={JSON.stringify(exercise.tests, null, 2)}
+                language="javascript"
+                readOnly
+                label="Testes públicos, somente leitura"
+                onChange={() => undefined}
+                formatRequest={0}
+                onFormatState={() => undefined}
+              />
             )}
-            {submissions.length > 0 && (
-              <section aria-label="Soluções registradas">
-                <h3>Soluções registradas</h3>
-                {submissions.map((value) => (
-                  <details key={value.id} className="mt-3">
-                    <summary className="cursor-pointer text-xs">
-                      {new Date(value.at).toLocaleString("pt-BR")} ·{" "}
-                      {value.state === "passed"
-                        ? "aprovada nos testes locais"
-                        : value.state === "failed"
-                          ? "testes falharam"
-                          : "não avaliada"}
-                      {value.revision !== exercise.revision
-                        ? " · revisão anterior"
-                        : ""}
-                    </summary>
-                    <pre className="result-output">{value.code}</pre>
+          </div>
+        }
+        actions={
+          <>
+            <div
+              role="group"
+              aria-label="Ações do código"
+              className="editor-actions"
+            >
+              <div className="code-primary-actions">
+                {phase !== "idle" ? (
+                  <button
+                    aria-label="Cancelar operação"
+                    onClick={() => void cancel()}
+                    className="text-xs"
+                  >
+                    <Square className="product-icon" aria-hidden="true" />
+                    Cancelar
+                  </button>
+                ) : (
+                  <button
+                    disabled={!draft.ready || sending || phase !== "idle"}
+                    onClick={() => void analyze(draft.code)}
+                    className="practice-run"
+                  >
+                    <Play className="product-icon" aria-hidden="true" />
+                    Run
+                  </button>
+                )}
+                <button
+                  disabled={!draft.ready || sending || phase !== "idle"}
+                  onClick={() => void submit()}
+                  className="product-primary flex items-center gap-1 text-xs"
+                >
+                  <Send className="product-icon" aria-hidden="true" />
+                  {sending ? "Registrando…" : "Submit"}
+                </button>
+              </div>
+              <div className="code-utilities">
+                <button
+                  className="format-button"
+                  title="Formatar código"
+                  aria-label="Formatar código"
+                  disabled={
+                    !draft.ready || !!draft.conflict || file === "tests"
+                  }
+                  aria-disabled={formatting}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    if (!formatting) setFormatRequest((value) => value + 1);
+                  }}
+                >
+                  <WandSparkles className="product-icon" aria-hidden="true" />
+                </button>
+                <ConfirmRestore
+                  iconOnly
+                  disabled={
+                    !draft.ready ||
+                    !!draft.conflict ||
+                    file === "tests" ||
+                    formatting ||
+                    phase !== "idle" ||
+                    sending
+                  }
+                  onConfirm={() => {
+                    draft.change(exercise.starterCode);
+                    setResult(undefined);
+                    setSubmitted(undefined);
+                    setNotice("Código inicial restaurado.");
+                  }}
+                />
+                <button
+                  title="Histórico do código"
+                  aria-label="Histórico do código"
+                  aria-pressed={showHistory}
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  <History className="product-icon" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </>
+        }
+        results={
+          <>
+            {draft.failed && (
+              <span role="alert" className="save-status text-xs text-subtle">
+                {draft.status}
+              </span>
+            )}
+            <div className="editor-help sr-only" id="editor-keyboard-help">
+              Ctrl+Space sugere nomes locais e palavras-chave. Enter aceita. Tab
+              indenta; Escape, depois Tab, sai. Ctrl+F busca.
+            </div>
+            {notice && (
+              <p
+                role="status"
+                className="m-0 border-t border-line px-4 py-2 text-xs text-gold"
+              >
+                {notice}
+              </p>
+            )}
+            {!showHistory && (
+              <section
+                aria-label="Compilação e resultados"
+                className="results-panel"
+              >
+                <h2 className="result-heading">Resultado</h2>
+                <p role="status" className="text-sm">
+                  {result?.message ?? "Aguardando execução"}
+                </p>
+                {result && result.source !== draft.code && (
+                  <p className="text-xs text-gold">
+                    O código foi editado após esta análise. O resultado pertence
+                    à versão anterior.
+                  </p>
+                )}
+                {result?.compilation && (
+                  <details open={result.compilation.diagnostics.length > 0}>
+                    <summary>Detalhes da verificação</summary>
+                    <p className="text-xs text-subtle">
+                      TypeScript {result.compilation.version} · análise
+                      sintática e semântica com bibliotecas ES2022.
+                    </p>
+                    {result.compilation.diagnostics.length > 0 && (
+                      <ul className="diagnostics">
+                        {result.compilation.diagnostics.map((item, i) => (
+                          <li key={i}>
+                            <span className="font-mono text-gold">
+                              TS{item.code} · {item.category}
+                              {item.line
+                                ? ` · ${item.line}:${item.column}`
+                                : ""}
+                            </span>
+                            <p>{item.message}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {!result.compilation.diagnostics.length && (
+                      <details>
+                        <summary className="cursor-pointer text-xs text-subtle">
+                          JavaScript gerado
+                        </summary>
+                        <pre className="result-output">
+                          {result.compilation.javascript}
+                        </pre>
+                      </details>
+                    )}
                   </details>
-                ))}
+                )}
+                {result?.run?.testReport && (
+                  <section
+                    aria-label="Testes executados"
+                    className="test-feedback"
+                  >
+                    <h3>
+                      {result.run.testReport.passed} de{" "}
+                      {result.run.testReport.total} testes aprovados
+                    </h3>
+                    {result.run.testReport.cases.map((item) => (
+                      <details key={item.name} open={!item.passed}>
+                        <summary>
+                          {item.passed ? "Passou" : "Falhou"}: {item.name}
+                        </summary>
+                        {item.error ? (
+                          <p>{item.error}</p>
+                        ) : (
+                          <>
+                            <p>
+                              Esperado: <code>{item.expected}</code>
+                            </p>
+                            <p>
+                              Recebido: <code>{item.actual}</code>
+                            </p>
+                          </>
+                        )}
+                      </details>
+                    ))}
+                  </section>
+                )}
+                {result?.run && (
+                  <div>
+                    <h3 className="text-xs text-subtle">Saída do programa</h3>
+                    <pre className="result-output">
+                      {result.run.stdout || "Sem saída em stdout."}
+                    </pre>
+                    {result.run.stderr && (
+                      <pre className="result-output text-[#e49e82]">
+                        {result.run.stderr}
+                      </pre>
+                    )}
+                  </div>
+                )}
+                {runtime?.available === false && (
+                  <p className="text-xs text-subtle">{runtime.reason}</p>
+                )}
+                {runtimeError && (
+                  <p className="text-xs text-subtle">{runtimeError}</p>
+                )}
+                {submitted && (
+                  <p role="status" className="text-sm text-gold">
+                    Solução registrada em{" "}
+                    {new Date(submitted.at).toLocaleString("pt-BR")}.{" "}
+                    {submitted.state === "passed"
+                      ? "Concluída pelos testes configurados · progresso local."
+                      : submitted.state === "failed"
+                        ? "Testes falharam; atividade não concluída."
+                        : "Não avaliada automaticamente."}
+                    {submitted.code !== draft.code
+                      ? " Você continuou editando o rascunho."
+                      : ""}
+                  </p>
+                )}
+                {submitError && (
+                  <p role="alert" className="text-sm">
+                    {submitError} Seu código continua no editor.
+                  </p>
+                )}
               </section>
             )}
-          </dialog>
-        </div>
-      )}
+            {showHistory && (
+              <section
+                className="results-panel"
+                aria-label="Histórico do código"
+              >
+                <h2 className="result-heading">Histórico do código</h2>
+                {!draft.previous && !submissions.length && (
+                  <p>
+                    Nenhuma solução registrada. Submit guarda o snapshot
+                    analisado.
+                  </p>
+                )}
+                {draft.previous && (
+                  <details>
+                    <summary>Solução da revisão anterior do enunciado</summary>
+                    <p>
+                      O enunciado mudou. Compare sua solução preservada com a
+                      definição atual.
+                    </p>
+                    <pre className="result-output">{draft.previous.code}</pre>
+                  </details>
+                )}
+                {submissions.length > 0 && (
+                  <section aria-label="Soluções registradas">
+                    <h3>Soluções registradas</h3>
+                    {submissions.map((value) => (
+                      <details key={value.id} className="mt-3">
+                        <summary className="cursor-pointer text-xs">
+                          {new Date(value.at).toLocaleString("pt-BR")} ·{" "}
+                          {value.state === "passed"
+                            ? "aprovada nos testes locais"
+                            : value.state === "failed"
+                              ? "testes falharam"
+                              : "não avaliada"}
+                          {value.revision !== exercise.revision
+                            ? " · revisão anterior"
+                            : ""}
+                        </summary>
+                        <pre className="result-output">{value.code}</pre>
+                      </details>
+                    ))}
+                  </section>
+                )}
+              </section>
+            )}
+          </>
+        }
+      />
       {(draft.failed || submitError) && (
         <section
           aria-label="Recuperação do código"

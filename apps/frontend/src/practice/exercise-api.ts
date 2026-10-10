@@ -1,4 +1,4 @@
-import { parseOutputTest, type OutputTest } from "@bunkercode/content";
+import { parseExerciseTests, type ExerciseTests } from "@bunkercode/content";
 import {
   incompatibleContent,
   isContentSlug,
@@ -13,7 +13,7 @@ export interface Exercise {
   starterCode: string;
   expected: string;
   revision: string;
-  tests?: OutputTest;
+  tests?: ExerciseTests;
 }
 export function parseExercise(value: unknown): { exercise: Exercise | null } {
   if (!value || typeof value !== "object" || !("exercise" in value))
@@ -39,6 +39,6 @@ export function parseExercise(value: unknown): { exercise: Exercise | null } {
     !/^[a-f0-9]{64}$/.test(item.revision)
   )
     throw new Error(incompatibleContent);
-  if (item.tests !== undefined) item.tests = parseOutputTest(item.tests);
+  if (item.tests !== undefined) item.tests = parseExerciseTests(item.tests);
   return { exercise: item as unknown as Exercise };
 }

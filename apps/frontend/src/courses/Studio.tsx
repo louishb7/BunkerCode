@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { ArrowLeft, MoreHorizontal } from "lucide-react";
+import { useLessonNavigation } from "../product/SiteHeader";
 import { Link, useParams } from "react-router";
 import { lessonPath, useContent, incompatibleContent } from "./api";
 import { Page } from "./Page";
@@ -91,6 +93,7 @@ export function StudioPage() {
   return <LessonEditor key={id + "/" + slug} lesson={lesson} />;
 }
 function LessonEditor({ lesson }: { lesson: EditableLesson }) {
+  useLessonNavigation(lesson);
   const id = lesson.course.id,
     slug = lesson.slug;
   const storageKey = "bunkercode:studio:" + id + "/" + slug;
@@ -239,62 +242,63 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       title={`Studio · ${lesson.title} · ${lesson.course.title}`}
       className="page-width reading-page studio-page"
     >
-      <nav className="studio-breadcrumb" aria-label="Caminho da página">
-        <Link to={"/courses/" + encodeURIComponent(id)}>
-          {lesson.course.title}
+      <header className="studio-controls studio-topbar">
+        <Link
+          className="studio-back"
+          to={lessonPath(id, slug)}
+          aria-label="Voltar à lição"
+          title="Voltar à lição"
+        >
+          <ArrowLeft size={19} />
         </Link>
-        <span aria-hidden="true">/</span>
-        <Link to={lessonPath(id, slug)}>Voltar à lição</Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">Studio</span>
-      </nav>
-      <header className="studio-heading">
-        <p className="eyebrow">Studio · autoria local</p>
-        <h1 className={view === "edit" ? undefined : "sr-only"}>
-          {lesson.title}
-        </h1>
-      </header>
-      <div className="studio-controls">
-        <div className="studio-toolbar">
-          <div
-            className="studio-views"
-            role="group"
-            aria-label="Visualização do Studio"
-          >
-            <button
-              aria-pressed={view === "visual"}
-              onClick={() => changeView("visual")}
-            >
-              Editor visual
-            </button>
-            <button
-              aria-pressed={view === "edit"}
-              onClick={() => changeView("edit")}
-            >
-              Editar fonte Markdown
-            </button>
-            <button
-              aria-pressed={view === "preview"}
-              onClick={() => changeView("preview")}
-            >
-              Prévia
-            </button>
-          </div>
-          <button
-            className="studio-save"
-            disabled={!dirty || saving || conflict}
-            onClick={() => void save()}
-          >
-            {saving ? "Salvando…" : "Salvar alterações"}
-          </button>
-        </div>
+        <span className="studio-identity" title={lesson.title}>
+          {slug}
+        </span>
         <p
           className={dirty ? "studio-status pending" : "studio-status"}
           role="status"
         >
           {status}
         </p>
-      </div>
+        <details className="studio-options">
+          <summary aria-label="Mais opções" title="Mais opções">
+            <MoreHorizontal size={20} />
+          </summary>
+          <div role="group" aria-label="Visualização do Studio">
+            {(
+              [
+                ["visual", "Editor visual"],
+                ["edit", "Editar fonte Markdown"],
+                ["preview", "Prévia"],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                aria-pressed={view === mode}
+                onClick={(event) => {
+                  changeView(mode);
+                  const details = event.currentTarget.closest("details");
+                  if (details) {
+                    details.open = false;
+                    details
+                      .querySelector("summary")
+                      ?.focus({ preventScroll: true });
+                  }
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </details>
+        <button
+          className="studio-save"
+          disabled={!dirty || saving || conflict}
+          onClick={() => void save()}
+        >
+          {saving ? "Salvando…" : "Salvar alterações"}
+        </button>
+      </header>
       {notice && <p className="studio-notice">{notice}</p>}
       {storageError && (
         <p role="alert" className="studio-error">

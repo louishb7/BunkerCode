@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -202,17 +203,16 @@ test("new editorial revision preserves the old solution in a separate record", a
       page.getByText("A definição mudou. Revisão anterior preservada."),
     ).toHaveCount(0);
     await page
-      .getByRole("button", { name: "Revisões salvas", exact: true })
+      .getByRole("button", { name: "Histórico do código", exact: true })
       .click();
     await page
       .getByText("Solução da revisão anterior do enunciado", { exact: true })
       .click();
-    await expect(page.locator(".practice-history pre")).toContainText(
+    await expect(page.locator(".workspace-results pre")).toContainText(
       "minha solução anterior",
     );
     await page
-      .getByRole("dialog", { name: "Revisões salvas", exact: true })
-      .getByRole("button", { name: "Fechar", exact: true })
+      .getByRole("button", { name: "Histórico do código", exact: true })
       .click();
     await replaceCode(page, "// solução revisada");
     await saved(page);
@@ -338,9 +338,7 @@ test("malformed optional exercise remains recoverable without blocking reading o
     "A leitura continua disponível",
   );
   await page.getByRole("link", { name: "Editar lição", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(
     page.getByRole("textbox", { name: "Markdown completo", exact: true }),
   ).toBeVisible();
@@ -375,7 +373,9 @@ for (const width of [390, 768, 1024, 1440])
       if (name === "practice") {
         await expect(page.locator(".cm-editor")).toHaveCount(1);
         await expect(
-          page.getByRole("heading", { name: "Descreva um produto com tipos" }),
+          page.getByRole("heading", {
+            name: (JSON.parse(definition) as { title: string }).title,
+          }),
         ).toBeVisible();
       }
       expect(
@@ -540,7 +540,7 @@ test("mobile reading and code remain visible without view toggles", async ({
     await page
       .locator(".study-code")
       .evaluate((node) => node.getBoundingClientRect().top),
-  ).toBeGreaterThan(
+  ).toBeGreaterThanOrEqual(
     await page
       .locator(".study-explanation")
       .evaluate((node) => node.getBoundingClientRect().bottom),

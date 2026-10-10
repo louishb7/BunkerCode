@@ -170,3 +170,85 @@ export function parseOutputTest(value: unknown): OutputTest {
     );
   return { kind: "stdout", expected: t.expected };
 }
+
+export type JsonValue =
+  null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export interface FunctionTests {
+  kind: "function";
+  version: 1;
+  function: string;
+  cases: { name: string; args: JsonValue[]; expected: JsonValue }[];
+}
+export type ExerciseTests = OutputTest | FunctionTests;
+/** Public synchronous JSON cases, deliberately limited to one JS/TS function. */
+export function parseExerciseTests(value: unknown): ExerciseTests {
+  const suite = object(value);
+  if (suite.kind === "stdout") return parseOutputTest(value);
+  fields(suite, ["kind", "version", "function", "cases"]);
+  if (
+    suite.kind !== "function" ||
+    suite.version !== 1 ||
+    typeof suite.function !== "string" ||
+    !/^[A-Za-z_$][\w$]{0,79}$/.test(suite.function) ||
+    !Array.isArray(suite.cases) ||
+    suite.cases.length < 1 ||
+    suite.cases.length > 16
+  )
+    throw new Error(
+      "Suíte inválida: use function, version 1 e de 1 a 16 casos públicos.",
+    );
+  let nodes = 0;
+  function json(item: unknown, depth = 0): JsonValue {
+    if (++nodes > 2000 || depth > 8)
+      throw new Error("Casos de teste excedem os limites de tamanho.");
+    if (item === null || typeof item === "boolean" || typeof item === "string")
+      return item;
+    if (typeof item === "number" && Number.isFinite(item)) return item;
+    if (Array.isArray(item)) return item.map((value) => json(value, depth + 1));
+    if (
+      item &&
+      typeof item === "object" &&
+      Object.getPrototypeOf(item) === Object.prototype
+    ) {
+      const entries = Object.entries(item);
+      if (
+        entries.some(([key]) =>
+          ["__proto__", "constructor", "prototype"].includes(key),
+        )
+      )
+        throw new Error("Chave de teste inválida.");
+      return Object.fromEntries(
+        entries.map(([key, value]) => [key, json(value, depth + 1)]),
+      );
+    }
+    throw new Error("Entradas e resultados precisam ser valores JSON finitos.");
+  }
+  const cases = suite.cases.map((value) => {
+    const item = object(value);
+    fields(item, ["name", "args", "expected"]);
+    if (!Array.isArray(item.args) || item.args.length > 8)
+      throw new Error("Caso requer até oito argumentos.");
+    return {
+      name: text(item.name, 200),
+      args: item.args.map((value) => json(value)),
+      expected: json(item.expected),
+    };
+  });
+  if (
+    new Set(cases.map((item) => item.name)).size !== cases.length ||
+    JSON.stringify(cases).length > 16000
+  )
+    throw new Error("Casos duplicados ou muito extensos.");
+  return { kind: "function", version: 1, function: suite.function, cases };
+}
+export interface TestReport {
+  passed: number;
+  total: number;
+  cases: {
+    name: string;
+    passed: boolean;
+    expected: string;
+    actual?: string;
+    error?: string;
+  }[];
+}

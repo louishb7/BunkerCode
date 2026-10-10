@@ -12,7 +12,7 @@ import {
 } from "@tiptap/react";
 import { Markdown } from "@tiptap/markdown";
 import StarterKit from "@tiptap/starter-kit";
-import { Plus } from "lucide-react";
+import { Plus, ListTree, Type } from "lucide-react";
 import { EditorialBlock, VisualCode, openVisual } from "./visual-markdown";
 function insertionPoint(editor: Editor) {
   const { selection } = editor.state;
@@ -65,6 +65,13 @@ export default function VisualEditor({
   const last = useRef(source);
   const [error, setError] = useState(initial.error ?? "");
   const [menu, setMenu] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [toolbarFocused, setToolbarFocused] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outline, setOutline] = useState<
+    { title: string; position: number; level: number }[]
+  >([]);
   const [insertTop, setInsertTop] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const insertion = useRef<HTMLDivElement>(null);
@@ -122,6 +129,21 @@ export default function VisualEditor({
           editor.isDestroyed
         )
           return;
+        setHasSelection(
+          !editor.state.selection.empty &&
+            !(editor.state.selection instanceof NodeSelection),
+        );
+        const headings: { title: string; position: number; level: number }[] =
+          [];
+        editor.state.doc.descendants((node, position) => {
+          if (node.type.name === "heading")
+            headings.push({
+              title: node.textContent,
+              position,
+              level: Number(node.attrs.level),
+            });
+        });
+        setOutline(headings);
         const point = insertionPoint(editor);
         position.current = point.after;
         const block = editor.view.nodeDOM(point.start);
@@ -139,7 +161,8 @@ export default function VisualEditor({
     function outside(event: PointerEvent) {
       if (
         event.target instanceof Node &&
-        !insertion.current?.contains(event.target)
+        !insertion.current?.contains(event.target) &&
+        !root.current?.querySelector(".studio-tools")?.contains(event.target)
       )
         setMenu(false);
     }
@@ -234,7 +257,77 @@ export default function VisualEditor({
   }
   return (
     <div className="visual-studio" ref={root}>
-      <VisualToolbar editor={editor} disabled={disabled} />
+      <aside className="studio-tools" aria-label="Ferramentas do documento">
+        <button
+          title="Inserir conteúdo"
+          aria-label="Inserir conteúdo"
+          aria-expanded={menu}
+          disabled={disabled}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            position.current = insertionPoint(editor).after;
+          }}
+          onClick={() => setMenu(!menu)}
+        >
+          <Plus size={19} />
+        </button>
+        <button
+          title="Formatação do documento"
+          aria-label="Formatação do documento"
+          aria-pressed={toolsOpen}
+          onClick={() => setToolsOpen(!toolsOpen)}
+        >
+          <Type size={19} />
+        </button>
+        <button
+          title="Estrutura do documento"
+          aria-label="Estrutura do documento"
+          aria-expanded={outlineOpen}
+          onClick={() => setOutlineOpen(!outlineOpen)}
+        >
+          <ListTree size={19} />
+        </button>
+      </aside>
+      {outlineOpen && (
+        <aside className="studio-outline" aria-label="Estrutura do documento">
+          <h2>Estrutura</h2>
+          <button onClick={() => setOutlineOpen(false)}>
+            Fechar estrutura
+          </button>
+          {outline.length ? (
+            outline.map((item) => (
+              <button
+                key={item.position}
+                style={{ paddingLeft: item.level * 8 }}
+                onClick={() => {
+                  editor
+                    .chain()
+                    .focus()
+                    .setTextSelection(item.position + 1)
+                    .scrollIntoView()
+                    .run();
+                  setOutlineOpen(false);
+                }}
+              >
+                {item.title || "Título vazio"}
+              </button>
+            ))
+          ) : (
+            <p>Adicione títulos para organizar o documento.</p>
+          )}
+        </aside>
+      )}
+      <div
+        className="context-formatting"
+        hidden={!toolsOpen && !hasSelection && !toolbarFocused}
+        onFocusCapture={() => setToolbarFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget))
+            setToolbarFocused(false);
+        }}
+      >
+        <VisualToolbar editor={editor} disabled={disabled} />
+      </div>
       <EditorContent editor={editor} />
       {insertTop !== null && (
         <div

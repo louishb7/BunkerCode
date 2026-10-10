@@ -1,3 +1,4 @@
+import { studioView } from "./studio-controls";
 import { expect, test, type Locator } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -154,30 +155,27 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await expect(page.getByRole("main")).toBeFocused();
   await expect(page).toHaveURL(lesson(1));
   await page.getByRole("link", { name: "Editar lição", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(page).toHaveTitle(
     "Studio · Lição de teste 1 · Curso de leitura · BunkerCode",
   );
   await expect(
     page.getByRole("navigation", { name: "Caminho da página" }),
-  ).toContainText("Studio");
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Voltar à lição", exact: true }),
+  ).toHaveAttribute("href", lesson(1));
   const editor = page.getByRole("textbox", { name: "Markdown completo" });
   const draft =
     (await editor.inputValue()) + "\nRascunho preservado na navegação.\n";
   await editor.fill(draft);
   await page.keyboard.type("Ainda editando.");
   await expect(editor).toBeFocused();
-  await page.getByRole("button", { name: "Prévia", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Prévia", exact: true }),
-  ).toBeFocused();
+  await studioView(page, "Prévia");
+  await expect(page.locator(".studio-options > summary")).toBeFocused();
   await page.getByRole("link", { name: "Voltar à lição", exact: true }).click();
   await page.goBack();
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(editor).toHaveValue(draft + "Ainda editando.");
   await expect(page.getByText(/Rascunho recuperado nesta aba/)).toBeVisible();
 });
@@ -234,10 +232,8 @@ for (const width of [390, 768, 1024, 1440])
     await page.keyboard.press("Escape");
     expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
     await page.getByRole("link", { name: "Editar lição", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Prévia", exact: true }).click();
+    await studioView(page, "Editar fonte Markdown");
+    await studioView(page, "Prévia");
     const preview = await measure(page.locator(".studio-preview .prose"));
     expect(preview.fontSize).toBe(reader.fontSize);
     expect(preview.lineHeight).toBe(reader.lineHeight);

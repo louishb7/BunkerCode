@@ -1,3 +1,4 @@
+import { studioView, studioTools } from "./studio-controls";
 import { test, expect } from "@playwright/test";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -68,7 +69,9 @@ test("open/close is byte preserving and visual quiz saves between paragraphs wit
     .click();
   await page.getByRole("button", { name: "Continuar abaixo" }).click();
   await page.keyboard.type("Texto depois do quiz.");
+  await studioTools(page);
   await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+  await studioTools(page);
   await page.getByRole("button", { name: "Refazer", exact: true }).click();
   await page.reload();
   await expect(page.getByText(/Rascunho recuperado/)).toBeVisible();
@@ -159,9 +162,7 @@ test("unsupported markdown remains source-only without automatic save", async ({
   await expect(page.getByRole("alert")).toContainText(
     "original foi preservado",
   );
-  await page
-    .getByRole("button", { name: "Editar fonte Markdown", exact: true })
-    .click();
+  await studioView(page, "Editar fonte Markdown");
   await expect(page.getByLabel("Markdown completo")).toHaveValue(raw);
   await expect(
     page.getByRole("button", { name: "Salvar alterações", exact: true }),
@@ -279,7 +280,7 @@ test("public test is read-only and Submit assesses each exact snapshot without p
     page.getByText("Envios locais (2)", { exact: true }),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Revisões salvas", exact: true })
+    .getByRole("button", { name: "Histórico do código", exact: true })
     .click();
   await expect(
     page
@@ -314,6 +315,7 @@ test("notes move, delete and undo without losing surrounding text", async ({
     .getByRole("button", { name: "Excluir bloco", exact: true })
     .click();
   await expect(note).toHaveCount(0);
+  await studioTools(page);
   await page.getByRole("button", { name: "Desfazer", exact: true }).click();
   await page.locator(".visual-document .editorial-note").first().click();
   await expect(note).toHaveValue("Uma observação autoral.");
