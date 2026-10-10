@@ -119,7 +119,7 @@ Auditorias em docs/audits, a proposta anterior e os relatórios em docs/implemen
 
 ## Interface e prática no MVP 03
 
-A rota `/` é uma Home independente; a marca aponta para ela e Início/Cursos ficam juntos à esquerda. As demais rotas continuam iguais. `product/` contém os componentes usados pela Home e Cursos, incluindo figura por tecnologia com fallback neutro. O PNG oficial Bunker vem de `BunkerMode/frontend/public/faviconbg.png`, copiado sem alteração para `public/brand/bunker.png`; também é o favicon. BunkerMode não é dependência de runtime nem recebe alterações.
+A rota `/` é uma Home independente; a marca aponta para ela e Início/Cursos ficam juntos à esquerda. As demais rotas continuam iguais. `product/` contém os componentes usados pela Home e Cursos, incluindo figura por tecnologia com fallback neutro. O PNG da insígnia Bunker no cabeçalho vem de `public/brand/bunker.png`, enquanto o favicon da aba utiliza a versão mestre unificada em `public/favicon.svg` com fallback em `public/favicon.png`. BunkerMode não é dependência de runtime.
 
 Tailwind v4 usa o plugin de Vite, tokens em `styles.css` e utilities na nova interface. Preflight não é importado: resets globais alterariam o Markdown e o Studio. Defaults ficam na camada base, classes compartilhadas na camada components e utilities têm precedência explícita. `reader.css` e `studio.css` mantêm suas regras especializadas; `catalog.css` contém apenas geometria do percurso e quebra de textos. Darcula e o renderer não foram substituídos. Lucide fornece os ícones usados. Radix AlertDialog dá foco, semântica e confirmação acessível à restauração do código. Não há biblioteca de animação; transições CSS respeitam reduced-motion.
 
