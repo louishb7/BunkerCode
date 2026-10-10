@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  History,
   Copy,
   Download,
   FileCode2,
@@ -55,6 +56,7 @@ export default function PracticePanel({
   const [submitError, setSubmitError] = useState("");
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState<Submission>();
+  const history = useRef<HTMLDialogElement>(null);
   const alive = useRef(true);
   const job = useRef<
     { controller: AbortController; id?: string; finished: boolean } | undefined
@@ -151,7 +153,7 @@ export default function PracticePanel({
         setResult({
           source,
           compilation,
-          message: `Compilação concluída sem diagnósticos neste ambiente. Runner indisponível: ${runtime?.reason || runtimeError || "ainda não confirmado"}. Sem avaliação completa.`,
+          message: `Compilação concluída. Runner indisponível: ${runtime?.reason || runtimeError || "ainda não confirmado"}. Resultado não avaliado.`,
         });
         return "unassessed";
       }
@@ -291,19 +293,6 @@ export default function PracticePanel({
           )}
         </div>
       </header>
-      {draft.previous && (
-        <details className="border-b border-line p-4 text-sm text-subtle">
-          <summary className="cursor-pointer text-gold">
-            A definição mudou. Revisão anterior preservada.
-          </summary>
-          <p>
-            Confira o novo enunciado. Sua solução anterior permanece arquivada.
-          </p>
-          <pre className="max-h-48 overflow-auto whitespace-pre text-xs">
-            {draft.previous.code}
-          </pre>
-        </details>
-      )}
       <div hidden={file !== "solution"}>
         {draft.ready ? (
           <CodeEditor
@@ -334,26 +323,39 @@ export default function PracticePanel({
         />
       )}
       <div role="group" aria-label="Ações do código" className="editor-actions">
-        <button
-          className="format-button"
-          title="Formatar código"
-          aria-label="Formatar código"
-          disabled={!draft.ready || !!draft.conflict || file === "tests"}
-          aria-disabled={formatting}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            if (!formatting) setFormatRequest((value) => value + 1);
-          }}
-        >
-          <WandSparkles className="product-icon" aria-hidden="true" />
-          Formatar
-        </button>
-        {draft.failed && (
-          <span role="alert" className="save-status text-xs text-subtle">
-            {draft.status}
-          </span>
-        )}
-        <div className="flex items-center gap-2">
+        <div className="code-utilities">
+          <ConfirmRestore
+            disabled={
+              !draft.ready ||
+              !!draft.conflict ||
+              file === "tests" ||
+              formatting ||
+              phase !== "idle" ||
+              sending
+            }
+            onConfirm={() => {
+              draft.change(exercise.starterCode);
+              setResult(undefined);
+              setSubmitted(undefined);
+              setNotice("Código inicial restaurado.");
+            }}
+          />
+          <button
+            className="format-button"
+            title="Formatar código"
+            aria-label="Formatar código"
+            disabled={!draft.ready || !!draft.conflict || file === "tests"}
+            aria-disabled={formatting}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              if (!formatting) setFormatRequest((value) => value + 1);
+            }}
+          >
+            <WandSparkles className="product-icon" aria-hidden="true" />
+            Formatar
+          </button>
+        </div>
+        <div className="code-primary-actions">
           {phase !== "idle" ? (
             <button
               aria-label="Cancelar operação"
@@ -382,23 +384,12 @@ export default function PracticePanel({
             {sending ? "Registrando…" : "Submit"}
           </button>
         </div>
-        <ConfirmRestore
-          disabled={
-            !draft.ready ||
-            !!draft.conflict ||
-            file === "tests" ||
-            formatting ||
-            phase !== "idle" ||
-            sending
-          }
-          onConfirm={() => {
-            draft.change(exercise.starterCode);
-            setResult(undefined);
-            setSubmitted(undefined);
-            setNotice("Código inicial restaurado.");
-          }}
-        />
       </div>
+      {draft.failed && (
+        <span role="alert" className="save-status text-xs text-subtle">
+          {draft.status}
+        </span>
+      )}
       <div className="editor-help sr-only" id="editor-keyboard-help">
         Ctrl+Space sugere nomes locais e palavras-chave. Enter aceita. Tab
         indenta; Escape, depois Tab, sai. Ctrl+F busca.
@@ -495,28 +486,67 @@ export default function PracticePanel({
           )}
         </section>
       )}
-      {!!submissions.length && (
-        <details>
-          <summary className="cursor-pointer text-sm">
-            Envios locais ({submissions.length})
-          </summary>
-          {submissions.map((value) => (
-            <details key={value.id} className="mt-3">
-              <summary className="cursor-pointer text-xs">
-                {new Date(value.at).toLocaleString("pt-BR")} ·{" "}
-                {value.state === "passed"
-                  ? "aprovada nos testes locais"
-                  : value.state === "failed"
-                    ? "testes falharam"
-                    : "não avaliada"}
-                {value.revision !== exercise.revision
-                  ? " · revisão anterior"
-                  : ""}
-              </summary>
-              <pre className="result-output">{value.code}</pre>
-            </details>
-          ))}
-        </details>
+      {(draft.previous || submissions.length > 0) && (
+        <div className="practice-revisions">
+          <button type="button" onClick={() => history.current?.showModal()}>
+            <History size={16} aria-hidden="true" />
+            Revisões salvas
+          </button>
+          <dialog
+            ref={history}
+            className="practice-history"
+            aria-labelledby="practice-history-title"
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              if (
+                event.target === event.currentTarget &&
+                (event.clientX < rect.left ||
+                  event.clientX > rect.right ||
+                  event.clientY < rect.top ||
+                  event.clientY > rect.bottom)
+              )
+                history.current?.close();
+            }}
+          >
+            <div className="practice-history-heading">
+              <h2 id="practice-history-title">Revisões salvas</h2>
+              <button autoFocus onClick={() => history.current?.close()}>
+                Fechar
+              </button>
+            </div>
+            {draft.previous && (
+              <details>
+                <summary>Solução da revisão anterior do enunciado</summary>
+                <p>
+                  O enunciado mudou. Compare sua solução preservada com a
+                  definição atual.
+                </p>
+                <pre className="result-output">{draft.previous.code}</pre>
+              </details>
+            )}
+            {submissions.length > 0 && (
+              <section aria-label="Soluções registradas">
+                <h3>Soluções registradas</h3>
+                {submissions.map((value) => (
+                  <details key={value.id} className="mt-3">
+                    <summary className="cursor-pointer text-xs">
+                      {new Date(value.at).toLocaleString("pt-BR")} ·{" "}
+                      {value.state === "passed"
+                        ? "aprovada nos testes locais"
+                        : value.state === "failed"
+                          ? "testes falharam"
+                          : "não avaliada"}
+                      {value.revision !== exercise.revision
+                        ? " · revisão anterior"
+                        : ""}
+                    </summary>
+                    <pre className="result-output">{value.code}</pre>
+                  </details>
+                ))}
+              </section>
+            )}
+          </dialog>
+        </div>
       )}
       {(draft.failed || submitError) && (
         <section

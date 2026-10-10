@@ -61,6 +61,7 @@ for (const width of [390, 1280])
         node.scrollTop = node.scrollHeight / 2;
       }, start);
       await page.evaluate(() => window.scrollTo(0, 280));
+      const editingScroll = await page.evaluate(() => window.scrollY);
       const snapshot = await input.evaluate((node: HTMLTextAreaElement) => ({
         start: node.selectionStart,
         end: node.selectionEnd,
@@ -108,7 +109,9 @@ for (const width of [390, 1280])
           top: node.scrollTop,
         })),
       ).toEqual(snapshot);
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(280);
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBe(editingScroll);
       await page.getByRole("button", { name: "Prévia", exact: true }).click();
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1200);
       await page

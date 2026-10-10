@@ -49,6 +49,7 @@ test("open/close is byte preserving and visual quiz saves between paragraphs wit
   await page.getByLabel("Alternativa 1", { exact: true }).fill("Primeira");
   await page.getByLabel("Alternativa 2", { exact: true }).fill("Segunda");
   await page.getByLabel("Alternativa correta 2", { exact: true }).check();
+  await page.getByText("Feedback e tentativas", { exact: true }).click();
   await page
     .getByRole("textbox", { name: "Feedback correto", exact: true })
     .fill("Você identificou a segunda.");
@@ -62,12 +63,16 @@ test("open/close is byte preserving and visual quiz saves between paragraphs wit
     page.getByText("Observe a segunda alternativa.", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Editar quiz" }).click();
+  await page
+    .getByRole("button", { name: "Ações do bloco", exact: true })
+    .click();
   await page.getByRole("button", { name: "Continuar abaixo" }).click();
   await page.keyboard.type("Texto depois do quiz.");
   await page.getByRole("button", { name: "Desfazer", exact: true }).click();
   await page.getByRole("button", { name: "Refazer", exact: true }).click();
   await page.reload();
   await expect(page.getByText(/Rascunho recuperado/)).toBeVisible();
+  await page.locator(".quiz-author").click();
   await expect(
     page.getByRole("textbox", { name: "Pergunta", exact: true }),
   ).toHaveValue("Qual alternativa está correta?");
@@ -128,6 +133,9 @@ test("code insertion preserves indentation, highlighting, escape and text after 
   await expect(code).toContainText("console.log(text);");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
+  await page
+    .getByRole("button", { name: "Ações do bloco", exact: true })
+    .click();
   await page.getByRole("button", { name: "Continuar abaixo" }).click();
   await page.keyboard.type("Continua após o código.");
   await page
@@ -167,7 +175,9 @@ for (const width of [390, 1280, 1440, 1920])
     await page.setViewportSize({ width, height: 960 });
     await page.goto(url);
     await expect(page.locator(".study-explanation")).toBeVisible();
-    await page.getByText("Aa", { exact: true }).click();
+    await page
+      .getByRole("button", { name: "Aparência da leitura", exact: true })
+      .click();
     await page
       .getByRole("combobox", { name: "Tonalidade", exact: true })
       .selectOption("2");
@@ -267,7 +277,15 @@ test("public test is read-only and Submit assesses each exact snapshot without p
     ).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByText("Envios locais (2)", { exact: true }),
-  ).toBeVisible({ timeout: 20000 });
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Revisões salvas", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("region", { name: "Soluções registradas", exact: true })
+      .locator("details"),
+  ).toHaveCount(2);
 });
 
 test("notes move, delete and undo without losing surrounding text", async ({
@@ -284,13 +302,20 @@ test("notes move, delete and undo without losing surrounding text", async ({
     exact: true,
   });
   await note.fill("Uma observação autoral.");
+  await page
+    .getByRole("button", { name: "Ações do bloco", exact: true })
+    .click();
   await page.getByRole("button", { name: "Mover bloco para cima" }).click();
   await expect(note).toHaveValue("Uma observação autoral.");
+  await page
+    .getByRole("button", { name: "Ações do bloco", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Excluir bloco", exact: true })
     .click();
   await expect(note).toHaveCount(0);
   await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+  await page.locator(".visual-document .editorial-note").first().click();
   await expect(note).toHaveValue("Uma observação autoral.");
   await page
     .getByRole("button", { name: "Salvar alterações", exact: true })

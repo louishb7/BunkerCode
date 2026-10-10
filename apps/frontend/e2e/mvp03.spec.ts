@@ -132,7 +132,7 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await page.reload();
   await openCode(page);
   await expect(editor(page)).toContainText("ação");
-  await page.getByRole("link", { name: /^Próxima →/ }).click();
+  await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Código da solução" }),
   ).toHaveCount(0);
@@ -200,7 +200,20 @@ test("new editorial revision preserves the old solution in a separate record", a
     await expect(editor(page)).toContainText("minha solução anterior");
     await expect(
       page.getByText("A definição mudou. Revisão anterior preservada."),
-    ).toBeVisible();
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Revisões salvas", exact: true })
+      .click();
+    await page
+      .getByText("Solução da revisão anterior do enunciado", { exact: true })
+      .click();
+    await expect(page.locator(".practice-history pre")).toContainText(
+      "minha solução anterior",
+    );
+    await page
+      .getByRole("dialog", { name: "Revisões salvas", exact: true })
+      .getByRole("button", { name: "Fechar", exact: true })
+      .click();
     await replaceCode(page, "// solução revisada");
     await saved(page);
     const values = await records(page);
@@ -237,7 +250,7 @@ test("storage denial and quota keep code available and downloadable across SPA n
   expect(await readFile((await download.path())!, "utf8")).toBe(
     "// código sem storage 🧱",
   );
-  await page.getByRole("link", { name: /^Próxima →/ }).click();
+  await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await page.goBack();
   await openCode(page);
   await expect(editor(page)).toContainText("código sem storage");
@@ -276,7 +289,9 @@ test("home validates actual recent destinations and handles unavailable, empty a
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Conceito 1",
   );
-  await page.getByRole("link", { name: "Início", exact: true }).click();
+  await page
+    .getByRole("link", { name: "BunkerCode — Início", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: /Continuar estudando/ }),
   ).toHaveAttribute("href", url);
@@ -549,7 +564,10 @@ test("200 percent CSS zoom preserves product controls and study reflow", async (
       ),
     ).toBe(true);
     await expect(
-      page.getByRole("link", { name: "Cursos", exact: true }),
+      page.getByRole("link", {
+        name: path === url ? "Abrir curso Oficina de teste" : "Cursos",
+        exact: true,
+      }),
     ).toBeVisible();
     await page.screenshot({
       path: info.outputPath(

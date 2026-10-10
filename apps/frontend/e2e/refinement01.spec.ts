@@ -172,13 +172,19 @@ test("edits and submissions produce distinct genuine activity, with historical o
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(
     page.getByText("Envios locais (2)", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect
+    .poll(async () => (await records(page, "submissions")).length)
+    .toBe(2);
   expect(await records(page, "submissions")).toHaveLength(2);
   await page.reload();
   await expect(editor(page)).toContainText("Rascunho posterior");
   await expect(
     page.getByText("Envios locais (2)", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect
+    .poll(async () => (await records(page, "submissions")).length)
+    .toBe(2);
   await page.goto("/");
   await expect(page.locator("#activity-title")).toHaveText(
     "4 atividades no último ano",
@@ -256,8 +262,13 @@ test("schema-one drafts upgrade intact and submitted versions survive a new edit
   await page.reload();
   await expect(
     page.getByText("A definição mudou. Revisão anterior preservada."),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Revisões salvas", exact: true })
+    .click();
+  await expect(
+    page.getByText("Solução da revisão anterior do enunciado", { exact: true }),
   ).toBeVisible();
-  await page.getByText("Envios locais (1)", { exact: true }).click();
   await expect(page.getByText(/não avaliada · revisão anterior/)).toBeVisible();
   expect(await records(page, "submissions")).toHaveLength(1);
 });
@@ -364,11 +375,7 @@ test("actual semantic and syntax diagnostics are shown and become stale after ed
   ).toBeVisible();
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page
-      .getByText(
-        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
-      )
-      .first(),
+    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
   ).toBeVisible();
   await code(page, "const broken = ;");
   await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -490,9 +497,7 @@ test("all seven new courses have two referenced lessons, correct local figures a
     ).toBeGreaterThan(0);
     for (const entry of course.lessons) {
       await page.goto(`/courses/${id}/lessons/${entry.slug}`);
-      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        entry.title,
-      );
+      await expect(page.locator(".lesson-heading h1")).toHaveText(entry.title);
       await expect(page.locator(".prose")).toContainText("demonstrativo");
       expect(
         await page.locator('.prose a[href^="https://"]').count(),
@@ -666,11 +671,7 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
   await code(page, 'console.log("new compilation");');
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await expect(
-    page
-      .getByText(
-        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
-      )
-      .first(),
+    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
   ).toBeVisible();
   release();
   await page.waitForResponse(
@@ -678,10 +679,6 @@ test("late cancellation cannot overwrite a newer compilation result", async ({
       r.request().method() === "DELETE" && r.url().includes("/practice/runs/"),
   );
   await expect(
-    page
-      .getByText(
-        /Execução encerrada\.|Compilação concluída sem diagnósticos neste ambiente\./,
-      )
-      .first(),
+    page.getByText(/Execução encerrada\.|Compilação concluída\./).first(),
   ).toBeVisible();
 });

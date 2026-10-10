@@ -1,4 +1,11 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { Type } from "lucide-react";
 function preference(key: string, fallback: number, min: number, max: number) {
   try {
     const raw = localStorage.getItem(key);
@@ -18,6 +25,31 @@ export function ReadingArticle({ children }: { children: ReactNode }) {
     preference("bunkercode:reading-tone", 0, 0, 2),
   );
   const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  const settings = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function outside(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !settings.current?.contains(event.target)
+      )
+        setOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
   function save(font: number, color: number) {
     setSize(font);
     setTone(color);
@@ -36,35 +68,51 @@ export function ReadingArticle({ children }: { children: ReactNode }) {
       className={`study-explanation reading-tone-${tone}`}
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
-      <details className="reading-settings">
-        <summary aria-label="Configurações de leitura">Aa</summary>
-        <div>
-          <label>
-            Tamanho do texto
-            <input
-              type="range"
-              min="16"
-              max="21"
-              value={size}
-              onChange={(e) => save(Number(e.target.value), tone)}
-            />
-          </label>
-          <label>
-            Tonalidade
-            <select
-              aria-label="Tonalidade"
-              value={tone}
-              onChange={(e) => save(size, Number(e.target.value))}
-            >
-              <option value="0">Grafite</option>
-              <option value="1">Suave</option>
-              <option value="2">Quente</option>
-            </select>
-          </label>
-          <button onClick={() => save(17, 0)}>Restaurar padrões</button>
-          {error && <p role="status">{error}</p>}
-        </div>
-      </details>
+      <div className="reading-settings" ref={settings}>
+        <button
+          ref={trigger}
+          type="button"
+          aria-label="Aparência da leitura"
+          title="Aparência da leitura"
+          aria-expanded={open}
+          aria-controls="reading-appearance"
+          onClick={() => setOpen(!open)}
+        >
+          <Type size={21} aria-hidden="true" />
+        </button>
+        {open && (
+          <div
+            id="reading-appearance"
+            role="group"
+            aria-label="Preferências de leitura"
+          >
+            <label>
+              Tamanho do texto
+              <input
+                type="range"
+                min="16"
+                max="21"
+                value={size}
+                onChange={(e) => save(Number(e.target.value), tone)}
+              />
+            </label>
+            <label>
+              Tonalidade
+              <select
+                aria-label="Tonalidade"
+                value={tone}
+                onChange={(e) => save(size, Number(e.target.value))}
+              >
+                <option value="0">Grafite</option>
+                <option value="1">Suave</option>
+                <option value="2">Quente</option>
+              </select>
+            </label>
+            <button onClick={() => save(17, 0)}>Restaurar padrões</button>
+            {error && <p role="status">{error}</p>}
+          </div>
+        )}
+      </div>
       {children}
     </article>
   );
@@ -81,24 +129,56 @@ export function StudySplit({
   const key = practice
     ? "bunkercode:practice-width"
     : "bunkercode:reading-width";
-  const initial = practice ? 46 : 74,
-    min = practice ? 38 : 65,
-    max = practice ? 60 : 78;
-  const [width, setWidth] = useState(() => preference(key, initial, min, max));
+  const initial = practice ? 46 : 74;
+  const container = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number } | null>(null);
+  const [available, setAvailable] = useState(0);
+  const [width, setWidth] = useState(() => preference(key, initial, 0, 100));
   const [error, setError] = useState("");
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return;
+    const observer = new ResizeObserver(() => {
+      const style = getComputedStyle(node);
+      const gap = parseFloat(style.columnGap) || 0;
+      const divider = node.querySelector<HTMLElement>(".study-divider");
+      setAvailable(
+        divider?.offsetWidth
+          ? node.clientWidth - gap * 2 - divider.offsetWidth
+          : 0,
+      );
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  // Both fractional tracks share exactly the space left after the gutter and handle.
+  const min = available
+    ? Math.min(50, ((practice ? 360 : 420) / available) * 100)
+    : 0;
+  const max = available
+    ? 100 - Math.min(50, ((practice ? 360 : 180) / available) * 100)
+    : 100;
+  const effective = Math.max(min, Math.min(max, width));
   function update(value: number) {
     const next = Math.max(min, Math.min(max, value));
     setWidth(next);
     try {
       localStorage.setItem(key, String(next));
+      setError("");
     } catch {
       setError("Largura aplicada; preferência não pôde ser guardada.");
     }
   }
   return (
     <div
+      ref={container}
       className={`study-split ${practice ? "programming-split" : "reading-split"} ${right ? "" : "without-sidebar"}`}
-      style={{ "--article-share": `${width}%` } as CSSProperties}
+      style={
+        {
+          "--article-weight": `${effective}fr`,
+          "--sidebar-weight": `${100 - effective}fr`,
+        } as CSSProperties
+      }
     >
       {left}
       {right && (
@@ -111,9 +191,9 @@ export function StudySplit({
                 : "Largura do artigo e sumário"
             }
             aria-orientation="vertical"
-            aria-valuemin={min}
-            aria-valuemax={max}
-            aria-valuenow={Math.round(width)}
+            aria-valuemin={Math.round(min)}
+            aria-valuemax={Math.round(max)}
+            aria-valuenow={Math.round(effective)}
             tabIndex={0}
             className="study-divider"
             onDoubleClick={() => update(initial)}
@@ -131,23 +211,41 @@ export function StudySplit({
                       ? max
                       : e.key === "Enter"
                         ? initial
-                        : width + (e.key === "ArrowLeft" ? -2 : 2),
+                        : effective + (e.key === "ArrowLeft" ? -2 : 2),
                 );
               }
             }}
             onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              drag.current = {
+                x: e.clientX,
+                left: (available * effective) / 100,
+              };
               e.currentTarget.setPointerCapture(e.pointerId);
             }}
             onPointerMove={(e) => {
-              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-                const rect =
-                  e.currentTarget.parentElement!.getBoundingClientRect();
-                update(((e.clientX - rect.left) / rect.width) * 100);
-              }
+              if (
+                drag.current &&
+                available &&
+                e.currentTarget.hasPointerCapture(e.pointerId)
+              )
+                update(
+                  ((drag.current.left + e.clientX - drag.current.x) /
+                    available) *
+                    100,
+                );
             }}
             onPointerUp={(e) => {
+              drag.current = null;
               if (e.currentTarget.hasPointerCapture(e.pointerId))
                 e.currentTarget.releasePointerCapture(e.pointerId);
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
+            onLostPointerCapture={() => {
+              drag.current = null;
             }}
           />
           <div className={practice ? "study-code" : "study-outline"}>

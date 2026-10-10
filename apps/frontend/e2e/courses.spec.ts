@@ -49,15 +49,11 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
   await expect(
     page.getByRole("link", { name: "TypeScript Handbook: Everyday Types" }),
   ).toHaveAttribute("href", /^https:\/\/www.typescriptlang.org/);
-  await page
-    .getByRole("link", { name: "Próxima → Union types", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Union types", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "← Anterior Valores e tipos", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Lição anterior", exact: true }).click();
   const file = join(courseRoot, "lessons/values-and-types/lesson.md");
   const before = await readFile(file, "utf8");
   try {
@@ -87,7 +83,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     { env: { ...process.env, BUNKERCODE_CONTENT_DIR: content } },
   );
   await page
-    .getByRole("link", { name: "← Voltar ao curso", exact: true })
+    .getByRole("link", { name: "Abrir curso TypeScript", exact: true })
     .click();
   await page
     .getByRole("link", { name: "03 Nota criada pelo fluxo de autoria" })
@@ -99,7 +95,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "← Anterior Union types", exact: true }),
+    page.getByRole("link", { name: "Lição anterior", exact: true }),
   ).toBeVisible();
   const newCourse = join(content, "courses/architecture");
   await mkdir(join(newCourse, "lessons/first-note"), { recursive: true });
@@ -133,9 +129,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
   await expect(
     page.getByRole("heading", { name: "Union types", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "← Anterior Valores e tipos", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Lição anterior", exact: true }).click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -210,6 +204,16 @@ test("navigation exposes Home and Courses while retired execution routes remain 
     page.getByRole("heading", { name: "Union types", exact: true }),
   ).toBeVisible();
   await expect(page.locator('a[href^="/learn"]')).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "BunkerCode — Início", exact: true }),
+  ).toHaveAttribute("href", "/");
+  await expect(
+    page.getByRole("navigation", { name: "Navegação entre lições" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Abrir curso TypeScript", exact: true }),
+  ).toHaveAttribute("href", "/courses/typescript");
+  await page.goto("/courses");
   await expect(
     page
       .getByRole("navigation", { name: "Navegação principal" })

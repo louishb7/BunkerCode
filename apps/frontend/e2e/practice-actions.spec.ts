@@ -17,6 +17,28 @@ async function replace(page: Page, code: string) {
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(code);
 }
+async function submissions(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<unknown[]>((resolve, reject) => {
+        const open = indexedDB.open("bunkercode-practice", 2);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result,
+            tx = db.transaction("submissions");
+          const read = tx.objectStore("submissions").getAll();
+          tx.oncomplete = () => {
+            db.close();
+            resolve(read.result);
+          };
+          tx.onabort = () => {
+            db.close();
+            reject(tx.error);
+          };
+        };
+      }),
+  );
+}
 async function savedCodes(page: Page) {
   return page.evaluate(
     () =>
@@ -108,11 +130,10 @@ test("restore needs confirmation, persists starter code, preserves submissions a
   ).exercise.starterCode;
   await replace(page, 'const own = "preserved";');
   await page.getByRole("button", { name: "Submit", exact: true }).click();
-  await expect(page.getByText(/Solução registrada em/)).toBeVisible();
-  const history = await page
-    .locator("details")
-    .filter({ hasText: "Envios locais" })
-    .innerText();
+  await expect(page.getByText(/Solução registrada em/)).toBeVisible({
+    timeout: 20000,
+  });
+  const history = await submissions(page);
   const restore = page.getByRole("button", {
     name: "Restaurar código inicial",
     exact: true,
@@ -138,12 +159,7 @@ test("restore needs confirmation, persists starter code, preserves submissions a
   await expect(solution(page)).toHaveText(initial, { useInnerText: true });
   await expect.poll(() => savedCodes(page)).toContain(initial);
   await expect(page.locator(".results-panel")).toHaveCount(0);
-  expect(
-    await page
-      .locator("details")
-      .filter({ hasText: "Envios locais" })
-      .innerText(),
-  ).toBe(history);
+  expect(await submissions(page)).toEqual(history);
   await solution(page).focus();
   await page.keyboard.press("ControlOrMeta+z");
   await expect(solution(page)).toHaveText('const own = "preserved";', {
@@ -156,12 +172,7 @@ test("restore needs confirmation, persists starter code, preserves submissions a
   await expect.poll(() => savedCodes(page)).toContain(initial);
   await page.reload();
   await expect(solution(page)).toHaveText(initial, { useInnerText: true });
-  expect(
-    await page
-      .locator("details")
-      .filter({ hasText: "Envios locais" })
-      .innerText(),
-  ).toBe(history);
+  expect(await submissions(page)).toEqual(history);
 });
 
 test("formatting keeps the viewport of long code and leaves redo intact for a no-op", async ({

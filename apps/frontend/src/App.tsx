@@ -1,5 +1,5 @@
 import { HomePage } from "./product/HomePage";
-import { SiteHeader } from "./product/SiteHeader";
+import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
 import { Component, lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router";
 import { CoursePage, CoursesPage } from "./courses/Pages";
@@ -76,8 +76,10 @@ export function App() {
       >
         Pular para o conteúdo
       </a>
-      <SiteHeader />
-      <AppRoutes />
+      <LessonNavigationProvider>
+        <SiteHeader />
+        <AppRoutes />
+      </LessonNavigationProvider>
     </BrowserRouter>
   );
 }

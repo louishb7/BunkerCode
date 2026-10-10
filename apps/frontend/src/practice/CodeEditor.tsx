@@ -7,7 +7,7 @@ import {
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { formatCode } from "./code-tools";
 import { useEffect, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -70,6 +70,7 @@ const theme = EditorView.theme(
 export function CodeEditor({
   code,
   language,
+  variant = "practice",
   onChange,
   formatRequest,
   onFormatState,
@@ -77,6 +78,7 @@ export function CodeEditor({
   label = "Código da solução",
 }: {
   code: string;
+  variant?: "practice" | "example";
   readOnly?: boolean;
   label?: string;
   language: string;
@@ -84,6 +86,9 @@ export function CodeEditor({
   formatRequest: number;
   onFormatState: (busy: boolean, message: string) => void;
 }) {
+  const languageConfig = useRef(new Compartment());
+  const initialLanguage = useRef(language);
+  initialLanguage.current = language;
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const documentRevision = useRef(0);
@@ -111,11 +116,31 @@ export function CodeEditor({
           closeBrackets(),
           autocompletion(),
           highlightSelectionMatches(),
-          ...(language === "typescript" || language === "javascript"
-            ? [javascript({ typescript: language === "typescript" })]
-            : []),
+          languageConfig.current.of(
+            initialLanguage.current === "typescript" ||
+              initialLanguage.current === "javascript"
+              ? javascript({
+                  typescript: initialLanguage.current === "typescript",
+                })
+              : [],
+          ),
           syntaxHighlighting(darcula),
           theme,
+          ...(variant === "example"
+            ? [
+                EditorView.theme({
+                  "&": { width: "100%", maxWidth: "100%" },
+                  ".cm-scroller": {
+                    height: "auto",
+                    minHeight: "80px",
+                    maxHeight: "420px",
+                    lineHeight: "1.5",
+                    overflow: "auto",
+                  },
+                  ".cm-content": { minHeight: "80px", padding: "16px 0" },
+                }),
+              ]
+            : []),
           keymap.of([
             ...completionKeymap,
             ...closeBracketsKeymap,
@@ -144,7 +169,16 @@ export function CodeEditor({
       view.current = null;
       editor.destroy();
     };
-  }, [language, readOnly, label]);
+  }, [readOnly, label, variant]);
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: languageConfig.current.reconfigure(
+        language === "typescript" || language === "javascript"
+          ? javascript({ typescript: language === "typescript" })
+          : [],
+      ),
+    });
+  }, [language]);
   useEffect(() => {
     const editor = view.current;
     if (editor && editor.state.doc.toString() !== code)
@@ -201,5 +235,10 @@ export function CodeEditor({
       });
     return () => controller.abort();
   }, [formatRequest, language, readOnly]);
-  return <div ref={host} className="code-editor min-w-0 overflow-hidden" />;
+  return (
+    <div
+      ref={host}
+      className={`code-editor ${variant === "example" ? "example-code" : ""} min-w-0 overflow-hidden`}
+    />
+  );
 }

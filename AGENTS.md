@@ -44,6 +44,22 @@ Distinguir falha ambiental, falha de código, teste não executado e teste remov
 
 Não fazer commit, push, rebase, reset destrutivo ou remover worktrees automaticamente. Conferir status/diff/diff --check ao final e sugerir uma única mensagem de commit em inglês no formato Conventional Commits.
 
-Relatório: Resultado; O que foi feito; Por que; Estratégia; Como funciona; Conceitos importantes; Trade-offs/limitações; O que revisar manualmente; Arquivos importantes; Validações executadas; Review sugerido; Commit sugerido. Review curto em português deve destacar propriedades concretas.
+## Relatório e entrega — preferência permanente atualizada em 2026-10-10
 
-HANDOFF: terminar somente unidade atômica, registrar Git, estrutura, arquivos removidos/movidos/novos, gates, erros, comandos e próximo passo exato. Não reiniciar a auditoria inteira.
+Ao concluir qualquer tarefa, entregar relatório completo, autocontido e copiável diretamente na conversa, sem aguardar pedido de resumo. Precisão e densidade têm prioridade sobre volume; normalmente 800–1400 palavras, ajustadas à complexidade. Usar sempre:
+
+A. Resultado: pedido, implementação real, conclusão parcial/completa/bloqueio e pendências.
+B. Arquivos alterados: inventário completo de caminhos relativos, incluindo novos não rastreados; separar criados/modificados/removidos, com descrição curta.
+C. Principais alterações de código: quando houver código, 3–6 trechos pequenos reais, preferencialmente diff, com caminho e explicação; nunca pseudocódigo ou arquivos completos.
+D. Testes e validações: comandos/resultados reais, falhas corrigidas/reruns, falhas ambientais, não executados, skips/flakes; não confundir E2E parcial com suíte completa.
+E. Problemas encontrados: causas comprovadas diferenciadas de hipóteses e soluções relevantes.
+F. Pendências e riscos: limitações, regressões possíveis, revisão manual e decisões do autor.
+G. Estado Git: branch, HEAD curto, contagem de criados/modificados/removidos, alterações preexistentes e confirmação de ausência de commit/push.
+H. Commit sugerido: Conventional Commit em inglês correspondente ao trabalho; não executar commit. Preferir uma única mensagem para unidade atômica.
+I. Próximo passo recomendado: uma ação objetiva, sem conclusão genérica.
+
+Sem imagens relevantes, entregar somente texto: não criar ZIP, PDF, Markdown de relatório, pacote de transferência ou diff integral por padrão. Com imagens relevantes, manter o relatório na conversa e gerar um único ZIP pequeno, preferencialmente com 2–5 capturas de nomes descritivos, em `/tmp/codex-handoff/`; fornecer seu caminho/link. Não incluir código, repositório, patches, logs, dist, node_modules ou cópias redundantes. Pedido explícito de outro formato prevalece.
+
+Evitar pacotes extensos automáticos, relatórios repetidos, buscas redundantes e reruns caros sem motivo concreto. Economia não justifica omitir falha, mudança importante ou risco de perda de dados. Preservar evidências anteriores; não remover dados ignorados ou não rastreados.
+
+HANDOFF ou interrupção: usar a mesma estrutura, registrar objetivo original, concluído/incompleto, arquivos, gates/erros, motivo e próxima operação exata. Terminar somente unidade atômica; não reiniciar implementação/auditoria sem conferir estado existente. Não substituir comportamentos reais por simulações para satisfazer aceitação.

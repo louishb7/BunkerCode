@@ -155,10 +155,8 @@
 .results-panel {
   border-top: 1px solid #353c3e;
   padding: 16px;
-  min-height: 200px;
-  max-height: 320px;
-  overflow: auto;
-  resize: vertical;
+  min-height: 0;
+  overflow-wrap: anywhere;
 }
 .result-output {
   background: #202429;
@@ -216,4 +214,65 @@
 .dashboard-page,
 .catalog-page {
   max-width: 1520px;
+}
+
+.editor-toolbar {
+  padding: 4px 12px 0;
+}
+.code-primary-actions {
+  margin-left: auto;
+}
+.practice-panel > .save-status {
+  display: block;
+  margin: 0;
+  padding: 8px 14px;
+  border-top: 1px solid #353c3e;
+}
+.practice-revisions {
+  padding: 4px 14px 10px;
+  font-size: 12px;
+  color: #a9afb6;
+}
+.practice-revisions > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.practice-history {
+  width: min(640px, calc(100vw - 32px));
+  max-height: 85dvh;
+  padding: 24px;
+  border: 1px solid #454b50;
+  border-radius: 10px;
+  background: #181d21;
+  color: #e8e5de;
+}
+.practice-history::backdrop {
+  background: #0009;
+}
+html:has(.practice-history[open]) {
+  overflow: hidden;
+}
+.practice-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.practice-history h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.practice-history h3 {
+  font-size: 15px;
+  margin-top: 20px;
+}
+.practice-history button {
+  min-height: 44px;
+  color: #e8bd68;
+}
+.practice-history summary {
+  cursor: pointer;
+  padding: 8px 0;
 }

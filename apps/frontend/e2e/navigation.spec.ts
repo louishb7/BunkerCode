@@ -97,13 +97,9 @@ test("thirty-lesson modal supports keyboard, inert background, active order and 
   await page.getByRole("button", { name: "Lições", exact: true }).click();
   await dialog.getByRole("button", { name: "Fechar", exact: true }).click();
   await expect(trigger).toBeFocused();
-  await page
-    .getByRole("link", { name: "Próxima → Lição de teste 3", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await expect(heading).toHaveText("Lição de teste 3");
-  await page
-    .getByRole("link", { name: "← Anterior Lição de teste 2", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Lição anterior", exact: true }).click();
   await expect(heading).toHaveText("Lição de teste 2");
   await page.reload();
   await expect(heading).toHaveText("Lição de teste 2");
@@ -126,7 +122,7 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await page.evaluate(() => window.scrollTo(0, 640));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
   await page
-    .getByRole("link", { name: "Próxima → Lição de teste 2", exact: true })
+    .getByRole("link", { name: "Próxima lição", exact: true })
     .evaluate((node: HTMLElement) => node.focus({ preventScroll: true }));
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(

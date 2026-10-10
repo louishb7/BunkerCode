@@ -250,11 +250,9 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       </nav>
       <header className="studio-heading">
         <p className="eyebrow">Studio · autoria local</p>
-        <h1>{lesson.title}</h1>
-        <p>
-          Escreva diretamente na lição. O arquivo Markdown só muda quando você
-          salva.
-        </p>
+        <h1 className={view === "edit" ? undefined : "sr-only"}>
+          {lesson.title}
+        </h1>
       </header>
       <div className="studio-controls">
         <div className="studio-toolbar">
@@ -401,16 +399,19 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           </div>
         </section>
       )}
-      <p className="studio-file">
-        Arquivo:{" "}
-        <code>
-          {"content/courses/" + id + "/lessons/" + slug + "/lesson.md"}
-        </code>
-      </p>
-      <p className="studio-caption">
-        Após salvar, confira o arquivo no VS Code e revise seu git diff. O
-        Studio não faz commits.
-      </p>
+      <details className="studio-file-details">
+        <summary>Arquivo da lição</summary>
+        <p className="studio-file">
+          Arquivo:{" "}
+          <code>
+            {"content/courses/" + id + "/lessons/" + slug + "/lesson.md"}
+          </code>
+        </p>
+        <p className="studio-caption">
+          Após salvar, confira o arquivo no VS Code e revise seu git diff. O
+          Studio não faz commits.
+        </p>
+      </details>
     </Page>
   );
 }

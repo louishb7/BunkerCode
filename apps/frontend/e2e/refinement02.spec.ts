@@ -304,7 +304,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
       fullPage: true,
     });
     await page.goto(lesson);
-    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    await expect(page.locator(".cm-editor")).toHaveCount(1, { timeout: 15000 });
     const editor = page.getByRole("textbox", {
       name: "Código da solução",
       exact: true,

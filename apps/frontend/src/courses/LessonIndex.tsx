@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { NavLink } from "react-router";
 import { lessonPath, type Course } from "./api";
 
@@ -16,7 +17,7 @@ export function LessonIndex({ course }: { course: Course }) {
           setOpen(true);
         }}
       >
-        Lições
+        Lições <ChevronDown size={16} aria-hidden="true" />
       </button>
       <dialog
         ref={panel}

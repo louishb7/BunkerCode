@@ -18,7 +18,7 @@ import {
 } from "./api";
 import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
-import { LessonIndex } from "./LessonIndex";
+import { useLessonNavigation } from "../product/SiteHeader";
 import { Markdown, lessonBody } from "./Markdown";
 
 const LessonMarkdown = memo(Markdown);
@@ -38,6 +38,7 @@ export function LessonPage() {
 }
 
 function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
+  useLessonNavigation(lesson);
   const id = lesson.course.id,
     slug = lesson.slug;
   const [activityError, setActivityError] = useState("");
@@ -97,38 +98,6 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
         title={`${lesson.title} · ${lesson.course.title}`}
         className={`lesson-reader ${exercise ? "practice-workspace" : ""}`}
       >
-        <div className="lesson-context">
-          <nav aria-label="Caminho da página">
-            <Link
-              className="back-link"
-              to={"/courses/" + encodeURIComponent(id)}
-            >
-              ← Voltar ao curso
-            </Link>
-            <span aria-current="page" className="breadcrumb-current">
-              {lesson.title}
-            </span>
-          </nav>
-          <div className="lesson-context-actions">
-            <LessonIndex course={lesson.course} />
-            {lesson.previous && (
-              <Link
-                aria-label="Lição anterior"
-                to={lessonPath(id, lesson.previous.slug)}
-              >
-                ←
-              </Link>
-            )}
-            {lesson.next && (
-              <Link
-                aria-label="Próxima lição"
-                to={lessonPath(id, lesson.next.slug)}
-              >
-                →
-              </Link>
-            )}
-          </div>
-        </div>
         {activityError && (
           <p role="status" className="text-xs text-subtle">
             Acesso não registrado: {activityError}
@@ -201,27 +170,6 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             ) : undefined
           }
         />
-        <nav className="lesson-pagination" aria-label="Navegação entre lições">
-          {lesson.previous ? (
-            <Link to={lessonPath(id, lesson.previous.slug)}>
-              <span>← Anterior</span>
-              <strong>{lesson.previous.title}</strong>
-            </Link>
-          ) : (
-            <span />
-          )}
-          {lesson.next ? (
-            <Link to={lessonPath(id, lesson.next.slug)}>
-              <span>Próxima →</span>
-              <strong>{lesson.next.title}</strong>
-            </Link>
-          ) : (
-            <Link to={"/courses/" + encodeURIComponent(id)}>
-              <span>Voltar ao curso →</span>
-              <strong>{lesson.course.title}</strong>
-            </Link>
-          )}
-        </nav>
       </Page>
     </div>
   );
