@@ -15,7 +15,7 @@ for (const width of [390, 1280, 1440, 1920]) {
       await page.goto(url);
       await expect(page.locator(".lesson-heading h1")).toBeVisible();
       if (programming)
-        await expect(page.locator(".practice-panel")).toBeVisible();
+        await expect(page.locator(".practice-panel")).toHaveCount(1);
       const header = page.locator(".site-header");
       const home = header.getByRole("link", {
         name: "BunkerCode — Início",
@@ -30,7 +30,7 @@ for (const width of [390, 1280, 1440, 1920]) {
           .locator(".workspace-navigation")
           .getByRole("button", { name: "Lições", exact: true }),
       ).toBeVisible();
-      await expect(header.locator(".header-course")).toHaveAttribute(
+      await expect(page.locator(".footer-course")).toHaveAttribute(
         "href",
         "/courses/typescript",
       );

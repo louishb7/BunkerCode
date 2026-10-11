@@ -77,9 +77,25 @@ export function App() {
         Pular para o conteúdo
       </a>
       <LessonNavigationProvider>
-        <SiteHeader />
-        <AppRoutes />
+        <ApplicationShell />
       </LessonNavigationProvider>
     </BrowserRouter>
+  );
+}
+
+function ApplicationShell() {
+  const { pathname } = useLocation();
+  const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
+  return (
+    <div
+      className={
+        learning ? "application-shell learning-shell" : "application-shell"
+      }
+    >
+      <SiteHeader />
+      <div className="application-route">
+        <AppRoutes />
+      </div>
+    </div>
   );
 }

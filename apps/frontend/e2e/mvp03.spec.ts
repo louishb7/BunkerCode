@@ -514,6 +514,7 @@ test("360px, short viewport and reduced motion retain usable controls and intern
   await page.screenshot({ path: info.outputPath("short-360.png") });
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await page.setViewportSize({ width: 720, height: 450 });
+  await page.getByRole("button", { name: "Lição", exact: true }).click();
   await expect(page.locator(".study-explanation")).toBeVisible();
   expect(
     await page.evaluate(
@@ -526,25 +527,24 @@ test("360px, short viewport and reduced motion retain usable controls and intern
   });
 });
 
-test("mobile reading and code remain visible without view toggles", async ({
+test("mobile reading and code switch without replacing the editor or losing its draft", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
   await expect(page.locator(".study-explanation")).toBeVisible();
-  await expect(editor(page)).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Código", exact: true }),
-  ).toHaveCount(0);
-  expect(
-    await page
-      .locator(".study-code")
-      .evaluate((node) => node.getBoundingClientRect().top),
-  ).toBeGreaterThanOrEqual(
-    await page
-      .locator(".study-explanation")
-      .evaluate((node) => node.getBoundingClientRect().bottom),
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  await expect(editor(page)).not.toBeVisible();
+  await openCode(page);
+  await replaceCode(page, "const mobileDraft = 42;");
+  await editor(page).evaluate((node) =>
+    node.setAttribute("data-preserved", "true"),
   );
+  await page.getByRole("button", { name: "Lição", exact: true }).click();
+  await expect(page.locator(".study-explanation")).toBeVisible();
+  await openCode(page);
+  await expect(editor(page)).toHaveAttribute("data-preserved", "true");
+  await expect(editor(page)).toContainText("mobileDraft");
 });
 
 test("200 percent CSS zoom preserves product controls and study reflow", async ({

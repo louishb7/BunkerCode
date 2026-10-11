@@ -8,6 +8,7 @@ const format = (page: Page) =>
 
 async function open(page: Page) {
   await page.goto(lesson);
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
   const switcher = page.getByRole("button", { name: "Código", exact: true });
   if (await switcher.isVisible()) await switcher.click();
   await expect(solution(page)).toBeVisible();

@@ -43,6 +43,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   const id = lesson.course.id,
     slug = lesson.slug;
   const [activityError, setActivityError] = useState("");
+  const [mobileView, setMobileView] = useState<"reading" | "code">("reading");
   const { data: practice, error: practiceError } = useContent(
     "/" +
       encodeURIComponent(id) +
@@ -99,17 +100,37 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
         title={`${lesson.title} · ${lesson.course.title}`}
         className={`lesson-reader ${exercise ? "practice-workspace" : ""}`}
       >
-        {activityError && (
-          <p role="status" className="text-xs text-subtle">
-            Acesso não registrado: {activityError}
-          </p>
+        {exercise && (
+          <div
+            className="mobile-workspace-switch"
+            role="group"
+            aria-label="Visualização da aprendizagem"
+          >
+            <button
+              aria-pressed={mobileView === "reading"}
+              onClick={() => setMobileView("reading")}
+            >
+              Lição
+            </button>
+            <button
+              aria-pressed={mobileView === "code"}
+              onClick={() => setMobileView("code")}
+            >
+              Código
+            </button>
+          </div>
         )}
-        {!exercise && <LessonNavigation lesson={lesson} />}
         <StudySplit
           key={exercise ? "practice" : "reading"}
           practice={!!exercise}
+          mobileView={mobileView}
           left={
             <ReadingArticle>
+              {activityError && (
+                <p role="status" className="text-xs text-subtle">
+                  Acesso não registrado: {activityError}
+                </p>
+              )}
               <header className="lesson-heading">
                 <p className="eyebrow">
                   {lesson.course.title} · lição{" "}
@@ -159,7 +180,6 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                 aria-label="Área de código"
                 className="programming-workspace min-w-0"
               >
-                <LessonNavigation lesson={lesson} />
                 <Suspense
                   fallback={<p role="status">Carregando editor de código…</p>}
                 >
@@ -177,6 +197,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           }
         />
       </Page>
+      <LessonNavigation lesson={lesson} />
     </div>
   );
 }

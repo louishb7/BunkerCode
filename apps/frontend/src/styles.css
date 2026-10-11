@@ -3,6 +3,7 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "./courses/reader.css";
+@import "./courses/workspace.css";
 @import "./courses/catalog.css";
 @theme {
   --color-bunker: #111417;

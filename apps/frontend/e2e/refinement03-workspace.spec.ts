@@ -9,6 +9,9 @@ for (const width of [390, 1280, 1440, 1920])
       name: "Código da solução",
       exact: true,
     });
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    const switcher = page.getByRole("button", { name: "Código", exact: true });
+    if (await switcher.isVisible()) await switcher.click();
     await expect(editor).toBeVisible();
     await expect(
       page.getByText("Aguardando execução", { exact: true }),
@@ -78,6 +81,8 @@ for (const width of [390, 1280, 1440, 1920])
     await expect(
       page.getByText("Aguardando execução", { exact: true }),
     ).toBeVisible();
+    const reading = page.getByRole("button", { name: "Lição", exact: true });
+    if (await reading.isVisible()) await reading.click();
     await page.getByRole("button", { name: "Aparência da leitura" }).click();
     await page.getByRole("combobox", { name: "Tonalidade" }).selectOption("1");
     expect(
@@ -92,6 +97,8 @@ for (const width of [390, 1280, 1440, 1920])
         .evaluate((node) => getComputedStyle(node).backgroundColor),
     ).toBe("rgb(35, 39, 44)");
     await page.reload();
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    if (await switcher.isVisible()) await switcher.click();
     await expect(divider).toHaveAttribute("aria-valuenow", saved!);
     await divider.focus();
     await divider.press("Enter");

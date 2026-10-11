@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link, NavLink } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { BookOpen } from "lucide-react";
 type HeaderLesson = { course: { id: string; title: string } };
 import { Insignia } from "./Brand";
@@ -37,6 +37,8 @@ export function useLessonNavigation(lesson: HeaderLesson) {
 }
 export function SiteHeader() {
   const { lesson } = useContext(LessonNavigation);
+  const { pathname } = useLocation();
+  const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
   return (
     <header className="site-header border-b border-line bg-bunker">
       <div className="site-header-content mx-auto flex min-h-16 max-w-[1720px] items-center gap-5 px-4 sm:gap-8 sm:px-8">
@@ -52,23 +54,25 @@ export function SiteHeader() {
         </Link>
         <nav
           className={
-            lesson
+            lesson || learning
               ? "header-lesson-nav"
               : "flex h-full items-center gap-4 text-sm sm:gap-6"
           }
           aria-label="Navegação principal"
         >
-          {lesson ? (
+          {lesson || learning ? (
             <>
-              <Link
-                aria-label={`Abrir curso ${lesson.course.title}`}
-                className="header-course"
-                to={"/courses/" + encodeURIComponent(lesson.course.id)}
-                title={lesson.course.title}
-              >
-                <BookOpen size={18} aria-hidden="true" />
-                <span>{lesson.course.title}</span>
-              </Link>
+              {lesson && !learning && (
+                <Link
+                  aria-label={`Abrir curso ${lesson.course.title}`}
+                  className="header-course"
+                  to={"/courses/" + encodeURIComponent(lesson.course.id)}
+                  title={lesson.course.title}
+                >
+                  <BookOpen size={18} aria-hidden="true" />
+                  <span>{lesson.course.title}</span>
+                </Link>
+              )}
               <Link to="/" className="header-home">
                 Início
               </Link>

@@ -121,10 +121,12 @@ export function StudySplit({
   left,
   right,
   practice = false,
+  mobileView = "reading",
 }: {
   left: ReactNode;
   right?: ReactNode;
   practice?: boolean;
+  mobileView?: "reading" | "code";
 }) {
   const key = practice
     ? "bunkercode:practice-width"
@@ -172,6 +174,7 @@ export function StudySplit({
   return (
     <div
       ref={container}
+      data-mobile-view={mobileView}
       className={`study-split ${practice ? "programming-split" : "reading-split"} ${right ? "" : "without-sidebar"}`}
       style={
         {

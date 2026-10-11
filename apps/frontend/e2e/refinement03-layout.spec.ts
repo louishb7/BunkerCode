@@ -5,6 +5,9 @@ for (const width of [390, 1280, 1440, 1920])
   }, info) => {
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/courses/typescript/lessons/values-and-types");
+    const switcher = page.getByRole("button", { name: "Código", exact: true });
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    if (await switcher.isVisible()) await switcher.click();
     await expect(
       page.getByRole("textbox", { name: "Código da solução", exact: true }),
     ).toBeVisible();
@@ -14,13 +17,11 @@ for (const width of [390, 1280, 1440, 1920])
     ).toBeVisible();
     await expect(
       header.getByRole("link", { name: "Abrir curso TypeScript", exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       header.getByRole("button", { name: "Lições", exact: true }),
     ).toHaveCount(0);
-    const navigation = page.locator(
-      ".programming-workspace .workspace-navigation",
-    );
+    const navigation = page.locator(".learning-footer .workspace-navigation");
     await expect(navigation).toBeVisible();
     await expect(
       navigation.getByRole("button", { name: "Lição anterior", exact: true }),

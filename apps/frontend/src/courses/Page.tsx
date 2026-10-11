@@ -24,14 +24,19 @@ export function Page({
     const heading = main.current?.querySelector("h1");
     if (heading) heading.tabIndex = -1;
     (heading ?? main.current)?.focus({ preventScroll: true });
-    window.scrollTo(
-      0,
-      navigation === "POP" ? (scrollPositions.get(key) ?? 0) : 0,
-    );
-    const rememberScroll = () => scrollPositions.set(key, window.scrollY);
-    window.addEventListener("scroll", rememberScroll, { passive: true });
-    return () => window.removeEventListener("scroll", rememberScroll);
-  }, [key, navigation, ready, title]);
+    const reader =
+      main.current?.querySelector<HTMLElement>(".study-explanation");
+    const scrollTarget = reader ?? window;
+    const position = navigation === "POP" ? (scrollPositions.get(key) ?? 0) : 0;
+    if (reader) {
+      reader.scrollTop = position;
+      window.scrollTo(0, 0);
+    } else window.scrollTo(0, position);
+    const rememberScroll = () =>
+      scrollPositions.set(key, reader?.scrollTop ?? window.scrollY);
+    scrollTarget.addEventListener("scroll", rememberScroll, { passive: true });
+    return () => scrollTarget.removeEventListener("scroll", rememberScroll);
+  }, [className, key, navigation, ready, title]);
   return (
     <main id="main-content" tabIndex={-1} ref={main} className={className}>
       {children}

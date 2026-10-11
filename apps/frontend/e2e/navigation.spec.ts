@@ -120,8 +120,14 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   );
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await page.evaluate(() => window.scrollTo(0, 640));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
+  await page.locator(".study-explanation").evaluate((node) => {
+    node.scrollTop = 640;
+  });
+  await expect
+    .poll(() =>
+      page.locator(".study-explanation").evaluate((node) => node.scrollTop),
+    )
+    .toBe(640);
   await page
     .getByRole("link", { name: "Próxima lição", exact: true })
     .evaluate((node: HTMLElement) => node.focus({ preventScroll: true }));
@@ -135,7 +141,11 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
     "Lição de teste 1",
   );
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
+  await expect
+    .poll(() =>
+      page.locator(".study-explanation").evaluate((node) => node.scrollTop),
+    )
+    .toBe(640);
   await page.goForward();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Lição de teste 2",
@@ -145,7 +155,11 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Lição de teste 1",
   );
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
+  await expect
+    .poll(() =>
+      page.locator(".study-explanation").evaluate((node) => node.scrollTop),
+    )
+    .toBe(640);
   // Start at the first document control and activate the skip link by keyboard.
   await page.locator(".skip-link").focus();
   await expect(
@@ -174,6 +188,9 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await studioView(page, "Prévia");
   await expect(page.locator(".studio-options > summary")).toBeFocused();
   await page.getByRole("link", { name: "Voltar à lição", exact: true }).click();
+  await expect(page.locator(".lesson-heading h1")).toHaveText(
+    "Lição de teste 1",
+  );
   await page.goBack();
   await studioView(page, "Editar fonte Markdown");
   await expect(editor).toHaveValue(draft + "Ainda editando.");

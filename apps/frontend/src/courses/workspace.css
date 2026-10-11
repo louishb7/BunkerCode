@@ -1,0 +1,384 @@
+/* The learning route owns the viewport. Other routes keep document scrolling. */
+.learning-shell {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.learning-shell .site-header-content {
+  max-width: none;
+  min-height: 56px;
+  padding-inline: 20px;
+}
+.learning-shell .application-route {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+.learning-shell .content-status {
+  overflow: auto;
+}
+.reader-layout {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.lesson-reader {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.study-split {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.study-explanation {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px 28px 40px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.study-explanation > .prose {
+  margin-inline: auto;
+}
+.study-explanation > .lesson-heading,
+.study-explanation > .inline-exercise {
+  max-width: 75ch;
+  margin-inline: auto;
+}
+.lesson-heading .eyebrow {
+  margin-top: 0;
+}
+.study-outline {
+  min-width: 0;
+  min-height: 0;
+  max-height: 22dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 24px;
+  background: var(--color-surface);
+}
+.study-divider {
+  display: none;
+}
+.study-code,
+.programming-workspace,
+.practice-panel,
+.workspace-panels {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+.practice-panel {
+  border: 0;
+  border-radius: 0;
+}
+.workspace-panels {
+  display: grid;
+}
+.workspace-editor,
+.workspace-code-slot,
+.workspace-code-slot > div:not([hidden]) {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+/* CodeMirror's scroller owns both code axes; its host cannot grow with the code. */
+.workspace-code-slot .code-editor,
+.workspace-code-slot .cm-editor,
+.workspace-code-slot .cm-scroller {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+.workspace-code-slot .cm-content {
+  min-height: 100%;
+}
+.workspace-results {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  background: var(--color-surface);
+}
+.workspace-results .results-panel {
+  border: 0;
+  padding: 12px 16px;
+}
+/* One vertical scrollbar for all results, including errors and recovery controls. */
+.workspace-results .result-output {
+  max-height: none;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.result-heading {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.practice-panel .editor-toolbar {
+  padding: 0 8px;
+  gap: 0;
+  background: var(--color-surface);
+}
+.editor-files {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+}
+.editor-files button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px;
+  min-height: 33px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.editor-files .product-icon {
+  width: 14px;
+  height: 14px;
+}
+.editor-files button[aria-pressed="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.practice-panel .editor-actions {
+  display: grid;
+  grid-template-columns: auto minmax(24px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-block: 1px solid var(--color-line);
+}
+.practice-panel .code-primary-actions,
+.practice-panel .code-utilities {
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: center;
+}
+.practice-panel .editor-actions button {
+  min-height: 28px;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 3px;
+}
+.practice-panel .code-utilities button {
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-color: transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+.practice-panel .practice-run {
+  background: var(--color-raised);
+  border-color: var(--color-line);
+}
+.editor-files button:disabled,
+.editor-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.practice-panel .editor-actions > .workspace-height-divider {
+  height: 28px;
+  min-width: 24px;
+  cursor: row-resize;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+.workspace-height-divider::before {
+  content: "";
+  width: 24px;
+  height: 4px;
+  border-block: 1px solid var(--text-muted);
+  opacity: 0.55;
+}
+.workspace-height-divider:hover::before,
+.workspace-height-divider:focus-visible::before {
+  border-color: var(--accent);
+  opacity: 1;
+}
+.learning-shell:has(.workspace-panels[data-resizing]) {
+  user-select: none;
+  cursor: row-resize;
+}
+.learning-footer {
+  min-width: 0;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-bunker);
+  padding-inline: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.workspace-navigation {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: 12px;
+}
+.footer-course {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 25%;
+  min-height: 36px;
+  text-decoration: none;
+  color: var(--text-muted);
+}
+.footer-course svg {
+  flex-shrink: 0;
+}
+.footer-course span,
+.footer-lesson {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.footer-lesson {
+  color: var(--text-muted);
+  min-width: 0;
+}
+.workspace-navigation .lesson-index-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 3px;
+}
+.footer-neighbors {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.footer-neighbors > a,
+.footer-neighbors > button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+}
+.footer-neighbors > a:hover {
+  background: var(--color-raised);
+}
+.learning-shell :is(button, a, [role="separator"]):focus-visible {
+  outline-offset: -2px;
+}
+.mobile-workspace-switch {
+  display: none;
+}
+@media (min-width: 1000px) {
+  .study-split {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, var(--article-weight)) 1px minmax(
+        0,
+        var(--sidebar-weight)
+      );
+    column-gap: 0;
+  }
+  .study-split.without-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .study-divider {
+    display: block;
+    position: relative;
+    width: 1px;
+    background: var(--color-line);
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 3;
+  }
+  .study-divider::before {
+    content: "";
+    position: absolute;
+    inset: 0 -4px;
+  }
+  .study-divider:hover,
+  .study-divider:focus-visible {
+    background: var(--accent);
+  }
+  .study-outline {
+    max-height: none;
+    padding-top: 24px;
+  }
+}
+@media (max-width: 999px) {
+  .study-explanation {
+    padding: 20px 16px 32px;
+  }
+  .mobile-workspace-switch {
+    display: flex;
+    gap: 4px;
+    padding: 3px 12px;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-surface);
+  }
+  .mobile-workspace-switch button {
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 0;
+    background: transparent;
+    border-radius: 3px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .mobile-workspace-switch button[aria-pressed="true"] {
+    background: var(--color-raised);
+    color: var(--accent);
+  }
+  .programming-split {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .programming-split[data-mobile-view="reading"] > .study-code,
+  .programming-split[data-mobile-view="code"] > .study-explanation {
+    display: none;
+  }
+  .learning-footer {
+    padding-inline: 8px;
+  }
+  .workspace-navigation {
+    gap: 4px;
+  }
+  .footer-course {
+    max-width: 30%;
+    gap: 5px;
+  }
+  .footer-lesson {
+    flex: 1;
+  }
+  .learning-shell .site-header-content {
+    padding-inline: 16px;
+  }
+}

@@ -270,7 +270,7 @@ export default function PracticePanel({
   return (
     <section
       aria-label="Editor de prática"
-      className="practice-panel overflow-hidden rounded-xl border border-line bg-surface"
+      className="practice-panel bg-surface"
     >
       <WorkspacePanels
         tabs={
@@ -333,7 +333,7 @@ export default function PracticePanel({
             )}
           </div>
         }
-        actions={
+        actions={(divider) => (
           <>
             <div
               role="group"
@@ -369,6 +369,7 @@ export default function PracticePanel({
                   {sending ? "Registrando…" : "Submit"}
                 </button>
               </div>
+              {divider}
               <div className="code-utilities">
                 <button
                   className="format-button"
@@ -413,7 +414,7 @@ export default function PracticePanel({
               </div>
             </div>
           </>
-        }
+        )}
         results={
           <>
             {draft.failed && (
@@ -597,56 +598,60 @@ export default function PracticePanel({
                 )}
               </section>
             )}
+            {(draft.failed || submitError) && (
+              <section
+                aria-label="Recuperação do código"
+                className="border-t border-line p-4"
+              >
+                <p className="mt-0 text-xs">
+                  Preserve seu código antes de sair.
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button onClick={() => void copy()}>
+                    <Copy className="product-icon" aria-hidden="true" />
+                    Copiar código
+                  </button>
+                  <button onClick={download}>
+                    <Download className="product-icon" aria-hidden="true" />
+                    Baixar código
+                  </button>
+                  {draft.failed && !draft.conflict && (
+                    <button onClick={draft.retry}>
+                      Tentar salvar novamente
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+            {draft.activityError && (
+              <p role="status" className="px-4 text-xs">
+                Edição não registrada no calendário: {draft.activityError}
+              </p>
+            )}
+            {draft.conflict && (
+              <section
+                aria-label="Revisão de conflito"
+                className="border-t border-gold/40 p-4"
+              >
+                <h3 className="mt-0 text-base">Outra versão foi salva</h3>
+                <p className="text-sm text-subtle">
+                  Seu texto continua no editor. Compare com a versão abaixo
+                  antes de escolher.
+                </p>
+                <pre className="result-output">{draft.conflict.code}</pre>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button onClick={() => draft.resolve(true)}>
+                    Manter meu código e salvar
+                  </button>
+                  <button onClick={() => draft.resolve(false)}>
+                    Carregar código da outra aba
+                  </button>
+                </div>
+              </section>
+            )}
           </>
         }
       />
-      {(draft.failed || submitError) && (
-        <section
-          aria-label="Recuperação do código"
-          className="border-t border-line p-4"
-        >
-          <p className="mt-0 text-xs">Preserve seu código antes de sair.</p>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <button onClick={() => void copy()}>
-              <Copy className="product-icon" aria-hidden="true" />
-              Copiar código
-            </button>
-            <button onClick={download}>
-              <Download className="product-icon" aria-hidden="true" />
-              Baixar código
-            </button>
-            {draft.failed && !draft.conflict && (
-              <button onClick={draft.retry}>Tentar salvar novamente</button>
-            )}
-          </div>
-        </section>
-      )}
-      {draft.activityError && (
-        <p role="status" className="px-4 text-xs">
-          Edição não registrada no calendário: {draft.activityError}
-        </p>
-      )}
-      {draft.conflict && (
-        <section
-          aria-label="Revisão de conflito"
-          className="border-t border-gold/40 p-4"
-        >
-          <h3 className="mt-0 text-base">Outra versão foi salva</h3>
-          <p className="text-sm text-subtle">
-            Seu texto continua no editor. Compare com a versão abaixo antes de
-            escolher.
-          </p>
-          <pre className="result-output">{draft.conflict.code}</pre>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <button onClick={() => draft.resolve(true)}>
-              Manter meu código e salvar
-            </button>
-            <button onClick={() => draft.resolve(false)}>
-              Carregar código da outra aba
-            </button>
-          </div>
-        </section>
-      )}
     </section>
   );
 }
