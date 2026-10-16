@@ -6,10 +6,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useLessonNavigation } from "../product/SiteHeader";
-import { Link, useParams } from "react-router";
-import { lessonPath, useContent, incompatibleContent } from "./api";
+import { Link, useNavigate, useParams } from "react-router";
+import {
+  lessonPath,
+  useContent,
+  incompatibleContent,
+  parseCourse,
+} from "./api";
 import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
 import { Markdown, lessonBody } from "./Markdown";
@@ -23,6 +28,7 @@ import {
   type MarkdownRevision,
 } from "./studio-api";
 import "./studio.css";
+import { NewLessonDialog } from "./NewLessonDialog";
 
 const VisualEditor = lazy(() => import("../studio/VisualEditor"));
 
@@ -36,7 +42,21 @@ interface EditorPosition {
 interface BufferState extends MarkdownRevision {
   baseMarkdown: string;
 }
+// Synchronous memory also protects SPA navigation when sessionStorage is denied.
+const tabBuffers = new Map<
+  string,
+  { buffer: BufferState; storageError: string }
+>();
+window.addEventListener("beforeunload", (event) => {
+  if (!tabBuffers.size) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
+const recoveredNotice =
+  "Rascunho recuperado nesta aba; ele ainda não foi salvo no arquivo.";
 function initialBuffer(key: string, lesson: EditableLesson) {
+  const memory = tabBuffers.get(key);
+  if (memory) return { ...memory, notice: recoveredNotice };
   const fallback = {
     markdown: lesson.markdown,
     baseMarkdown: lesson.markdown,
@@ -44,7 +64,7 @@ function initialBuffer(key: string, lesson: EditableLesson) {
   };
   try {
     const raw = sessionStorage.getItem(key);
-    if (!raw) return { buffer: fallback, notice: "" };
+    if (!raw) return { buffer: fallback, notice: "", storageError: "" };
     const value: unknown = JSON.parse(raw);
     if (
       !value ||
@@ -58,18 +78,18 @@ function initialBuffer(key: string, lesson: EditableLesson) {
       !/^[a-f0-9]{64}$/.test(value.version)
     )
       throw new Error("Invalid tab draft");
-    return {
-      buffer: {
-        markdown: value.markdown,
-        baseMarkdown: value.baseMarkdown,
-        version: value.version,
-      },
-      notice:
-        "Rascunho recuperado nesta aba; ele ainda não foi salvo no arquivo.",
+    const buffer = {
+      markdown: value.markdown,
+      baseMarkdown: value.baseMarkdown,
+      version: value.version,
     };
+    if (buffer.markdown !== buffer.baseMarkdown)
+      tabBuffers.set(key, { buffer, storageError: "" });
+    return { buffer, notice: recoveredNotice, storageError: "" };
   } catch {
     return {
       buffer: fallback,
+      storageError: "",
       notice:
         "Não foi possível recuperar o rascunho desta aba. O conteúdo exibido veio do arquivo.",
     };
@@ -94,6 +114,13 @@ export function StudioPage() {
 }
 function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   useLessonNavigation(lesson);
+  const navigate = useNavigate();
+  const { data: course, error: courseError } = useContent(
+    "/" + encodeURIComponent(lesson.course.id),
+    parseCourse,
+  );
+  const [creating, setCreating] = useState(false);
+  const newLessonButton = useRef<HTMLButtonElement>(null);
   const id = lesson.course.id,
     slug = lesson.slug;
   const storageKey = "bunkercode:studio:" + id + "/" + slug;
@@ -113,7 +140,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   const [reviewing, setReviewing] = useState(false);
   const [current, setCurrent] = useState<MarkdownRevision | null>(null);
   const [view, setView] = useState<"visual" | "edit" | "preview">("visual");
-  const [storageError, setStorageError] = useState("");
+  const [storageError, setStorageError] = useState(initial.storageError);
   const editor = useRef<HTMLTextAreaElement>(null);
   const editingPosition = useRef<EditorPosition | null>(null);
   const viewScroll = useRef({ visual: 0, edit: 0, preview: 0 });
@@ -153,16 +180,10 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       alive.current = false;
     };
   }, []);
-  useEffect(() => {
-    if (!dirty && !saving) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, saving]);
   function changeBuffer(next: BufferState) {
+    // Complete persistence in the edit handler, before any route can unmount us.
+    if (next.markdown === next.baseMarkdown) tabBuffers.delete(storageKey);
+    else tabBuffers.set(storageKey, { buffer: next, storageError: "" });
     setBuffer(next);
     setSaved(false);
     try {
@@ -171,9 +192,11 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       else sessionStorage.setItem(storageKey, JSON.stringify(next));
       setStorageError("");
     } catch {
-      setStorageError(
-        "Não foi possível guardar o rascunho nesta aba. Copie seu texto antes de sair ou recarregar.",
-      );
+      const message =
+        "Não foi possível guardar o rascunho no armazenamento desta aba. Ele continua na sessão aberta; copie seu texto antes de recarregar ou fechar.";
+      if (next.markdown !== next.baseMarkdown)
+        tabBuffers.set(storageKey, { buffer: next, storageError: message });
+      setStorageError(message);
     }
   }
   async function save() {
@@ -251,46 +274,66 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         >
           <ArrowLeft size={19} />
         </Link>
-        <span className="studio-identity" title={lesson.title}>
-          {slug}
-        </span>
+        <div className="studio-course-context">
+          <span className="studio-course-title" title={lesson.course.title}>
+            {lesson.course.title}
+          </span>
+          <select
+            aria-label="Lições do curso"
+            value={slug}
+            disabled={saving || !course || course.id !== id}
+            onChange={(event) =>
+              navigate(lessonPath(id, event.target.value) + "/edit")
+            }
+          >
+            {course?.id === id ? (
+              course.lessons.map((entry) => (
+                <option key={entry.slug} value={entry.slug}>
+                  {entry.title}
+                </option>
+              ))
+            ) : (
+              <option value={slug}>{lesson.title}</option>
+            )}
+          </select>
+        </div>
+        <button
+          ref={newLessonButton}
+          className="studio-new-lesson"
+          disabled={saving}
+          onClick={() => setCreating(true)}
+        >
+          Nova lição
+        </button>
         <p
           className={dirty ? "studio-status pending" : "studio-status"}
           role="status"
         >
           {status}
         </p>
-        <details className="studio-options">
-          <summary aria-label="Mais opções" title="Mais opções">
-            <MoreHorizontal size={20} />
-          </summary>
-          <div role="group" aria-label="Visualização do Studio">
-            {(
-              [
-                ["visual", "Editor visual"],
-                ["edit", "Editar fonte Markdown"],
-                ["preview", "Prévia"],
-              ] as const
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                aria-pressed={view === mode}
-                onClick={(event) => {
-                  changeView(mode);
-                  const details = event.currentTarget.closest("details");
-                  if (details) {
-                    details.open = false;
-                    details
-                      .querySelector("summary")
-                      ?.focus({ preventScroll: true });
-                  }
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </details>
+        <div
+          className="studio-views"
+          role="group"
+          aria-label="Visualização do Studio"
+        >
+          {(
+            [
+              ["visual", "Editor visual", "Visual"],
+              ["preview", "Prévia", "Prévia"],
+              ["edit", "Editar fonte Markdown", "Markdown"],
+            ] as const
+          ).map(([mode, label, caption]) => (
+            <button
+              key={mode}
+              aria-label={label}
+              title={label}
+              aria-pressed={view === mode}
+              onClick={() => changeView(mode)}
+            >
+              {caption}
+            </button>
+          ))}
+        </div>
         <button
           className="studio-save"
           disabled={!dirty || saving || conflict}
@@ -299,6 +342,24 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           {saving ? "Salvando…" : "Salvar alterações"}
         </button>
       </header>
+      {creating && (
+        <NewLessonDialog
+          courseId={id}
+          onClose={() => {
+            setCreating(false);
+            newLessonButton.current?.focus();
+          }}
+          onCreated={(created) =>
+            navigate(lessonPath(id, created.slug) + "/edit")
+          }
+        />
+      )}
+      {(courseError || (course && course.id !== id)) && (
+        <p role="alert" className="studio-error">
+          {courseError || incompatibleContent} Recarregue para consultar a
+          navegação do curso; seu texto permanece no editor.
+        </p>
+      )}
       {notice && <p className="studio-notice">{notice}</p>}
       {storageError && (
         <p role="alert" className="studio-error">
@@ -345,28 +406,28 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           </div>
         </section>
       )}
-      {view === "visual" && (
+      <fieldset
+        disabled={saving}
+        inert={saving}
+        className="visual-editor-fieldset"
+        hidden={view !== "visual"}
+      >
         <Suspense fallback={<p role="status">Carregando editor visual…</p>}>
-          <fieldset
+          <VisualEditor
+            source={buffer.markdown}
+            active={view === "visual"}
             disabled={saving}
-            inert={saving}
-            className="visual-editor-fieldset"
-          >
-            <VisualEditor
-              source={buffer.markdown}
-              disabled={saving}
-              onChange={(markdown) => {
-                if (
-                  buffer.baseMarkdown.includes("\r\n") &&
-                  !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
-                )
-                  markdown = markdown.replaceAll("\n", "\r\n");
-                changeBuffer({ ...buffer, markdown });
-              }}
-            />
-          </fieldset>
+            onChange={(markdown) => {
+              if (
+                buffer.baseMarkdown.includes("\r\n") &&
+                !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
+              )
+                markdown = markdown.replaceAll("\n", "\r\n");
+              changeBuffer({ ...buffer, markdown });
+            }}
+          />
         </Suspense>
-      )}
+      </fieldset>
       <section className="studio-edit-panel" hidden={view !== "edit"}>
         <label htmlFor="lesson-markdown">Markdown completo</label>
         <textarea

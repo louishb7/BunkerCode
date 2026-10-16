@@ -50,7 +50,7 @@ test("authoring creates a standalone Markdown and appends one manifest entry; du
   try {
     assert.equal(run(root).status, 0);
     const file = join(course, "lessons/union-types/lesson.md");
-    assert.match(readFileSync(file, "utf8"), /^# Union Types/);
+    assert.equal(readFileSync(file, "utf8"), "");
     const manifest = readFileSync(join(course, "course.json"), "utf8");
     assert.deepEqual(JSON.parse(manifest).lessons, [
       { slug: "union-types", title: "Union Types" },
@@ -119,10 +119,7 @@ test("a failed manifest update rolls back only the new lesson and releases the l
     assert.ok(Buffer.byteLength(JSON.stringify(manifest, null, 2)) > 65536);
     writeFileSync(join(course, "course.json"), original);
     assert.equal(run(root).status, 1);
-    assert.equal(
-      readFileSync(join(course, "course.json"), "utf8"),
-      original,
-    );
+    assert.equal(readFileSync(join(course, "course.json"), "utf8"), original);
     assert.equal(existsSync(join(course, "lessons/union-types")), false);
     assert.equal(existsSync(join(course, ".lesson-new.lock")), false);
   } finally {

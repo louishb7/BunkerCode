@@ -13,6 +13,7 @@ import {
 import { Markdown } from "@tiptap/markdown";
 import StarterKit from "@tiptap/starter-kit";
 import { Plus, ListTree, Type } from "lucide-react";
+import { continueAfter, endsInSpecialBlock } from "./continuation";
 import { EditorialBlock, VisualCode, openVisual } from "./visual-markdown";
 function insertionPoint(editor: Editor) {
   const { selection } = editor.state;
@@ -52,10 +53,12 @@ const extensions = [
 ];
 export default function VisualEditor({
   source,
+  active,
   disabled,
   onChange,
 }: {
   source: string;
+  active: boolean;
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
@@ -64,6 +67,7 @@ export default function VisualEditor({
   callback.current = onChange;
   const last = useRef(source);
   const [error, setError] = useState(initial.error ?? "");
+  const [hasContinuation, setHasContinuation] = useState(false);
   const [menu, setMenu] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
@@ -86,6 +90,24 @@ export default function VisualEditor({
       },
       editable: !disabled && !initial.error,
       editorProps: {
+        handleClick: (view, _position, event) => {
+          const current = view.state.doc;
+          const last = current.lastChild;
+          if (
+            event.target !== view.dom ||
+            !last ||
+            !["codeBlock", "editorialBlock"].includes(last.type.name)
+          )
+            return false;
+          const dom = view.nodeDOM(current.content.size - last.nodeSize);
+          if (
+            !(dom instanceof Element) ||
+            event.clientY < dom.getBoundingClientRect().bottom
+          )
+            return false;
+          continueAfter(view, current.content.size);
+          return true;
+        },
         attributes: {
           class: "prose visual-document",
           "aria-label": "Conteúdo visual da lição",
@@ -106,6 +128,7 @@ export default function VisualEditor({
   useEffect(() => {
     if (
       !editor ||
+      !active ||
       source.replaceAll("\r\n", "\n") === last.current.replaceAll("\r\n", "\n")
     )
       return;
@@ -115,9 +138,9 @@ export default function VisualEditor({
       editor.commands.setContent(result.document, { emitUpdate: false });
       last.current = source;
     }
-  }, [editor, source]);
+  }, [editor, source, active]);
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !active) return;
     let frame = 0;
     function refresh() {
       cancelAnimationFrame(frame);
@@ -129,6 +152,7 @@ export default function VisualEditor({
           editor.isDestroyed
         )
           return;
+        setHasContinuation(endsInSpecialBlock(editor));
         setHasSelection(
           !editor.state.selection.empty &&
             !(editor.state.selection instanceof NodeSelection),
@@ -195,7 +219,7 @@ export default function VisualEditor({
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", escape);
     };
-  }, [editor]);
+  }, [editor, active]);
   if (error)
     return (
       <p role="alert" className="studio-error">
@@ -242,10 +266,7 @@ export default function VisualEditor({
       };
     const pos = position.current ?? insertionPoint(editor).after;
     const newNode = editor.schema.nodeFromJSON(block);
-    const tr = closeHistory(editor.state.tr).insert(pos, [
-      newNode,
-      editor.schema.nodes.paragraph!.create(),
-    ]);
+    const tr = closeHistory(editor.state.tr).insert(pos, newNode);
     tr.setSelection(
       type === "paragraph"
         ? TextSelection.create(tr.doc, pos + 1)
@@ -256,7 +277,43 @@ export default function VisualEditor({
     setMenu(false);
   }
   return (
-    <div className="visual-studio" ref={root}>
+    <div
+      className="visual-studio"
+      ref={root}
+      onKeyDownCapture={(event) => {
+        const target = event.target;
+        if (
+          !(target instanceof HTMLElement) ||
+          target.closest("input, textarea, select, button, a, .cm-editor") ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.altKey ||
+          event.nativeEvent.isComposing ||
+          !editor.isEditable
+        )
+          return;
+        const { selection, doc } = editor.state;
+        if (
+          !(selection instanceof NodeSelection) ||
+          selection.to !== doc.content.size ||
+          !endsInSpecialBlock(editor)
+        )
+          return;
+        if (
+          event.key !== "Enter" &&
+          event.key !== "ArrowDown" &&
+          event.key.length !== 1
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        continueAfter(
+          editor.view,
+          doc.content.size,
+          event.key.length === 1 ? event.key : "",
+        );
+      }}
+    >
       <aside className="studio-tools" aria-label="Ferramentas do documento">
         <button
           title="Inserir conteúdo"
@@ -329,6 +386,19 @@ export default function VisualEditor({
         <VisualToolbar editor={editor} disabled={disabled} />
       </div>
       <EditorContent editor={editor} />
+      {hasContinuation && (
+        <button
+          type="button"
+          className="studio-continuation"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() =>
+            continueAfter(editor.view, editor.state.doc.content.size)
+          }
+        >
+          Escrever após o último bloco
+        </button>
+      )}
       {insertTop !== null && (
         <div
           ref={insertion}

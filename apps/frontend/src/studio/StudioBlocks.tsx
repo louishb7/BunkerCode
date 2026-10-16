@@ -1,5 +1,6 @@
+import { continueAfter } from "./continuation";
 import { closeHistory } from "@tiptap/pm/history";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -107,14 +108,7 @@ function BlockActions({ editor, getPos, node, selected }: NodeViewProps) {
               const pos = getPos();
               if (typeof pos !== "number") return;
               const after = pos + node.nodeSize;
-              // Dispatch insertion, caret and focus synchronously; no delayed focus can eat the first character.
-              const tr = closeHistory(editor.state.tr).insert(
-                after,
-                editor.schema.nodes.paragraph!.create(),
-              );
-              tr.setSelection(TextSelection.create(tr.doc, after + 1));
-              editor.view.dispatch(tr);
-              editor.view.focus();
+              continueAfter(editor.view, after);
               setOpen(false);
             }}
           >
@@ -154,6 +148,12 @@ export function EditorialView(props: NodeViewProps) {
     return (
       <NodeViewWrapper
         className="editorial-note"
+        role="group"
+        aria-label={
+          node.attrs.language === "bunker-note"
+            ? "Nota editorial"
+            : "Enunciado do exercício"
+        }
         contentEditable={false}
         tabIndex={0}
         {...events}
@@ -168,6 +168,12 @@ export function EditorialView(props: NodeViewProps) {
     return (
       <NodeViewWrapper
         className="editorial-note"
+        role="group"
+        aria-label={
+          node.attrs.language === "bunker-note"
+            ? "Nota editorial"
+            : "Enunciado do exercício"
+        }
         contentEditable={false}
         tabIndex={0}
         {...events}
@@ -210,6 +216,8 @@ export function EditorialView(props: NodeViewProps) {
   return (
     <NodeViewWrapper
       className="quiz-author"
+      role="group"
+      aria-label="Quiz editorial"
       contentEditable={false}
       tabIndex={0}
       {...events}
@@ -351,6 +359,9 @@ export function CodeView(props: NodeViewProps) {
   return (
     <NodeViewWrapper
       className="code-block studio-code-block"
+      role="group"
+      aria-label="Bloco de código"
+      tabIndex={0}
       contentEditable={false}
       onPointerDownCapture={() => selectBlock(props)}
       onFocusCapture={() => selectBlock(props)}

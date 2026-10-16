@@ -3,10 +3,7 @@ export async function studioView(
   page: Page,
   name: "Editor visual" | "Editar fonte Markdown" | "Prévia",
 ) {
-  const options = page.locator(".studio-options");
-  if (!(await options.evaluate((node) => (node as HTMLDetailsElement).open)))
-    await options.locator("summary").click();
-  await options.getByRole("button", { name, exact: true }).click();
+  await page.getByRole("button", { name, exact: true }).click();
 }
 export async function studioTools(page: Page) {
   const button = page.getByRole("button", {

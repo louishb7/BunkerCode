@@ -6,9 +6,11 @@ Com Node 24+ e dependências instaladas:
 
     pnpm lesson:new --course typescript --slug narrowing --title "Narrowing"
 
-O comando cria content/courses/typescript/lessons/narrowing/lesson.md e acrescenta a entrada ao final de course.json. São dois arquivos de conteúdo. Não modifica React/Nest e não faz commit.
+O comando cria content/courses/typescript/lessons/narrowing/lesson.md vazio e acrescenta a entrada ao final de course.json. São dois arquivos de conteúdo. Não modifica React/Nest e não faz commit.
 
-Edite o Markdown com suas palavras. O template contém sugestões, não requisitos. Uma lição pode ter apenas explicação e exemplo; nenhuma seção é obrigatória. O título do manifesto é usado na navegação. Um primeiro heading Markdown idêntico ao título é omitido apenas na apresentação para não repetir o cabeçalho; o arquivo continua independente.
+`pnpm lesson:new` compila previamente o pacote compartilhado de conteúdo. A invocação direta de `node scripts/new-lesson.mjs` exige que esse pacote já tenha sido compilado.
+
+Edite o Markdown com suas palavras. Uma lição pode ter apenas explicação e exemplo; nenhuma seção é obrigatória. O título do manifesto é usado na navegação. Um primeiro heading Markdown idêntico ao título é omitido apenas na apresentação para não repetir o cabeçalho; o arquivo continua independente.
 
 Você pode criar os mesmos dois arquivos manualmente. Exemplo de entrada na lista lessons:
 
@@ -38,9 +40,9 @@ Os testes/smokes usam BUNKERCODE_CONTENT_DIR para uma cópia descartável do dir
 
 ## Editar no Studio local
 
-1. Inicie `pnpm dev` e abra a lição em `http://127.0.0.1:5173`.
+1. Inicie `pnpm dev` e abra a lição em `http://127.0.0.1:5173`. O frontend reotimiza as dependências ao iniciar para consumir o pacote compartilhado recém-compilado, inclusive quando um cache anterior ainda contém exports antigos.
 2. Clique em **Editar lição**. O Studio identifica discretamente a lição e carrega o Markdown completo, inclusive o primeiro heading e os fences.
-3. Escreva no **Editor visual**. Use a sidebar para inserir conteúdo, abrir a estrutura ou acessar formatação por teclado. Selecionar texto também mostra a formatação. O + acompanha o bloco selecionado e abre apenas por clique. **Mais opções** reúne **Editar fonte Markdown**, fallback, e **Prévia**. Consulte [Studio visual e blocos editoriais](visual-authoring.md).
+3. Escreva no **Editor visual**. Use a sidebar para inserir conteúdo, abrir a estrutura ou acessar formatação por teclado. Selecionar texto também mostra a formatação. O + acompanha o bloco selecionado e abre apenas por clique. **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior, com o modo ativo indicado. Consulte [Studio visual e blocos editoriais](visual-authoring.md).
 4. Clique em **Salvar alterações**. Aguarde **Salvo no arquivo.**; a resposta confirma a gravação física. Durante a gravação o texto fica bloqueado para a confirmação corresponder exatamente ao que foi enviado.
 5. Use **Voltar à lição**. A leitura atualizada não depende de rebuild. Abra `content/courses/<id>/lessons/<slug>/lesson.md` no VS Code e confira `git diff`/`git status` no checkout principal antes de fazer seu commit.
 
@@ -48,11 +50,11 @@ A opção de fonte Markdown usa quebra **visual** de linha (`wrap="soft"`), incl
 
 Salvar, os controles de vista e o estado ficam juntos numa toolbar persistente durante a rolagem da página. Em viewports com altura de até 500 px, ela permanece no fluxo do documento para não ocupar a área curta de edição. O arquivo continua mudando somente por **Salvar alterações**, depois da confirmação física; não há autosave canônico.
 
-O Studio edita apenas lições existentes e listadas no manifesto. Criação continua pelo CLI ou por arquivos; não há criação de cursos, alteração de manifesto nem operação Git na interface. A edição não usa SQLite.
+O seletor **Lições do curso** navega na ordem do manifesto, identificando curso e lição. **Nova lição** pede título e sugere um slug editável; **Criar lição** acrescenta a entrada ao final do curso e abre o Markdown vazio. Cancelar não grava. Erros preservam os campos e a operação pendente bloqueia envios duplicados. CLI e interface usam a mesma operação de criação. Não há criação de cursos nem operação Git na interface. A edição não usa SQLite.
 
 ### Rascunho e erros
 
-**Alterações não salvas.** significa que o texto do editor difere da versão usada como base. O rascunho é guardado em `sessionStorage`, apenas nesta aba, para retomada depois de navegação ou reload. Isso não é gravação no arquivo nem backup durável: fechar a aba, limpar o armazenamento ou seu navegador impedir a gravação pode perder o rascunho. Falhas no armazenamento da aba têm aviso explícito; copie seu texto antes de sair nesse caso. Recarregar/sair com edição pendente também aciona o aviso padrão do navegador quando suportado.
+**Alterações não salvas.** significa que o editor difere da versão usada como base. Cada edição atualiza sincronicamente um buffer por curso/lição em memória e em `sessionStorage`, antes de qualquer desmontagem por navegação. Alternar vistas, acessar outra lição ou criar uma nova preserva o buffer anterior. O retorno informa **Rascunho recuperado**, sem alegar salvamento no arquivo. Se o armazenamento for negado, a memória ainda protege a navegação interna, com aviso que permanece ao retornar. Reload depende do `sessionStorage`; fechar a aba, limpar o armazenamento ou impedir sua gravação pode perder o rascunho. Não é backup durável. Copie seu texto antes de recarregar/fechar em caso de falha. O aviso padrão de saída também protege buffers pendentes já visitados nesta sessão, quando suportado pelo navegador.
 
 Uma falha de rede/disco mantém o texto, sem apresentar sucesso. Se a conexão cair depois de o servidor gravar, o resultado pode ser incerto: use **Revisar arquivo atual** antes de tentar novamente. A versão do rascunho é preservada; retornar ao editor detecta se o arquivo mudou.
 
@@ -98,11 +100,15 @@ Cursos, Leitor e Studio organizam, apresentam e salvam conteúdo autoral. A entr
 
 Dados locais anteriores, incluindo bancos e capturas em .bunkercode, .bunkerlab e .backendlab, permanecem preservados e não são usados para editar lições. Não é necessário migrar ou apagar nenhum banco para iniciar a plataforma. Testes de navegador escrevem em cópias descartáveis e geram um diretório novo de capturas por execução.
 
-## Proteções do comando
+## Proteções da criação pelo Studio e pelo comando
 
-lesson:new recusa slug duplicado e pasta existente, mesmo que ela ainda não esteja no manifesto. Não sobrescreve notas. Um lock por curso impede dois comandos de autoria de gravarem simultaneamente; o manifesto é substituído por rename de um arquivo temporário no mesmo diretório.
+`lesson:new` e `POST /content/courses/:id/lessons` usam a operação Node de `@bunkercode/content/authoring`. A validação integral do manifesto é compartilhada com a leitura do backend. O POST recebe somente `{ "title": "Título", "slug": "slug" }`: retorna 201 com a lição, 400 para payload/identificadores inválidos, 404 para curso inexistente, 409 para duplicação/lock/conflito, 422 para estrutura editorial inválida e 500 para falha de persistência ou confirmação. As proteções HTTP locais são as mesmas do salvamento (403/415); GET e PUT mantêm seus contratos.
 
-Se a atualização do manifesto falhar, o comando tenta remover somente a lição recém-criada e liberar lock/temporário, mantendo o erro original e relatando falha de cleanup. Isso não é uma transação durável contra queda de energia. Uma interrupção abrupta pode deixar .lesson-new.lock ou um rascunho ainda não listado; inspecione o curso e confirme que nenhum comando está ativo antes de resolver manualmente. Não apague texto próprio para recuperar o gerador.
+Um `.lesson-new.lock` exclusivo por curso coordena CLI e API. Seu JSON registra PID, início, slug, título e paths antes da primeira alteração editorial. A criação exclusiva recusa slugs duplicados e pastas já existentes, inclusive fora do manifesto, sem sobrescrita. Raiz e ancestrais, manifesto e diretórios internos recusam symlinks. O Markdown existe e recebe flush antes de publicar o manifesto por temporário, flush e rename. A versão original do manifesto é relida imediatamente antes da substituição para detectar alterações externas. Salvamentos de lições existentes usam seus locks próprios: não escrevem os mesmos arquivos da criação.
+
+Isso **não é uma transação atômica entre arquivos**, nem garantia durável contra queda de energia. Editores externos não participam dos locks e ainda podem disputar a pequena janela entre a verificação final e o rename. Em falha tratada antes da publicação, a limpeza só remove arquivo/pasta da operação com identidade e bytes conferidos. Texto modificado externamente, arquivo substituído e arquivos adicionais são preservados. Falha de recuperação retém o journal e responde sem sucesso confirmado. Depois da publicação, falha de limpeza também pode gerar resposta incerta: confira o curso antes de repetir.
+
+Uma interrupção abrupta pode deixar lock, temporário e pasta ainda não listada. Não há expiração nem remoção automática. Para recuperar: confirme que o PID/processo não está ativo; leia `.lesson-new.lock`; compare seus paths com `course.json` e `lesson.md`. Se a entrada já estiver publicada e o arquivo existir, preserve ambos. Se não estiver listada, revise o Markdown e incorpore a entrada manualmente ou preserve uma cópia antes de qualquer limpeza comprovadamente restrita à operação. Remova lock/temporário somente após essa inspeção. Nunca apague notas autorais nem substitua o manifesto inteiro para liberar um lock. Os testes simulam morte do processo antes e depois da publicação; conteúdo interrompido não é apagado automaticamente.
 
 ## Revisar e versionar
 

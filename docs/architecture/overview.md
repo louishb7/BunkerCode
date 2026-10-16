@@ -12,7 +12,7 @@ BunkerCode é uma plataforma pessoal e aberta para estudar programação e trans
 - scripts: comando de autoria e seus testes.
 - docs: documentação atual, implementação e histórico selecionado.
 
-A raiz configura o monorepo: package.json, pnpm-workspace.yaml, lockfile, ESLint, tsconfig.base.json e .gitignore. O tsconfig base compartilha strictness/target realmente usados pelas duas aplicações; DOM pertence ao frontend, Node e decorators ao backend. Vite, Playwright e tsconfigs específicos ficam nas aplicações. `packages/content` compartilha somente a validação editorial com consumidores reais nas duas aplicações. Não há Turborepo ou Nx.
+A raiz configura o monorepo: package.json, pnpm-workspace.yaml, lockfile, ESLint, tsconfig.base.json e .gitignore. O tsconfig base compartilha strictness/target realmente usados pelas duas aplicações; DOM pertence ao frontend, Node e decorators ao backend. Vite, Playwright e tsconfigs específicos ficam nas aplicações. `packages/content` compartilha validação editorial e de manifestos com consumidores reais nas duas aplicações; seu entry point Node `authoring` compartilha a criação segura entre CLI e backend, sem incluir filesystem no bundle do navegador. Não há Turborepo ou Nx.
 
 ## Conteúdo e leitura
 
@@ -38,6 +38,7 @@ A API oferece:
 - GET /content/courses/:id
 - GET /content/courses/:id/lessons/:slug
 - GET /content/courses/:id/lessons/:slug/exercise (`{ exercise: objeto validado | null }`)
+- POST /content/courses/:id/lessons (criação local protegida, compartilhada com o CLI)
 - PUT /content/courses/:id/lessons/:slug/markdown
 
 Pastas de curso são descobertas por leitura do diretório. Manifestos são validados; IDs/slugs são restritos e symlinks internos recusados. Erros de scope retornam 400/404; conteúdo inválido/ausente retorna 422. A raiz autorizada e seus ancestrais também não podem ser symlinks. Um manifesto inválido interrompe o catálogo com diagnóstico explícito, em vez de esconder um curso quebrado.

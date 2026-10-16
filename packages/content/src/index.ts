@@ -1,3 +1,13 @@
+export {
+  parseCourse,
+  validSlug,
+  isLessonTitle,
+  parseNewLesson,
+  suggestLessonSlug,
+  type Course,
+  type LessonEntry,
+  type CourseSummary,
+} from "./course";
 export interface Quiz {
   id: string;
   question: string;

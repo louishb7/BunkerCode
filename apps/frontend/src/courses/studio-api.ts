@@ -96,3 +96,38 @@ export async function saveMarkdown(
     throw new Error("O servidor não confirmou o texto enviado.");
   return saved;
 }
+
+export async function createLesson(
+  id: string,
+  entry: { slug: string; title: string },
+) {
+  try {
+    const created = parseEditableLesson(
+      await responseValue(
+        await fetch(
+          "/api/content/courses/" + encodeURIComponent(id) + "/lessons",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-bunkercode-client": "local",
+            },
+            body: JSON.stringify(entry),
+          },
+        ),
+      ),
+    );
+    if (
+      created.course.id !== id ||
+      created.slug !== entry.slug ||
+      created.title !== entry.title
+    )
+      throw new Error("Confirmação incompatível.");
+    return created;
+  } catch (error) {
+    if (error instanceof StudioError) throw error;
+    throw new Error(
+      "Não foi possível confirmar a criação. Confira as lições do curso antes de repetir; os valores do formulário foram preservados.",
+    );
+  }
+}

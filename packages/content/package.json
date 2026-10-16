@@ -7,5 +7,22 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring.d.ts",
+      "default": "./dist/authoring.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "authoring": [
+        "dist/authoring.d.ts"
+      ]
+    }
   }
 }

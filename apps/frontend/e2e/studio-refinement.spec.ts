@@ -75,7 +75,9 @@ for (const width of [390, 1280])
       });
       await studioView(page, "Prévia");
       await expect(input).not.toBeVisible();
-      await expect(page.locator(".studio-options > summary")).toBeFocused();
+      await expect(
+        page.getByRole("button", { name: "Prévia", exact: true }),
+      ).toBeFocused();
       await expect(page.locator(".studio-preview pre code")).toContainText(
         "function explain()",
       );
@@ -90,7 +92,12 @@ for (const width of [390, 1280])
       });
       await studioView(page, "Editar fonte Markdown");
       await expect(input).toBeVisible();
-      await expect(page.locator(".studio-options > summary")).toBeFocused();
+      await expect(
+        page.getByRole("button", {
+          name: "Editar fonte Markdown",
+          exact: true,
+        }),
+      ).toBeFocused();
       expect(
         await input.evaluate((node: HTMLTextAreaElement) => ({
           start: node.selectionStart,

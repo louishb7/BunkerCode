@@ -8,34 +8,20 @@ import {
 
 import { readMarkdownFile } from "./markdown-file";
 
-export interface LessonEntry {
-  slug: string;
-  title: string;
-}
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  lessons: LessonEntry[];
-}
-export interface CourseSummary {
-  id: string;
-  title: string;
-  description: string;
-  lessonCount: number;
-}
+import {
+  parseCourse as parseCourseManifest,
+  validSlug,
+  type Course,
+} from "@bunkercode/content";
+export { validSlug } from "@bunkercode/content";
+export type { Course, CourseSummary, LessonEntry } from "@bunkercode/content";
+import type { CourseSummary, LessonEntry } from "@bunkercode/content";
 export interface Lesson extends LessonEntry {
   course: Course;
   markdown: string;
   version: string;
   previous: LessonEntry | null;
   next: LessonEntry | null;
-}
-const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export function validSlug(value: unknown): value is string {
-  return (
-    typeof value === "string" && value.length <= 80 && slugPattern.test(value)
-  );
 }
 export function coursesRoot() {
   return resolve(
@@ -47,45 +33,14 @@ export function coursesRoot() {
 function invalid(message: string): never {
   throw new UnprocessableEntityException(`Conteúdo inválido: ${message}`);
 }
-function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    invalid("o manifesto deve conter objetos.");
-  return value as Record<string, unknown>;
-}
-function text(value: unknown, limit: number, field: string): string {
-  if (typeof value !== "string" || !value.trim() || value.length > limit)
-    invalid(`campo ${field} ausente, vazio ou muito longo.`);
-  return value;
-}
-function fields(value: Record<string, unknown>, allowed: string[]) {
-  if (Object.keys(value).some((key) => !allowed.includes(key)))
-    invalid("campo desconhecido no manifesto.");
-}
 export function parseCourse(value: unknown, id: string): Course {
-  const course = object(value);
-  fields(course, ["id", "title", "description", "lessons"]);
-  if (course.id !== id || !validSlug(course.id))
-    invalid("id não corresponde à pasta do curso.");
-  if (!Array.isArray(course.lessons))
-    invalid("lessons deve ser uma lista ordenada.");
-  const seen = new Set<string>();
-  const lessons = course.lessons.map((value): LessonEntry => {
-    const lesson = object(value);
-    fields(lesson, ["slug", "title"]);
-    if (!validSlug(lesson.slug)) invalid("slug de lição inválido.");
-    if (seen.has(lesson.slug)) invalid(`slug duplicado: ${lesson.slug}.`);
-    seen.add(lesson.slug);
-    return {
-      slug: lesson.slug,
-      title: text(lesson.title, 160, "title"),
-    };
-  });
-  return {
-    id,
-    title: text(course.title, 160, "title"),
-    description: text(course.description, 800, "description"),
-    lessons,
-  };
+  try {
+    return parseCourseManifest(value, id);
+  } catch (error) {
+    throw new UnprocessableEntityException(
+      error instanceof Error ? error.message : "Manifesto inválido.",
+    );
+  }
 }
 // All paths are derived from validated slugs, never supplied as file paths by clients.
 function checkedPath(

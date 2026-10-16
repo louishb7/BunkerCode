@@ -595,44 +595,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.studio-options {
-  position: relative;
-}
-.studio-options > summary {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  list-style: none;
-  border-radius: 5px;
-}
-.studio-options[open] > summary {
-  color: #eac17b;
-  background: #292f35;
-}
-.studio-options [role="group"] {
-  position: absolute;
-  z-index: 20;
-  right: 0;
-  top: 40px;
-  width: 210px;
-  padding: 6px;
-  background: #20262c;
-  border: 1px solid #48515a;
-  border-radius: 6px;
-  box-shadow: 0 12px 30px #0007;
-}
-.studio-options button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 10px;
-  font-size: 12px;
-}
-.studio-options button[aria-pressed="true"] {
-  color: #eac17b;
-}
 .studio-topbar .studio-save {
   width: auto;
   padding: 8px 12px;
@@ -764,4 +726,146 @@
 .studio-edit-panel {
   max-width: 750px;
   margin-inline: auto;
+}
+
+/* Course context and direct document modes share the existing authoring bar. */
+.studio-course-context {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  max-width: 260px;
+  gap: 2px;
+}
+.studio-course-title {
+  font-size: 11px;
+  color: #aab5bf;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-course-context select {
+  width: 100%;
+  min-width: 0;
+  color: #e3e6e9;
+  background: #20262c;
+  border: 1px solid #48515a;
+  border-radius: 4px;
+  padding: 5px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.studio-topbar .studio-views {
+  width: auto;
+  gap: 2px;
+}
+.studio-topbar .studio-views button,
+.studio-topbar .studio-new-lesson {
+  padding: 8px;
+  min-height: 36px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.studio-topbar :is(button, select, a):focus-visible,
+.studio-create-dialog :is(button, input):focus-visible {
+  outline: 2px solid #eac17b;
+  outline-offset: 2px;
+}
+.studio-create-dialog {
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  padding: 24px;
+  color: #e3e6e9;
+  background: #20262c;
+  border: 1px solid #48515a;
+  border-radius: 6px;
+}
+.studio-create-dialog::backdrop {
+  background: #000a;
+}
+.studio-create-dialog h2 {
+  margin-top: 0;
+  font-size: 21px;
+}
+.studio-create-dialog p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.studio-create-dialog [role="alert"] {
+  color: #e8bc86;
+}
+.studio-create-dialog fieldset {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.studio-create-dialog label {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+.studio-create-dialog input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  background: #111417;
+  color: #e3e6e9;
+  border: 1px solid #48515a;
+  border-radius: 4px;
+}
+.studio-continuation {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  margin-top: -60px;
+  position: relative;
+  color: #aab5bf;
+  border-top: 1px dashed #48515a;
+  font-size: 13px;
+}
+.studio-tools,
+.context-formatting {
+  top: 130px;
+}
+@media (max-width: 700px) {
+  .studio-topbar {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  .studio-course-context {
+    max-width: none;
+  }
+  .studio-topbar .studio-views {
+    grid-column: 1 / 3;
+  }
+  .studio-topbar .studio-views button {
+    flex: 1;
+    padding-inline: 6px;
+  }
+  .studio-topbar .studio-status {
+    grid-column: 1 / -1;
+    order: initial;
+    grid-row: 3;
+    margin: 0;
+  }
+  .studio-topbar .studio-save {
+    grid-row: 2;
+    grid-column: 3;
+    padding-inline: 8px;
+  }
+  .studio-tools {
+    position: relative;
+    top: 0;
+  }
+  .context-formatting {
+    top: 184px;
+  }
+}
+@media (max-height: 500px) {
+  .studio-tools,
+  .context-formatting {
+    position: static;
+  }
 }

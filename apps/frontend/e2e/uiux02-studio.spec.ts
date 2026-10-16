@@ -166,7 +166,7 @@ for (const width of [390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await plus.click();
-    await page.locator(".studio-controls").click();
+    await page.locator(".studio-status").click();
     await doc.locator("h2").click();
     await expect(menu).toHaveCount(0);
     const code = page.getByRole("textbox", {

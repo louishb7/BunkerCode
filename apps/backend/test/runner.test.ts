@@ -89,7 +89,18 @@ test("output flood and infinite loop are bounded and containers are removed", as
     "--format",
     "{{.Names}}",
   ]);
-  assert.equal(containers.stdout.trim(), "");
+  // Other test files run real containers concurrently. Check cleanup of this
+  // test's executions without mistaking another worker's live run for a leak.
+  const owned = new Set(
+    [flood.id, loop!.id].map((id) => "bunkercode-run-" + id),
+  );
+  assert.deepEqual(
+    containers.stdout
+      .trim()
+      .split("\n")
+      .filter((name) => owned.has(name)),
+    [],
+  );
 });
 test("cancellation, disconnect signal, concurrency and size restrictions keep the runner bounded", async (t) => {
   if (!(await enabled).available) {

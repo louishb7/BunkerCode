@@ -186,7 +186,9 @@ test("route titles, skip link, scroll and browser Back preserve orientation with
   await page.keyboard.type("Ainda editando.");
   await expect(editor).toBeFocused();
   await studioView(page, "Prévia");
-  await expect(page.locator(".studio-options > summary")).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Prévia", exact: true }),
+  ).toBeFocused();
   await page.getByRole("link", { name: "Voltar à lição", exact: true }).click();
   await expect(page.locator(".lesson-heading h1")).toHaveText(
     "Lição de teste 1",

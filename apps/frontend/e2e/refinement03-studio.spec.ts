@@ -38,7 +38,7 @@ for (const width of [390, 1280, 1440, 1920])
     ).not.toBeVisible();
     await expect(
       page.getByRole("button", { name: "Editar fonte Markdown", exact: true }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Abrir curso Autoria" }),
     ).toBeVisible();

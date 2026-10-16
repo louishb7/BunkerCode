@@ -9,7 +9,7 @@
     "test": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/backend test && node --test --test-isolation=none scripts/*.test.mjs && pnpm --filter @bunkercode/backend exec tsx --test ../frontend/e2e/visual-markdown.test.ts",
     "build": "pnpm -r --if-present build",
     "test:browser": "pnpm build && pnpm --filter @bunkercode/frontend test:browser",
-    "lesson:new": "node scripts/new-lesson.mjs"
+    "lesson:new": "pnpm --filter @bunkercode/content build && node scripts/new-lesson.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
