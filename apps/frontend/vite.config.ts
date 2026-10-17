@@ -1,11 +1,20 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  optimizeDeps: { include: ["@bunkercode/content"] },
+  resolve: {
+    alias: [
+      {
+        find: /^@bunkercode\/content$/,
+        replacement: fileURLToPath(
+          new URL("../../packages/content/src/index.ts", import.meta.url),
+        ),
+      },
+    ],
+  },
   build: {
-    commonjsOptions: { include: [/node_modules/, /packages\/content\/dist/] },
     manifest: true,
     rollupOptions: {
       output: {
