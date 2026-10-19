@@ -14,6 +14,10 @@ BunkerCode é uma plataforma pessoal e aberta para estudar programação e trans
 
 A raiz configura o monorepo: package.json, pnpm-workspace.yaml, lockfile, ESLint, tsconfig.base.json e .gitignore. O tsconfig base compartilha strictness/target realmente usados pelas duas aplicações; DOM pertence ao frontend, Node e decorators ao backend. Vite, Playwright e tsconfigs específicos ficam nas aplicações. `packages/content` compartilha validação editorial e de manifestos com consumidores reais nas duas aplicações; seu entry point Node `authoring` compartilha a criação segura entre CLI e backend, sem incluir filesystem no bundle do navegador. Não há Turborepo ou Nx.
 
+## Tactics Core 01
+
+`packages/tactics-core` (`@bunkercode/tactics-core`) é uma biblioteca independente sem dependências de runtime, React, NestJS ou execução de código livre. A família `comparison-boundaries`, gerador versão 1, produz filtros numéricos reproduzíveis por seed uint32 e deriva `complete-operator` e `repair-operator` do mesmo programa-base. O avaliador opera sobre dados estruturados e seis operadores conhecidos, com exatamente uma resposta correta por rodada. Modelo interno e representação pública são separados, sem promessa de proteção contra inspeção. Não há integração à UI, endpoints, persistência ou alterações nos exercícios editoriais/runner atuais. A suíte raiz inclui 10.000 seeds por modalidade. [API, algoritmo e limites](../tactics-core.md).
+
 ## Conteúdo e leitura
 
 course.json define id, título, descrição e ordem das lições. Cada entrada possui somente slug e título; campos obsoletos como activityId são recusados como desconhecidos. O caminho do Markdown é derivado: content/courses/<id>/lessons/<slug>/lesson.md. Não existe path livre vindo do navegador nem um índice duplicado em React/Nest.

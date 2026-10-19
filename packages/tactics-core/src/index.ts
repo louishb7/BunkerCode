@@ -1,0 +1,17 @@
+export {
+  OPERATORS,
+  GENERATOR_VERSION,
+  generateReference,
+  transformProgram,
+  getPublicTactic,
+  evaluateAnswer,
+  verifyTactic,
+  type Operator,
+  type TacticKind,
+  type TacticIdentity,
+  type ComparisonProgram,
+  type Tactic,
+  type PublicTactic,
+  type Evaluation,
+  type Validation,
+} from "./comparison";

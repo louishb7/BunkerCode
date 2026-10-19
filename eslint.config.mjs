@@ -14,7 +14,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["apps/backend/**/*.cjs", "content/**/*.cjs"],
+    files: ["apps/backend/**/*.cjs", "content/**/*.cjs", "packages/tactics-core/test/**/*.cjs"],
     languageOptions: {
       globals: {
         require: "readonly",
