@@ -1,121 +1,94 @@
 import type { Execution, Round } from "./session";
 
 export function TacticGoal({ round }: { round: Round }) {
+  if (round.family !== "conditional") return null;
   return (
-    <section className="tactic-goal" aria-label="Objetivo do programa">
-      <h3>Objetivo</h3>
-      {round.family === "conditional" ? (
-        <table className="tactic-cases">
-          <caption className="sr-only">
-            Resultados esperados para as três entradas
-          </caption>
-          <thead>
-            <tr>
-              <th>Entrada</th>
-              <th>Resultado esperado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {round.view.inputs.map((input, index) => (
-              <tr key={input}>
-                <td>
-                  <code>{input}</code>
-                </td>
-                <td>
-                  <code>{round.view.expectedResults[index]}</code>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="tactic-target">
-          result <span aria-hidden="true">→</span>{" "}
-          <code>
-            {round.family === "assignment"
-              ? round.view.expectedResult
-              : `[${round.view.expectedResult.join(", ")}]`}
-          </code>
-        </p>
-      )}
-    </section>
+    <table className="tactic-cases">
+      <caption className="sr-only">
+        Resultados esperados para as três entradas
+      </caption>
+      <thead>
+        <tr>
+          <th>Entrada</th>
+          <th aria-label="Produz esperado">→</th>
+          <th>Esperado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {round.view.inputs.map((input, index) => (
+          <tr key={input}>
+            <td>
+              <code>{input}</code>
+            </td>
+            <td aria-hidden="true">→</td>
+            <td>
+              <code>{round.view.expectedResults[index]}</code>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 export function TacticExecution({ result }: { result: Execution | null }) {
+  if (!result) return null;
   return (
-    <section
-      className="tactic-execution"
-      role="region"
-      aria-label="Resultado da execução"
-    >
-      <h3>Execução</h3>
-      {!result ? (
-        <p className="tactic-hint">
-          Escolha uma operação no programa e execute para observar o resultado.
+    <section className="tactic-execution" aria-label="Resultado da execução">
+      <p
+        className={`tactic-verdict ${result.value.achieved ? "success" : "retry"}`}
+      >
+        {result.value.achieved
+          ? "Objetivo atingido."
+          : "Ainda não. Ajuste a operação e tente novamente."}
+      </p>
+      {result.family === "comparison" && (
+        <p className="tactic-result-pair">
+          Produzido: <code>[{result.value.produced.join(", ")}]</code>
+          {" · "}Esperado: <code>[{result.value.expected.join(", ")}]</code>
         </p>
-      ) : (
+      )}
+      {result.family === "assignment" && (
         <>
-          <p
-            className={
-              result.value.achieved
-                ? "tactic-verdict success"
-                : "tactic-verdict retry"
-            }
-          >
-            {result.value.achieved
-              ? "Objetivo atingido."
-              : "Ainda não. Ajuste a operação e tente novamente."}
+          <p className="tactic-result-pair">
+            Produzido: <code>{result.value.produced}</code>
+            {" · "}Esperado: <code>{result.value.expected}</code>
           </p>
-          {result.family === "comparison" && (
-            <dl className="tactic-values">
-              <div>
-                <dt>Produzido</dt>
-                <dd>
-                  <code>[{result.value.produced.join(", ")}]</code>
-                </dd>
-              </div>
-              <div>
-                <dt>Esperado</dt>
-                <dd>
-                  <code>[{result.value.expected.join(", ")}]</code>
-                </dd>
-              </div>
-            </dl>
-          )}
-          {result.family === "assignment" && (
-            <>
-              <ol className="tactic-trace" aria-label="Evolução da variável">
-                <li>
-                  <span>Inicial</span>
-                  <code>{result.value.trace.initial}</code>
+          <details className="tactic-step-trace">
+            <summary>Ver execução passo a passo</summary>
+            <ol className="tactic-trace" aria-label="Evolução da variável">
+              <li>
+                <span>Inicial</span>
+                <code>{result.value.trace.initial}</code>
+              </li>
+              {result.value.trace.transitions.map((transition, index) => (
+                <li key={index}>
+                  <code>
+                    value {transition.step.operator} {transition.step.operand}
+                  </code>
+                  <code>{transition.after}</code>
                 </li>
-                {result.value.trace.transitions.map((transition, index) => (
-                  <li key={index}>
-                    <code>
-                      value {transition.step.operator} {transition.step.operand}
-                    </code>
-                    <code>{transition.after}</code>
-                  </li>
-                ))}
-              </ol>
-              <p className="tactic-result-pair">
-                Produzido <code>{result.value.produced}</code> · Esperado{" "}
-                <code>{result.value.expected}</code>
-              </p>
-            </>
-          )}
-          {result.family === "conditional" &&
-            result.value.traces.map((trace, index) => (
-              <details
-                key={trace.input}
-                className="tactic-case-trace"
-                open={index === 0}
-              >
-                <summary>
-                  Entrada <code>{trace.input}</code>
-                  <span>
-                    → <code>{trace.result}</code>
+              ))}
+            </ol>
+          </details>
+        </>
+      )}
+      {result.family === "conditional" && (
+        <>
+          <p className="tactic-case-labels">Entrada → Produzido · Esperado</p>
+          {result.value.traces.map((trace, index) => {
+            const matches = trace.result === result.value.expected[index];
+            return (
+              <details key={trace.input} className="tactic-case-trace">
+                <summary
+                  aria-label={`Entrada ${trace.input}: produzido ${trace.result}, esperado ${result.value.expected[index]}. ${matches ? "Confere" : "Diverge"}. Ver passo a passo`}
+                >
+                  <code>
+                    {trace.input} → {trace.result} ·{" "}
+                    {result.value.expected[index]}
+                  </code>
+                  <span className={matches ? "success" : "retry"}>
+                    {matches ? "Confere" : "Diverge"}
                   </span>
                 </summary>
                 <dl className="tactic-values">
@@ -149,7 +122,8 @@ export function TacticExecution({ result }: { result: Execution | null }) {
                   </div>
                 </dl>
               </details>
-            ))}
+            );
+          })}
         </>
       )}
     </section>

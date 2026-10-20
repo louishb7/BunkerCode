@@ -1,90 +1,52 @@
 .tactics-lab {
-  max-width: 1180px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 22px 28px 30px;
+  padding: 20px 24px 28px;
   min-width: 0;
 }
 .tactics-lab h1 {
   margin: 0;
-  font-size: 30px;
-  letter-spacing: -0.8px;
+  font-size: 26px;
+  letter-spacing: -0.6px;
 }
 .tactics-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 22px;
 }
-.tactics-heading .eyebrow {
-  margin: 0 0 5px;
-  font-size: 10px;
-}
-.tactics-stats {
-  display: flex;
-  gap: 25px;
-  margin: 0;
-}
-.tactics-stats div {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 3px;
-}
-.tactics-stats dt {
-  color: #b8bbbd;
-  font-size: 11px;
-}
-.tactics-stats dd {
-  margin: 0;
-  font-size: 23px;
+.tactics-progress {
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
+  color: #d4d4d4;
+}
+.tactics-progress > span {
+  color: #aab0b5;
 }
 .tactic-round-heading {
   margin-bottom: 14px;
 }
-.tactic-round-heading .eyebrow {
-  margin: 0 0 8px;
-  font-size: 10px;
-}
-.tactic-round-heading .eyebrow span {
-  color: #e8bd68;
-  letter-spacing: 0.7px;
-}
-.tactic-round-heading h2 {
+.tactic-round-heading .tactic-objective {
   margin: 0;
-  font-size: 25px;
-  letter-spacing: -0.5px;
-}
-.tactic-objective {
-  margin: 8px 0 0;
-  font-size: 14px;
-  color: #c4c6c7;
+  font-size: 16px;
+  font-weight: 500;
+  color: #d4d4d4;
   line-height: 1.5;
-}
-.tactics-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr);
-  grid-template-rows: auto 1fr;
-  gap: 22px 28px;
-  align-items: start;
-}
-.tactic-interaction {
-  min-width: 0;
-  grid-column: 1;
-  grid-row: 1 / span 2;
 }
 .tactic-program {
   background: #23272c;
   border: 1px solid #3e454d;
-  border-radius: 7px;
+  border-radius: 6px;
   overflow: hidden;
+  min-width: 0;
 }
 .tactic-file {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
-  padding: 0 15px;
+  height: 32px;
+  padding: 0 12px;
   font-size: 11px;
   color: #d4d4d4;
   border-bottom: 1px solid #3a4148;
@@ -104,7 +66,7 @@
   padding: 8px 0;
   overflow-x: auto;
   font-size: 13px;
-  line-height: 18px;
+  line-height: 20px;
   color: #d4d4d4;
 }
 .tactic-code-line {
@@ -112,8 +74,8 @@
   align-items: center;
   width: max-content;
   min-width: 100%;
-  min-height: 18px;
-  padding-right: 18px;
+  min-height: 20px;
+  padding-right: 14px;
 }
 .tactic-code-line code {
   white-space: pre;
@@ -121,12 +83,12 @@
 }
 .tactic-line-number {
   display: inline-block;
-  width: 42px;
-  padding: 0 11px 0 0;
+  width: 36px;
+  padding: 0 10px 0 0;
   flex-shrink: 0;
   text-align: right;
   font:
-    11px/18px ui-monospace,
+    11px/20px ui-monospace,
     monospace;
   color: #959ba1;
   user-select: none;
@@ -144,7 +106,7 @@
 }
 .tactic-slot {
   min-height: 44px;
-  width: 78px;
+  width: 76px;
   margin: 0 3px;
   padding: 5px 7px;
   border: 1px solid #aa8647;
@@ -156,41 +118,21 @@
   vertical-align: middle;
 }
 .tactic-step-slot {
-  width: 157px;
+  width: 145px;
 }
 .tactic-slot:disabled {
   opacity: 1;
   color: #d4e5d1;
   border-color: #77956a;
 }
-.tactic-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 13px;
-}
-.tactic-options button {
-  flex: 1;
-  min-width: 62px;
-  min-height: 44px;
-  padding: 8px 10px;
-  background: #1a1e22;
-  border-color: #454d55;
-  color: #d4d4d4;
-}
-.tactic-options button[aria-pressed="true"] {
-  border-color: #e8bd68;
-  background: #e8bd6814;
-  color: #f2cf8a;
-}
 .tactic-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 .tactic-actions button,
-.tactics-footer button {
+.tactics-session-info button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -198,82 +140,44 @@
   min-height: 44px;
   font-size: 13px;
 }
-.tactic-primary {
+.tactic-actions .tactic-primary {
   background: #e8bd68;
   color: #191b1c;
   border-color: #e8bd68;
   min-width: 126px;
   font-weight: 600;
 }
-.tactic-next {
-  border-color: #e8bd68;
-  color: #f2cf8a;
-}
-.tactic-skip {
+.tactic-actions .tactic-skip {
+  margin-right: auto;
   color: #b8bbbd;
   background: transparent;
   border-color: transparent;
 }
-.tactic-announcement {
-  margin: 12px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #b8bbbd;
-}
-.tactic-goal,
 .tactic-execution {
-  padding-left: 25px;
-  border-left: 1px solid #343b42;
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.5;
   min-width: 0;
 }
-.tactic-goal h3,
-.tactic-execution h3 {
-  margin: 0 0 12px;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 1.4px;
-  color: #b8bbbd;
-}
-.tactic-target {
-  font-size: 17px;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.tactic-target > span {
-  color: #8d949b;
-  margin: 0 6px;
-}
-.tactic-target code {
-  color: #f2cf8a;
-}
-.tactic-execution {
-  grid-column: 2;
-  grid-row: 2;
-}
-.tactic-goal {
-  grid-column: 2;
-  grid-row: 1;
-}
-.tactic-hint {
-  margin: 0;
-  color: #aeb3b8;
-  font-size: 13px;
-  line-height: 1.7;
-  max-width: 30ch;
-}
 .tactic-verdict {
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0 0 15px;
+  margin: 0 0 6px;
 }
-.tactic-verdict.success {
+.tactic-execution .success {
   color: #adcf9d;
 }
-.tactic-verdict.retry {
+.tactic-execution .retry {
   color: #f2cf8a;
+}
+.tactic-result-pair,
+.tactic-case-labels {
+  margin: 0;
+  color: #b8bbbd;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .tactic-values {
   margin: 0;
+  padding: 0 0 8px 16px;
   font-size: 12px;
 }
 .tactic-values > div {
@@ -281,7 +185,7 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  padding: 7px 0;
+  padding: 4px 0;
 }
 .tactic-values dt {
   color: #b8bbbd;
@@ -293,181 +197,110 @@
 }
 .tactic-trace {
   margin: 0;
-  padding: 0;
+  padding: 0 0 8px 16px;
   list-style: none;
 }
 .tactic-trace li {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 0;
-  font-size: 13px;
-  border-bottom: 1px solid #ffffff0a;
+  padding: 5px 0;
+  font-size: 12px;
 }
 .tactic-trace li > code:last-child {
   color: #adcf9d;
 }
-.tactic-result-pair {
-  margin: 12px 0 0;
-  color: #b8bbbd;
-  font-size: 12px;
-}
 .tactic-cases {
-  width: 100%;
+  width: auto;
+  margin-top: 8px;
   border-collapse: collapse;
   font-size: 12px;
-}
-.tactic-cases th {
-  text-align: left;
-  font-weight: 400;
-  color: #b8bbbd;
-  padding-bottom: 7px;
-}
-.tactic-cases td {
-  padding: 7px 0;
-  border-top: 1px solid #ffffff0a;
-}
-.tactic-cases td:last-child,
-.tactic-cases th:last-child {
   text-align: right;
 }
-.tactic-case-trace {
-  margin-top: 8px;
-  border-top: 1px solid #343b42;
+.tactic-cases th {
+  font-weight: 400;
+  color: #b8bbbd;
 }
-.tactic-case-trace summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.tactic-cases th,
+.tactic-cases td {
+  padding: 2px 14px 2px 0;
+}
+.tactic-case-trace,
+.tactic-step-trace {
+  margin-top: 4px;
+}
+.tactic-case-trace summary,
+.tactic-step-trace summary,
+.tactics-session-options > summary {
   min-height: 44px;
+  align-content: center;
   font-size: 12px;
+  color: #b8bbbd;
   cursor: pointer;
 }
-.tactic-case-trace summary::before {
-  content: "+";
-  margin-right: 5px;
-  color: #b8bbbd;
-}
-.tactic-case-trace[open] summary::before {
-  content: "−";
-}
 .tactic-case-trace summary > span {
-  margin-left: auto;
-  color: #e8bd68;
+  margin-left: 12px;
 }
-.tactics-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  margin-top: 27px;
-  padding-top: 17px;
-  border-top: 1px solid #343b42;
+.tactics-session-options {
+  margin-top: 14px;
 }
-.tactics-footer > span {
-  font-size: 11px;
-  line-height: 1.6;
+.tactics-session-info {
   color: #aab0b5;
+  font-size: 12px;
 }
-.tactics-footer button {
+.tactics-session-info p {
+  margin: 0 0 10px;
+}
+.tactics-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 10px;
+}
+.tactics-stats div {
+  display: flex;
+  gap: 6px;
+}
+.tactics-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tactics-session-info button {
   background: transparent;
-  border-color: transparent;
   color: #b8bbbd;
-  white-space: nowrap;
 }
 .tactics-milestone {
-  padding: 12px 14px;
-  margin: 0 0 20px;
-  border-left: 2px solid #e8bd68;
-  background: #e8bd680b;
-  font-size: 13px;
+  margin: 0 0 16px;
+  color: #adcf9d;
+  font-size: 12px;
   line-height: 1.5;
 }
 .tactics-lab :focus-visible {
   outline: 2px solid #e8bd68;
   outline-offset: 3px;
 }
-@media (max-width: 799px) {
+@media (max-width: 599px) {
   .tactics-lab {
-    padding: 22px 16px 26px;
+    padding: 16px 12px 24px;
   }
   .tactics-heading {
-    align-items: start;
-    gap: 12px;
-    margin-bottom: 23px;
+    margin-bottom: 18px;
   }
   .tactics-lab h1 {
-    font-size: 26px;
+    font-size: 24px;
   }
-  .tactics-heading .eyebrow {
-    font-size: 9px;
-    letter-spacing: 0.7px;
+  .tactic-round-heading .tactic-objective {
+    font-size: 14px;
   }
-  .tactics-stats {
-    gap: 14px;
-  }
-  .tactics-stats dd {
-    font-size: 20px;
-  }
-  .tactics-stats dt {
-    font-size: 9px;
-  }
-  .tactic-round-heading h2 {
-    font-size: 22px;
-  }
-  .tactic-round-heading .eyebrow {
-    font-size: 9px;
-    letter-spacing: 1px;
-  }
-  .tactic-round-heading .eyebrow span {
-    display: block;
-    margin-top: 5px;
-  }
-  .tactic-objective {
-    font-size: 13px;
-  }
-  .tactics-workspace {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
-    gap: 24px;
-  }
-  .tactic-interaction {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .tactic-goal {
-    grid-column: 1;
-    grid-row: 1;
-    padding: 0;
-    border: 0;
-  }
-  .tactic-execution {
-    grid-column: 1;
-    grid-row: 3;
-    padding: 20px 0 0;
-    border-left: 0;
-    border-top: 1px solid #343b42;
-  }
-  .tactic-execution .tactic-hint {
-    max-width: none;
-  }
-  .tactic-options {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .tactic-options button {
-    min-width: 0;
-  }
-  .tactics-footer {
-    flex-wrap: wrap;
-    gap: 7px;
+  .tactic-line-number {
+    width: 28px;
+    padding-right: 7px;
   }
   .tactic-code-scroll {
     font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .tactic-options button,
   .tactic-slot {
     transition:
       border-color 0.12s,

@@ -20,8 +20,8 @@ const kinds = [
   "repair-step",
   "repair-condition",
 ];
-const group = (page: Page) =>
-  page.getByRole("group", { name: "Escolha uma operação" });
+const operation = (page: Page) =>
+  page.getByRole("combobox", { name: /Operação no programa/ });
 const runButton = (page: Page) =>
   page.getByRole("button", { name: "Executar", exact: true });
 const stat = (page: Page, name: string) =>
@@ -156,9 +156,26 @@ for (let index = 0; index < 6; index++) {
     expect(await displayedLines(page)).toEqual(original);
     await expect(runButton(page)).toBeDisabled();
     await expect(page.locator(".cm-editor")).toHaveCount(0);
-    await group(page)
-      .getByRole("button", { name: choices(round)[wrong]!, exact: true })
-      .click();
+    await expect(operation(page)).toHaveCount(1);
+    await expect(operation(page)).toHaveValue("");
+    await expect(
+      page.locator(".tactic-options, .tactics-workspace, .tactic-goal"),
+    ).toHaveCount(0);
+    await expect(page.locator(".tactic-execution")).toHaveCount(0);
+    await expect(page.locator(".tactic-objective")).toHaveCount(1);
+    await expect(page.locator(".tactic-cases")).toHaveCount(
+      round.family === "conditional" ? 1 : 0,
+    );
+    if (round.family === "conditional") {
+      await expect(page.locator(".tactic-cases tbody tr")).toHaveText(
+        round.view.inputs.map(
+          (input, i) => `${input}→${round.view.expectedResults[i]}`,
+        ),
+      );
+    }
+    if (index === 0)
+      await capture(page, info.outputPath("desktop-comparison-before.png"));
+    await operation(page).selectOption(String(wrong));
     const edited = await displayedLines(page);
     const changed = edited.flatMap((line, lineIndex) =>
       line === original[lineIndex] ? [] : [lineIndex],
@@ -173,8 +190,6 @@ for (let index = 0; index < 6; index++) {
     expect(changed.every((line) => line === selectedLine)).toBe(true);
     expect(edited[selectedLine]).toContain(choices(round)[wrong]);
     await expect(page.locator(".tactic-verdict")).toHaveCount(0);
-    if (index === 0)
-      await capture(page, info.outputPath("desktop-before-execution.png"));
     await runButton(page).click();
     await expect(page.locator(".tactic-verdict")).toContainText("Ainda não");
     await expect(stat(page, "solved")).toHaveText("0");
@@ -186,24 +201,42 @@ for (let index = 0; index < 6; index++) {
     const execution = page.getByRole("region", {
       name: "Resultado da execução",
     });
-    if (wrongResult.family === "comparison")
-      await expect(execution).toContainText(
-        `[${wrongResult.value.produced.join(", ")}]`,
+    if (
+      wrongResult.family === "comparison" ||
+      wrongResult.family === "assignment"
+    ) {
+      const produced =
+        wrongResult.family === "comparison"
+          ? `[${wrongResult.value.produced.join(", ")}]`
+          : String(wrongResult.value.produced);
+      const expected =
+        wrongResult.family === "comparison"
+          ? `[${wrongResult.value.expected.join(", ")}]`
+          : String(wrongResult.value.expected);
+      await expect(execution.locator(".tactic-result-pair")).toHaveText(
+        `Produzido: ${produced} · Esperado: ${expected}`,
       );
-    if (wrongResult.family === "assignment")
-      await expect(execution.locator(".tactic-result-pair")).toContainText(
-        `Produzido ${wrongResult.value.produced}`,
-      );
-    if (wrongResult.family === "conditional")
+    }
+    if (wrongResult.family === "conditional") {
       await expect(execution.locator("summary")).toHaveText(
         wrongResult.value.traces.map(
-          (trace) => `Entrada ${trace.input}→ ${trace.result}`,
+          (trace, i) =>
+            `${trace.input} → ${trace.result} · ${wrongResult.value.expected[i]}${trace.result === wrongResult.value.expected[i] ? "Confere" : "Diverge"}`,
         ),
       );
+      await expect(execution.locator("details[open]")).toHaveCount(0);
+      expect(
+        await execution.locator("summary").allTextContents(),
+      ).toContainEqual(expect.stringContaining("Diverge"));
+    }
+    // Re-running the same wrong choice remains a retry and never counts success.
+    await runButton(page).click();
+    await expect(stat(page, "solved")).toHaveText("0");
     await page
       .getByRole("combobox", { name: /Operação no programa/ })
       .selectOption(String(correct));
-    await expect(page.locator(".tactic-verdict")).toHaveCount(0);
+    await expect(page.locator(".tactic-execution")).toHaveCount(0);
+    await expect(runButton(page)).toBeEnabled();
     await expect(page.getByRole("status")).toContainText(
       "Escolha aplicada ao código",
     );
@@ -213,9 +246,31 @@ for (let index = 0; index < 6; index++) {
     );
     await expect(stat(page, "solved")).toHaveText("1");
     await expect(stat(page, "performed")).toHaveText(String(index + 1));
-    await expect(runButton(page)).toBeDisabled();
+    await expect(runButton(page)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Pular", exact: true }),
+    ).toHaveCount(0);
+    await expect(operation(page)).toBeDisabled();
     const result = results[correct]!;
+    if (result.family === "comparison" || result.family === "assignment") {
+      const produced =
+        result.family === "comparison"
+          ? `[${result.value.produced.join(", ")}]`
+          : String(result.value.produced);
+      const expected =
+        result.family === "comparison"
+          ? `[${result.value.expected.join(", ")}]`
+          : String(result.value.expected);
+      await expect(execution.locator(".tactic-result-pair")).toHaveText(
+        `Produzido: ${produced} · Esperado: ${expected}`,
+      );
+    }
     if (result.family === "assignment") {
+      await expect(execution.locator("details[open]")).toHaveCount(0);
+      if (index === 1)
+        await capture(page, info.outputPath("desktop-assignment-result.png"));
+      await execution.locator("summary").click();
+      await expect(execution.locator(".tactic-trace")).toBeVisible();
       await expect(
         execution.locator(".tactic-trace li > code:last-child"),
       ).toHaveText([
@@ -230,6 +285,15 @@ for (let index = 0; index < 6; index++) {
         );
     }
     if (result.family === "conditional") {
+      await expect(execution.locator("details[open]")).toHaveCount(0);
+      await expect(execution.locator("summary")).toHaveText(
+        result.value.traces.map(
+          (trace, i) =>
+            `${trace.input} → ${trace.result} · ${result.value.expected[i]}Confere`,
+        ),
+      );
+      if (index === 2)
+        await capture(page, info.outputPath("desktop-conditional-compact.png"));
       for (const [traceIndex, trace] of result.value.traces.entries()) {
         const detail = execution.locator("details").nth(traceIndex);
         if (!((await detail.getAttribute("open")) !== null))
@@ -244,11 +308,10 @@ for (let index = 0; index < 6; index++) {
       }
       if (index === 2) {
         await expect(execution.locator("summary")).toHaveText([
-          "Entrada 0→ -9",
-          "Entrada 2→ 2",
-          "Entrada 1→ 1",
+          "0 → -9 · -9Confere",
+          "2 → 2 · 2Confere",
+          "1 → 1 · 1Confere",
         ]);
-        await capture(page, info.outputPath("desktop-conditional-traces.png"));
       }
     }
     await page.getByRole("button", { name: "Próxima", exact: true }).dblclick();
@@ -296,9 +359,7 @@ test("twelve rounds form a milestone, continuation stays procedural and new sess
   for (let index = 0; index < 12; index++) {
     const round = createRound(seed, index);
     const correct = answers(round).correct;
-    await group(page)
-      .getByRole("button", { name: choices(round)[correct]!, exact: true })
-      .click();
+    await operation(page).selectOption(String(correct));
     await runButton(page).click();
     await expect(stat(page, "performed")).toHaveText(String(index + 1));
     if (index < 11)
@@ -318,6 +379,13 @@ test("twelve rounds form a milestone, continuation stays procedural and new sess
     String(createRound(seed, 12).view.identity.seed),
   );
   await expect(stat(page, "performed")).toHaveText("12");
+  await expect(
+    page.getByText(`Seed da sessão ${seed}`, { exact: false }),
+  ).not.toBeVisible();
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  await expect(page.locator(".tactics-session-info")).toContainText(
+    String(seed),
+  );
   await page.getByRole("button", { name: "Nova sessão", exact: true }).click();
   await expect(page).toHaveURL(/\/lab\/tactics\?seed=\d+$/);
   expect(new URL(page.url()).searchParams.get("seed")).not.toBe(String(seed));
@@ -438,22 +506,35 @@ test("keyboard can choose, execute, retry and advance with predictable focus", a
   await page.keyboard.press("End");
   await expect(inline).toHaveValue("5");
   await expect(page.locator(".tactic-verdict")).toHaveCount(0);
-  for (let index = 0; index < 7; index++) await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Pular", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(runButton(page)).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator(".tactic-verdict")).toContainText("Ainda não");
   const correct = answers(createRound(seed, 0)).correct;
-  await group(page).getByRole("button").nth(correct).focus();
-  await page.keyboard.press("Space");
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(inline).toBeFocused();
+  await page.keyboard.press("Home");
+  for (let index = 0; index < correct; index++)
+    await page.keyboard.press("ArrowDown");
+  await expect(inline).toHaveValue(String(correct));
   await expect(page.getByRole("status")).toContainText(
     "Escolha aplicada ao código",
   );
-  await runButton(page).focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(runButton(page)).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator(".tactic-verdict")).toHaveText(
     "Objetivo atingido.",
   );
-  await page.getByRole("button", { name: "Próxima", exact: true }).focus();
+  await expect(
+    page.getByRole("button", { name: "Próxima", exact: true }),
+  ).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator(".tactic-round h2")).toBeFocused();
 });
@@ -482,19 +563,41 @@ for (const viewport of [
       });
       const touch = await inline.boundingBox();
       expect(touch!.height).toBeGreaterThanOrEqual(44);
-      await group(page).getByRole("button").nth(answers(round).correct).click();
+      await expect(operation(page)).toHaveValue("");
+      await expect(page.locator(".tactic-execution")).toHaveCount(0);
+      await expect(
+        page.locator(".tactic-options, .tactics-workspace"),
+      ).toHaveCount(0);
       if (viewport.width === 390 && index === 1)
-        await capture(page, info.outputPath("mobile-tactic-in-progress.png"));
+        await capture(page, info.outputPath("mobile-before-execution.png"));
+      await operation(page).selectOption(String(answers(round).correct));
       if (viewport.width >= 1000) {
-        const action = await runButton(page).boundingBox();
-        expect(action!.y + action!.height).toBeLessThanOrEqual(viewport.height);
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        for (const element of [
+          page.locator(".tactic-objective"),
+          page.locator(".tactic-program"),
+          runButton(page),
+        ]) {
+          const box = await element.boundingBox();
+          expect(box!.y).toBeGreaterThanOrEqual(0);
+          expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+        }
       }
       await runButton(page).click();
       await expect(page.locator(".tactic-verdict")).toHaveText(
         "Objetivo atingido.",
       );
-      if (viewport.width === 390 && index === 2)
-        await capture(page, info.outputPath("mobile-execution-result.png"));
+      await expect(page.locator(".tactic-execution details[open]")).toHaveCount(
+        0,
+      );
+      if (viewport.width === 390 && index === 1) {
+        await capture(page, info.outputPath("mobile-result-collapsed.png"));
+        await page
+          .getByText("Ver execução passo a passo", { exact: true })
+          .click();
+        await expect(page.locator(".tactic-trace")).toBeVisible();
+        await capture(page, info.outputPath("mobile-result-expanded.png"));
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

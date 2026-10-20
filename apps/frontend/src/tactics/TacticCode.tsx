@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useId } from "react";
 import { choices, type Round } from "./session";
 
 /** Version-1 presentation adapters: one anchored slot in the public source.
@@ -56,10 +56,16 @@ export function TacticCode({
   disabled: boolean;
   onSelect: (index: number) => void;
 }) {
+  const instructionId = useId();
   const slot = codeSlot(round);
   const options = choices(round);
   return (
     <section className="tactic-program" aria-label="Programa JavaScript">
+      <p id={instructionId} className="sr-only">
+        {round.view.identity.kind.startsWith("complete-")
+          ? "Preencha a lacuna escolhendo uma operação e execute."
+          : "Substitua a operação incorreta destacada e execute. A operação inicial ainda não é uma seleção."}
+      </p>
       <div className="tactic-file">
         <span className="tactic-file-dot" aria-hidden="true" />
         programa.js<span>JavaScript</span>
@@ -84,6 +90,7 @@ export function TacticCode({
                   <Tokens text={slot.before} />
                   <select
                     aria-label={`Operação no programa, linha ${index + 1}`}
+                    aria-describedby={instructionId}
                     value={selection === null ? "" : String(selection)}
                     disabled={disabled}
                     className={
