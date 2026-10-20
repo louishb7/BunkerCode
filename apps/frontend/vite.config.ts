@@ -12,6 +12,12 @@ export default defineConfig({
           new URL("../../packages/content/src/index.ts", import.meta.url),
         ),
       },
+      {
+        find: /^@bunkercode\/tactics-core$/,
+        replacement: fileURLToPath(
+          new URL("../../packages/tactics-core/src/index.ts", import.meta.url),
+        ),
+      },
     ],
   },
   build: {

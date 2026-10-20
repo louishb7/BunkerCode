@@ -1,6 +1,6 @@
 # Tactics Core
 
-`@bunkercode/tactics-core` é uma biblioteca independente de funções determinísticas para gerar programas pequenos e derivar táticas. O Core 01 contém `comparison-boundaries`; o Core 02 acrescenta `assignment-sequence` e `conditional-branch`. Cada família possui gerador **versão 1**, com contrato próprio. Ainda não existe modo de táticas na interface, endpoint, persistência ou integração com exercícios editoriais.
+`@bunkercode/tactics-core` é uma biblioteca independente de funções determinísticas para gerar programas pequenos e derivar táticas. O Core 01 contém `comparison-boundaries`; o Core 02 acrescenta `assignment-sequence` e `conditional-branch`. Cada família possui gerador **versão 1**, com contrato próprio. O laboratório experimental `/lab/tactics` consome o pacote no frontend, sem endpoint, persistência ou integração com exercícios editoriais.
 
 ## Core 01: uso e API
 
@@ -74,7 +74,7 @@ Os testes importam o pacote compilado pelo próprio export público CommonJS; `t
 
 A bateria percorre seeds de 0 a 9999 **em cada modalidade**. Confere identidade, reprodução, AST/sintaxe dos programas completos, categorias, domínio, resultados por oráculo de categorias independente, seis resultados distintos, aprovação única, rejeição das cinco alternativas e coerência pública/interna. O reparo também tem sintaxe e mudança de comportamento verificadas. Lacunas intencionais não são submetidas ao parser. Falhas incluem família, versão, seed e modalidade.
 
-Além de fixtures calculadas para zero e seed máxima, a suíte recusa seeds/versões/respostas/modelos inválidos, compara processos independentes em fusos diferentes e confere diversidade de valores, limites, operadores, seis permutações e ao menos mil programas distintos. `pnpm test` da raiz inclui explicitamente a suíte. E2E de navegador não é necessário para este pacote sem integração à interface.
+Além de fixtures calculadas para zero e seed máxima, a suíte recusa seeds/versões/respostas/modelos inválidos, compara processos independentes em fusos diferentes e confere diversidade de valores, limites, operadores, seis permutações e ao menos mil programas distintos. `pnpm test` da raiz inclui explicitamente a suíte. Os testes do núcleo não dependem de navegador; o consumidor Tactics Lab possui a suíte E2E descrita abaixo.
 
 ## Core 02: API e responsabilidades
 
@@ -170,4 +170,34 @@ Cada referência, identidade, transformação, alternativa, rastreamento e texto
 
 Os dois novos testes de propriedades percorrem **10.000 seeds por família**, verificando as duas modalidades: **40.000 táticas novas**, além das **20.000** do Core 01. Oráculos por composição afim e tabelas de categorias verificam os estados independentemente da implementação; o parser TypeScript confere sintaxe e estrutura das referências e reparos. Há fixtures manuais, entradas inválidas, modelos adulterados e reprodução em processos independentes. A diversidade mede quantidades/ordens de operações, posições da lacuna, comparações e padrões de ramos; não exige unicidade textual por seed.
 
-O script existente `test/*.test.cjs` inclui as novas suítes tanto no pacote quanto na chamada raiz. Não foram adicionadas dependências nem alterados scripts, lockfile ou configurações. Os números podem colidir em um domínio finito e a seleção por módulo não promete uniformidade perfeita. A separação pública/interna continua arquitetural, sem proteção contra inspeção no navegador. Não há avaliação de código livre, linguagem genérica, sessão, adaptação de dificuldade, persistência ou integração ao produto nesta entrega.
+O script existente `test/*.test.cjs` inclui as novas suítes tanto no pacote quanto na chamada raiz. O pacote mantém suas dependências, scripts e configurações. Os números podem colidir em um domínio finito e a seleção por módulo não promete uniformidade perfeita. A separação pública/interna continua arquitetural, sem proteção contra inspeção no navegador. Não há avaliação de código livre, linguagem genérica, adaptação de dificuldade ou persistência no núcleo. A sessão pertence exclusivamente ao consumidor frontend abaixo.
+
+## Tactics Lab 01
+
+Abra diretamente `/lab/tactics`; a rota é experimental e não aparece na Home ou catálogo. Usa o shell, header, foco e boundary existentes, com carregamento lazy. O frontend declara `@bunkercode/tactics-core` como dependência workspace; um alias Vite resolve apenas seu entrypoint público para o fonte TypeScript, seguindo o padrão de `content`. Typecheck e consumidores Node continuam usando as declarações CommonJS compiladas. Nenhum arquivo do núcleo foi alterado para a interface.
+
+O ciclo é observar, selecionar uma operação, executar, inspecionar e avançar. Um select nativo ocupa a única região manipulável do programa; botões de alternativas sincronizam a mesma seleção. O restante do código permanece somente leitura, com numeração e rolagem horizontal própria. Adaptadores específicos dos templates v1 encontram um único slot validado no texto público; não há parser genérico, substituição global ou leitura da solução interna para montar a apresentação. Não se usa CodeMirror, HTML bruto ou execução do texto.
+
+Comparações mostram array produzido/esperado; atribuições mostram todos os estados do `AssignmentTrace` da escolha; condicionais exibem os três resultados e detalhes expansíveis com preparação, condição e ramo de cada caso. O objetivo aparece antes do código no mobile e ao lado no desktop. O resultado é anunciado por uma região acessível. Selecionar não avalia; mudar uma tentativa incorreta remove o resultado obsoleto. Uma resposta correta é concluída uma única vez e mantém a execução visível até **Próxima**. **Pular** avança imediatamente, sem revelar a solução ou contar sucesso. Eventos obsoletos e cliques repetidos não duplicam conclusão/avanço.
+
+### Sessão reproduzível
+
+`/lab/tactics?seed=4812` inicia uma sessão reproduzível. O parâmetro aceita uma única representação decimal canônica de inteiro uint32, de `0` a `4294967295`; sinais, espaços, frações, zeros à esquerda, campos duplicados e valores fora do intervalo são recusados. Sem parâmetro, a seed vem de `crypto.getRandomValues`.
+
+O controlador local tem contrato de sessão **v1**, independente das versões dos geradores. Para índice começando em zero, a seed da rodada é `(sessionSeed + Math.imul(index, 0x9e3779b9)) >>> 0`. O passo ímpar percorre o domínio uint32 sem repetir seeds antes de completar seu ciclo; o índice aceito é de 0 a 4294967295. Programas textualmente iguais ainda podem ocorrer no domínio finito do núcleo.
+
+O ciclo de modalidades é: `complete-operator`, `complete-step`, `complete-condition`, `repair-operator`, `repair-step`, `repair-condition`. As famílias nunca se repetem consecutivamente. Todas usam gerador versão 1, explicitamente. Assim, as seis modalidades aparecem nas primeiras seis rodadas e continuam com novas seeds. A sessão 4812 começa com seeds de rodada `4812`, `2654440581` e `1013909054`.
+
+Doze rodadas realizadas formam apenas um marco: é possível continuar ou iniciar outra sessão. **Nova sessão** obtém outra seed criptográfica e atualiza a URL com replace; uma colisão com a seed anterior é desempatada incrementando uint32. Os únicos números temporários são posição, realizadas, resolvidas e puladas. Realizadas é a soma de resolvidas e puladas; tentativas não contam como rodadas. Não há vidas, ranking, cronômetro ou penalidades.
+
+Todo o estado fica no reducer do componente. Reload com seed explícita reinicia a sequência e zera os contadores; sem seed explícita, sorteia outra sessão. Não há IndexedDB, localStorage, heatmap, submissões ou histórico de Táticas. Geração e avaliação funcionam sem backend e não fazem chamadas HTTP. O código do programa é apresentação inerte; apenas as operações estruturadas do avaliador calculam os resultados.
+
+### Testar o laboratório
+
+```bash
+pnpm build
+pnpm --filter @bunkercode/frontend exec playwright test e2e/tactics-lab.spec.ts
+pnpm --filter @bunkercode/frontend test:browser
+```
+
+Playwright usa Vite Preview e exige build prévio. A configuração padrão também inicia o backend para testar as demais páginas; o laboratório não o utiliza. Cada execução cria diretórios novos de conteúdo e resultados, preservando evidências anteriores. A suíte específica cobre seis modalidades, erros/acertos reais, traces conhecidos, seed/refresh, contadores, marco de 12, teclado, erros de chunk, quatro viewports e execução com API, persistência, workers e compilação dinâmica indisponíveis. As capturas vêm do navegador real.

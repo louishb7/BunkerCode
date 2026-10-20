@@ -72,6 +72,9 @@ importers:
       '@bunkercode/content':
         specifier: workspace:*
         version: link:../../packages/content
+      '@bunkercode/tactics-core':
+        specifier: workspace:*
+        version: link:../../packages/tactics-core
       '@codemirror/autocomplete':
         specifier: ^6.20.3
         version: 6.20.3

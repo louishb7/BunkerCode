@@ -28,7 +28,7 @@ A descoberta inicial mostra JavaScript Essencial, TypeScript, Node.js e NestJS, 
 - apps/frontend: Home, catálogo, leitor Markdown, editor de prática e Studio local.
 - apps/backend: um monólito NestJS para leitura de cursos e escrita editorial segura.
 - content/courses: manifestos ordenados e lições Markdown.
-- packages/tactics-core: geração determinística de táticas e avaliação de operadores, ainda sem interface. [API e limites](docs/tactics-core.md).
+- packages/tactics-core: geração determinística e avaliação local, consumidas pelo laboratório experimental em `/lab/tactics`. [API, laboratório e limites](docs/tactics-core.md).
 - scripts: ferramentas de autoria; docs: arquitetura atual e histórico.
 
 [Arquitetura atual](docs/architecture/overview.md) · [Histórico da consolidação](docs/implementation/consolidation-mvp.md)

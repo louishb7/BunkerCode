@@ -14,6 +14,7 @@ const LessonPage = lazy(() =>
 const StudioPage = lazy(() =>
   import("./courses/Studio").then((module) => ({ default: module.StudioPage })),
 );
+const TacticsLab = lazy(() => import("./tactics/TacticsLab"));
 
 class RouteBoundary extends Component<
   { children: ReactNode },
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/lab/tactics" element={<TacticsLab />} />
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
           <Route
