@@ -15,3 +15,34 @@ export {
   type Evaluation,
   type Validation,
 } from "./comparison";
+export { STEP_OPERATORS, type ArithmeticStep } from "./arithmetic";
+export {
+  ASSIGNMENT_GENERATOR_VERSION,
+  generateAssignmentReference,
+  transformAssignmentProgram,
+  getPublicAssignmentTactic,
+  evaluateAssignmentAnswer,
+  verifyAssignmentTactic,
+  type AssignmentKind,
+  type AssignmentIdentity,
+  type AssignmentProgram,
+  type AssignmentTrace,
+  type AssignmentTactic,
+  type PublicAssignmentTactic,
+  type AssignmentEvaluation,
+} from "./assignment";
+export {
+  CONDITIONAL_GENERATOR_VERSION,
+  generateConditionalReference,
+  transformConditionalProgram,
+  getPublicConditionalTactic,
+  evaluateConditionalAnswer,
+  verifyConditionalTactic,
+  type ConditionalKind,
+  type ConditionalIdentity,
+  type ConditionalProgram,
+  type ConditionalTrace,
+  type ConditionalTactic,
+  type PublicConditionalTactic,
+  type ConditionalEvaluation,
+} from "./conditional";
