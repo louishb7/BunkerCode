@@ -161,11 +161,14 @@
 }
 .tactic-verdict {
   margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .tactic-execution .success {
   color: #adcf9d;
 }
-.tactic-execution .retry {
+.tactic-execution .retry,
+.investigation-execution > .retry {
   color: #f2cf8a;
 }
 .tactic-result-pair,
@@ -403,42 +406,52 @@
   color: #d4d4d4;
   font-weight: 500;
 }
+
+.tactics-lab-investigation {
+  max-width: 1180px;
+}
+.tactic-investigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
 .investigation-source {
-  position: relative;
-  max-height: clamp(180px, calc(100dvh - 440px), 360px);
-  overflow: auto;
+  overflow-x: auto;
   padding: 8px 0;
 }
 .investigation-line {
   display: flex;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   align-items: baseline;
-  min-width: 0;
-  padding: 0 10px 0 0;
+  padding: 0 12px 0 0;
   text-align: left;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #d4d4d4;
 }
+.investigation-line .tactic-line-number {
+  width: 48px;
+}
 .investigation-line code {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  white-space: pre;
   font:
-    12px/18px ui-monospace,
+    12px/20px ui-monospace,
     SFMono-Regular,
     Consolas,
     monospace;
 }
 button.investigation-line {
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   cursor: pointer;
 }
 button.investigation-line:disabled {
   opacity: 1;
 }
-button.investigation-line:hover {
+button.investigation-line:enabled:hover {
   background: #ffffff08;
 }
 .investigation-line.is-current {
@@ -446,17 +459,41 @@ button.investigation-line:hover {
   box-shadow: inset 3px 0 #79a9d1;
 }
 .investigation-line.is-suspect {
-  background: #e8bd681a;
-  outline: 1px solid #aa8647;
+  outline: 1px dashed #e8bd68;
   outline-offset: -1px;
+}
+.investigation-line.is-revealed {
+  background: #adcf9d14;
+  box-shadow: inset 3px 0 #adcf9d;
+}
+.investigation-markers {
+  display: flex;
+  gap: 6px;
+  margin-left: 12px;
+  font: 11px/18px sans-serif;
+}
+.investigation-markers span {
+  border: 1px solid #71777d;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.investigation-execution {
+  min-width: 0;
+  border-left: 1px solid #3e454d;
+  padding-left: 20px;
+}
+.investigation-execution h3 {
+  font-size: 14px;
+  margin: 0 0 12px;
+  font-weight: 600;
 }
 .investigation-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-top: 8px;
   font-size: 12px;
+  margin-bottom: 12px;
 }
 .investigation-controls button {
   display: inline-flex;
@@ -470,23 +507,70 @@ button.investigation-line:hover {
   font-size: 12px;
 }
 .investigation-state {
-  padding: 8px 10px;
-  border-left: 2px solid #79a9d1;
-  background: #79a9d108;
-  font-size: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #3e454d;
+  border-bottom: 1px solid #3e454d;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .investigation-state p {
-  margin: 2px 0;
+  margin: 4px 0 10px;
+}
+.investigation-state p:last-child {
+  margin-bottom: 0;
 }
 .investigation-selection {
-  margin: 6px 0 0;
+  margin: 12px 0;
   color: #b8bbbd;
   font-size: 12px;
+  line-height: 1.5;
 }
-.investigation-reveal code {
-  display: block;
+.investigation-execution .tactic-execution {
+  margin-top: 0;
+}
+.investigation-execution .tactic-actions {
+  flex-wrap: wrap;
+}
+.investigation-results {
+  margin: 12px 0;
+}
+.investigation-results > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 8px;
+  margin: 8px 0;
+}
+.investigation-results dt {
+  color: #b8bbbd;
+}
+.investigation-results dd {
+  margin: 0;
   overflow-wrap: anywhere;
+}
+.investigation-correction-label {
+  color: #b8bbbd;
+  margin-bottom: 6px;
+}
+.investigation-correction {
+  padding: 10px;
+  border: 1px solid #3e454d;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.tactic-execution .skipped {
+  color: #b8bbbd;
+}
+@media (max-width: 899px) {
+  .tactic-investigation {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .investigation-execution {
+    border-left: 0;
+    padding-left: 0;
+  }
 }
 @media (max-width: 599px) {
   .tactic-order-blocks > li {
@@ -497,12 +581,10 @@ button.investigation-line:hover {
   }
   .tactic-order-source code {
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
   }
-  button.investigation-line {
-    min-height: 44px;
-  }
-  .investigation-source {
-    max-height: clamp(180px, calc(100dvh - 440px), 300px);
+  .tactic-order-source {
+    padding: 10px 8px;
   }
 }

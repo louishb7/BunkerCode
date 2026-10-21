@@ -11,7 +11,7 @@ import {
   startSession,
 } from "./session";
 import { evaluateIterationAnswer } from "@bunkercode/tactics-core";
-import { TacticInvestigation } from "./TacticInvestigation";
+import { TacticInvestigation, iterationValue } from "./TacticInvestigation";
 import { TacticOrdering } from "./TacticOrdering";
 import { TacticCode } from "./TacticCode";
 import { TacticExecution, TacticGoal } from "./TacticExecution";
@@ -73,8 +73,112 @@ function SessionView({
     });
   const performed = state.solved + state.skipped;
   const identity = state.round.view.identity;
+  const investigation = state.round.family === "iteration" ? state.round : null;
+  const conclusion =
+    investigation && (state.completed || state.revealed)
+      ? evaluateIterationAnswer(
+          investigation.model,
+          investigation.model.faultId,
+        )
+      : null;
+  const feedback =
+    conclusion?.status === "valid" && investigation ? (
+      <section
+        className={`tactic-execution ${state.revealed ? "investigation-reveal" : ""}`}
+        aria-label="Origem do defeito"
+      >
+        <p
+          className={`tactic-verdict ${state.revealed ? "skipped" : "success"}`}
+        >
+          {state.revealed
+            ? "Pulada. Solução revelada."
+            : "Diagnóstico correto."}
+        </p>
+        <dl className="investigation-results">
+          <div>
+            <dt>Esperado</dt>
+            <dd>{iterationValue(conclusion.expected)}</dd>
+          </div>
+          <div>
+            <dt>Produzido</dt>
+            <dd>{iterationValue(conclusion.produced)}</dd>
+          </div>
+        </dl>
+        <p>
+          <strong>
+            Linha{" "}
+            {investigation.view.lines.findIndex(
+              (line) => line.instructionId === investigation.model.faultId,
+            ) + 1}{" "}
+            · Origem do defeito
+          </strong>
+        </p>
+        <p>{conclusion.explanation}</p>
+        <p className="investigation-correction-label">Instrução correta</p>
+        <pre className="investigation-correction" tabIndex={0}>
+          <code>{conclusion.correctedCode}</code>
+        </pre>
+      </section>
+    ) : state.result?.family === "iteration" ? (
+      <p className="tactic-verdict retry" role="status">
+        O diagnóstico não corresponde à origem do problema. Continue
+        investigando.
+      </p>
+    ) : null;
+  const actions = (
+    <div
+      className="tactic-actions"
+      onPointerDownCapture={(event) => {
+        // Disabled buttons emit pointerdown but suppress mousedown in Chromium.
+        // Keep the round heading focused if a second press lands on Run.
+        if (
+          event.target instanceof Element &&
+          event.target.closest("button:disabled")
+        )
+          event.preventDefault();
+      }}
+    >
+      {state.completed || state.revealed ? (
+        <button
+          ref={nextButton}
+          className="tactic-primary"
+          onClick={(event) => advance("next", event.detail)}
+        >
+          {state.index === 11 ? "Continuar praticando" : "Próxima"}
+          <ArrowRight size={17} aria-hidden="true" />
+        </button>
+      ) : (
+        <>
+          <button
+            className="tactic-skip"
+            onClick={(event) => advance("skip", event.detail)}
+          >
+            <SkipForward size={16} aria-hidden="true" />
+            Pular
+          </button>
+          <button
+            className="tactic-primary"
+            disabled={
+              state.round.family === "iteration"
+                ? state.suspect === null
+                : state.order === null && state.selection === null
+            }
+            onClick={() => send("run")}
+          >
+            <Play size={16} aria-hidden="true" />
+            {state.round.family === "iteration"
+              ? "Confirmar diagnóstico"
+              : "Executar"}
+          </button>
+        </>
+      )}
+    </div>
+  );
   return (
-    <Page title="Táticas" className="tactics-lab">
+    <Page
+      title="Táticas"
+      className={`tactics-lab ${investigation ? "tactics-lab-investigation" : ""}`}
+    >
       <header className="tactics-heading">
         <h1>Táticas</h1>
         <span
@@ -116,6 +220,13 @@ function SessionView({
             round={state.round}
             suspect={state.suspect}
             disabled={state.completed || state.revealed}
+            revealedInstruction={
+              state.completed || state.revealed
+                ? state.round.model.faultId
+                : null
+            }
+            feedback={feedback}
+            actions={actions}
             onSelect={(instructionId) =>
               dispatch({
                 type: "suspect",
@@ -150,53 +261,6 @@ function SessionView({
             onSelect={select}
           />
         ) : null}
-        <div
-          className="tactic-actions"
-          onPointerDownCapture={(event) => {
-            // Disabled buttons emit pointerdown but suppress mousedown in Chromium.
-            // Keep the round heading focused if a second press lands on Run.
-            if (
-              event.target instanceof Element &&
-              event.target.closest("button:disabled")
-            )
-              event.preventDefault();
-          }}
-        >
-          {state.completed || state.revealed ? (
-            <button
-              ref={nextButton}
-              className="tactic-primary"
-              onClick={(event) => advance("next", event.detail)}
-            >
-              {state.index === 11 ? "Continuar praticando" : "Próxima"}
-              <ArrowRight size={17} aria-hidden="true" />
-            </button>
-          ) : (
-            <>
-              <button
-                className="tactic-skip"
-                onClick={(event) => advance("skip", event.detail)}
-              >
-                <SkipForward size={16} aria-hidden="true" />
-                Pular
-              </button>
-              <button
-                className="tactic-primary"
-                disabled={
-                  state.round.family === "iteration"
-                    ? state.suspect === null
-                    : state.order === null && state.selection === null
-                }
-                onClick={() => send("run")}
-              >
-                <Play size={16} aria-hidden="true" />
-                {state.round.family === "iteration"
-                  ? "Confirmar diagnóstico"
-                  : "Executar"}
-              </button>
-            </>
-          )}
-        </div>
         <p
           className="sr-only"
           role="status"
@@ -224,35 +288,15 @@ function SessionView({
                     : "Escolha aplicada ao código. Execute para observar o resultado."}
         </p>
         {state.error && <p role="alert">{state.error}</p>}
-        {state.revealed &&
-          state.round.family === "iteration" &&
-          (() => {
-            const round = state.round;
-            const feedback = evaluateIterationAnswer(
-              round.model,
-              round.model.faultId,
-            );
-            return feedback.status === "valid" ? (
-              <section
-                className="tactic-execution investigation-reveal"
-                aria-label="Origem do defeito"
-              >
-                <p>
-                  Pulada. A origem está na linha{" "}
-                  {round.view.lines.findIndex(
-                    (l) => l.instructionId === round.model.faultId,
-                  ) + 1}
-                  .
-                </p>
-                <p>{feedback.explanation}</p>
-                <code>{feedback.correctedCode}</code>
-              </section>
-            ) : null;
-          })()}
-        <TacticExecution
-          key={`${state.index}:${state.selection}:${state.order?.join(",")}`}
-          result={state.result}
-        />
+        {state.round.family !== "iteration" && (
+          <>
+            <TacticExecution
+              key={`${state.index}:${state.selection}:${state.order?.join(",")}`}
+              result={state.result}
+            />
+            {actions}
+          </>
+        )}
       </section>
       <details className="tactics-session-options">
         <summary>Opções da sessão</summary>

@@ -1,4 +1,3 @@
-import { iterationValue } from "./TacticInvestigation";
 import type { Execution, Round } from "./session";
 
 export function TacticGoal({ round }: { round: Round }) {
@@ -34,34 +33,7 @@ export function TacticGoal({ round }: { round: Round }) {
 
 export function TacticExecution({ result }: { result: Execution | null }) {
   if (!result) return null;
-  if (result.family === "iteration")
-    return (
-      <section
-        className="tactic-execution"
-        aria-label="Resultado do diagnóstico"
-      >
-        <p
-          className={`tactic-verdict ${result.value.achieved ? "success" : "retry"}`}
-        >
-          {result.value.achieved
-            ? "Diagnóstico correto."
-            : "O diagnóstico não corresponde à origem do problema. Continue investigando."}
-        </p>
-        {result.value.achieved && (
-          <>
-            <p>{result.value.explanation}</p>
-            <details>
-              <summary>Ver instrução correta</summary>
-              <code>{result.value.correctedCode}</code>
-            </details>
-          </>
-        )}
-        <p className="tactic-result-pair">
-          Produzido: {iterationValue(result.value.produced)} · Esperado:{" "}
-          {iterationValue(result.value.expected)}
-        </p>
-      </section>
-    );
+  if (result.family === "iteration") return null;
   return (
     <section className="tactic-execution" aria-label="Resultado da execução">
       <p

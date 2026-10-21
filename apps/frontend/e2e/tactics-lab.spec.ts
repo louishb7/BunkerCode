@@ -1287,8 +1287,7 @@ test("investigation traces, wrong diagnosis, correction, explicit evaluation, di
   await expect(page.locator(".tactic-verdict")).toHaveText(
     "Diagnóstico correto.",
   );
-  await page.getByText("Ver instrução correta", { exact: true }).click();
-  await expect(page.locator(".tactic-execution details code")).toHaveText(
+  await expect(page.locator(".investigation-correction code")).toHaveText(
     round.model.reference.lines
       .find((l) => l.instructionId === round.model.faultId)!
       .text.trim(),
@@ -1339,6 +1338,44 @@ for (const viewport of [
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+      await capture(
+        page,
+        info.outputPath(`initial-${viewport.width}x${viewport.height}.png`),
+      );
+      await page.getByRole("button", { name: "Iniciar execução" }).click();
+      await page
+        .getByRole("button", { name: "Próximo passo", exact: true })
+        .click();
+      await capture(
+        page,
+        info.outputPath(`running-${viewport.width}x${viewport.height}.png`),
+      );
+      const source = page.locator(".investigation-source");
+      expect(
+        await source.evaluate(
+          (element) => element.scrollHeight <= element.clientHeight,
+        ),
+      ).toBe(true);
+      await page.locator('[data-instruction-id="initialize"]').click();
+      await diagnose(page).click();
+      await expect(page.locator(".tactic-verdict.retry")).toHaveCount(1);
+      await capture(
+        page,
+        info.outputPath(`wrong-${viewport.width}x${viewport.height}.png`),
+      );
+      await page.getByRole("button", { name: "Pular", exact: true }).click();
+      await expect(
+        page.locator(".tactic-verdict.retry,.is-suspect,.is-current"),
+      ).toHaveCount(0);
+      await expect(page.locator(".is-revealed")).toHaveAttribute(
+        "data-instruction-id",
+        round.model.faultId,
+      );
+      await capture(
+        page,
+        info.outputPath(`skipped-${viewport.width}x${viewport.height}.png`),
+      );
+      await openInvestigation(page);
       await page.getByRole("button", { name: "Ver resultado final" }).click();
       const control = page.locator(
         `[data-instruction-id="${round.model.faultId}"]`,
@@ -1357,6 +1394,18 @@ for (const viewport of [
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
+      ).toBe(true);
+      expect(
+        await page.locator(".investigation-correction").evaluate((element) => {
+          const next = document.querySelector(".tactic-actions button");
+          return (
+            next !== null &&
+            Boolean(
+              element.compareDocumentPosition(next) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+            )
+          );
+        }),
       ).toBe(true);
       await capture(
         page,
@@ -1535,4 +1584,147 @@ test("investigation reducer rejects stale answers and repeated skips without dou
   expect(state.index).toBe(base.index + 1);
   expect(state.skipped).toBe(before + 1);
   expect(state.solved).toBe(0);
+});
+
+test("wrong diagnosis then skip clears transient feedback and advances once", async ({
+  page,
+}, info) => {
+  const round = await openInvestigation(page);
+  const wrong = round.view.instructionIds.find(
+    (id) => id !== round.model.faultId,
+  )!;
+  await page.locator(`[data-instruction-id="${wrong}"]`).click();
+  await diagnose(page).click();
+  await expect(page.locator(".tactic-verdict")).toContainText(
+    "não corresponde",
+  );
+  await capture(page, info.outputPath("wrong-before-skip.png"));
+  await page.getByRole("button", { name: "Pular", exact: true }).click();
+  await capture(page, info.outputPath("skipped-after-wrong.png"));
+  await expect(page.locator(".tactic-verdict.retry")).toHaveCount(0);
+  await expect(page.locator(".is-suspect")).toHaveCount(0);
+  await expect(page.locator(".investigation-reveal")).toContainText("Pulada");
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  await expect(stat(page, "solved")).toHaveText("0");
+  await expect(stat(page, "skipped")).toHaveText("1");
+  await page.getByRole("button", { name: "Próxima", exact: true }).dblclick();
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-index",
+    "1",
+  );
+  await expect(page.locator(".tactic-execution")).toHaveCount(0);
+});
+
+test("investigation resets the trace and all feedback when revisited in the same session", async ({
+  page,
+}) => {
+  await openInvestigation(page);
+  await page.getByRole("button", { name: "Iniciar execução" }).click();
+  await page.locator('[data-instruction-id="initialize"]').click();
+  await expect(page.locator(".is-current.is-suspect")).toContainText("▶ Atual");
+  await expect(page.locator(".is-current.is-suspect")).toContainText(
+    "? Suspeita",
+  );
+  await diagnose(page).click();
+  await page.getByRole("button", { name: "Pular", exact: true }).click();
+  await page.getByRole("button", { name: "Próxima", exact: true }).click();
+  let index = 1;
+  while (createRound(seed, index, 3).family !== "iteration") {
+    await skipCurrent(page);
+    index++;
+  }
+  await expect(page.locator(".tactic-objective")).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Iniciar execução" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".is-current,.is-suspect,.is-revealed,.tactic-verdict"),
+  ).toHaveCount(0);
+  await expect(page.locator(".investigation-state")).toContainText(
+    "Avance pelos passos",
+  );
+  await expect(diagnose(page)).toBeDisabled();
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  await expect(stat(page, "skipped")).toHaveText(String(index));
+  await expect(stat(page, "solved")).toHaveText("0");
+});
+
+test("skipping a wrong diagnosis clears reducer feedback, selection and late actions", () => {
+  let state = startSession(seed, 3);
+  if (state.round.family !== "iteration")
+    throw new Error("Expected investigation");
+  const action = { seed, version: 3 as const, index: 0 };
+  state = sessionReducer(state, {
+    ...action,
+    type: "suspect",
+    instructionId: "initialize",
+  });
+  state = sessionReducer(state, { ...action, type: "run" });
+  expect(state.result?.value.achieved).toBe(false);
+  state = sessionReducer(state, { ...action, type: "skip" });
+  expect(state.result).toBeNull();
+  expect(state.suspect).toBeNull();
+  expect(state.error).toBeNull();
+  expect(state.completed).toBe(false);
+  expect(state.revealed).toBe(true);
+  expect(state.skipped).toBe(1);
+  expect(state.solved).toBe(0);
+  for (const type of ["run", "skip"] as const)
+    expect(sessionReducer(state, { ...action, type })).toBe(state);
+  state = sessionReducer(state, { ...action, type: "next" });
+  for (const type of ["run", "skip", "next"] as const)
+    expect(sessionReducer(state, { ...action, type })).toBe(state);
+});
+
+test("investigation presents core trace values with labels for all four patterns", async ({
+  page,
+}) => {
+  const labels = {
+    "collect-matching": "Elementos selecionados",
+    "count-matching": "Quantidade encontrada",
+    "first-match": "Primeiro valor localizado",
+    "partition-by-flag": "Distribuição entre grupos",
+  };
+  const format = (value: unknown): string => {
+    if (value === null) return "null (nenhum registro)";
+    if (typeof value === "number") return String(value);
+    if (typeof value === "string") return `“${value}”`;
+    if (Array.isArray(value))
+      return value.length
+        ? value.map((v) => `“${String(v)}”`).join(", ")
+        : "[ ]";
+    const groups = value as { matching: string[]; other: string[] };
+    return `matching: ${format(groups.matching)} · other: ${format(groups.other)}`;
+  };
+  await page.goto(`/tactics?seed=${seed}&version=3`);
+  const seen = new Set<string>();
+  for (let index = 0; index < 12; index++) {
+    const round = createRound(seed, index, 3);
+    if (round.family === "iteration") {
+      seen.add(round.view.identity.pattern);
+      await page.getByRole("button", { name: "Iniciar execução" }).click();
+      for (const [position, event] of round.view.trace.events.entries()) {
+        const state = page.locator(".investigation-state");
+        await expect(state).toContainText(
+          `${labels[round.view.identity.pattern]}: ${format(event.after)}`,
+        );
+        if (event.record) await expect(state).toContainText(event.record.name);
+        if (event.condition !== null)
+          await expect(state).toContainText(
+            `Condição: ${event.condition ? "verdadeira" : "falsa"}`,
+          );
+        await expect(page.locator(".is-current")).toHaveAttribute(
+          "data-instruction-id",
+          event.instructionId,
+        );
+        await expect(page.locator(".is-revealed")).toHaveCount(0);
+        if (position < round.view.trace.events.length - 1)
+          await page
+            .getByRole("button", { name: "Próximo passo", exact: true })
+            .click();
+      }
+    }
+    if (index < 11) await skipCurrent(page);
+  }
+  expect(seen.size).toBe(4);
 });

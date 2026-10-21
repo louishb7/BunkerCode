@@ -446,7 +446,14 @@ export function sessionReducer(state: Session, action: Action): Session {
     !state.completed &&
     !state.revealed
   ) {
-    return { ...state, revealed: true, skipped: state.skipped + 1 };
+    return {
+      ...state,
+      revealed: true,
+      suspect: null,
+      result: null,
+      error: null,
+      skipped: state.skipped + 1,
+    };
   }
   if (
     (action.type === "next" && !state.completed && !state.revealed) ||
