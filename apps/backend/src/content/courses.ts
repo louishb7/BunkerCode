@@ -110,8 +110,17 @@ export function listCourses(root = coursesRoot()): CourseSummary[] {
     .map((entry) => {
       if (!validSlug(entry.name) || entry.isSymbolicLink())
         invalid("pasta de curso inválida.");
-      const { id, title, description, lessons } = loadCourse(entry.name, root);
-      return { id, title, description, lessonCount: lessons.length };
+      const { id, title, description, shortDescription, lessons } = loadCourse(
+        entry.name,
+        root,
+      );
+      return {
+        id,
+        title,
+        description,
+        ...(shortDescription === undefined ? {} : { shortDescription }),
+        lessonCount: lessons.length,
+      };
     });
 }
 export function lessonLocation(id: string, slug: string, root = coursesRoot()) {

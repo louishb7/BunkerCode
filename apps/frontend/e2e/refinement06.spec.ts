@@ -62,7 +62,7 @@ for (const viewport of [
       expect(new Set(cards.map((card) => card.top)).size).toBe(1);
       expect(new Set(cards.map((card) => card.bottom)).size).toBe(1);
       expect(cards[0]!.bottom).toBeLessThan(viewport.height);
-      for (const card of cards) expect(card.height).toBeLessThanOrEqual(210);
+      for (const card of cards) expect(card.height).toBeLessThanOrEqual(240);
     } else {
       expect((await nav.boundingBox())!.height).toBeLessThan(60);
       expect((await page.getByRole("main").boundingBox())!.width).toBe(390);

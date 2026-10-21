@@ -2,6 +2,7 @@
   "id": "typescript",
   "title": "TypeScript",
   "description": "Uma trilha autoral para transformar estudo, prática e dúvidas em explicações próprias. As duas lições iniciais são demonstrativas: substitua ou amplie com seu entendimento.",
+  "shortDescription": "Valores, tipos e uniões em exemplos de TypeScript.",
   "lessons": [
     { "slug": "values-and-types", "title": "Valores e tipos" },
     { "slug": "union-types", "title": "Union types" }

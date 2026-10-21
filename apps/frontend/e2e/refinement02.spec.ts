@@ -37,7 +37,7 @@ async function localRecords(page: Page) {
 }
 
 async function visibleCourses(page: Page) {
-  await expect(page.locator(".course-card h3")).toHaveText(titles);
+  await expect(page.locator(".course-card-title")).toHaveText(titles);
   await expect(page.locator(".course-card")).toHaveCount(4);
   for (let i = 0; i < ids.length; i++)
     await expect(page.locator(".course-card").nth(i)).toHaveAttribute(
@@ -230,7 +230,9 @@ test("one editorial selection controls both pages while hidden courses remain av
   await visibleCourses(page);
   await page.goto("/courses");
   await visibleCourses(page);
-  await expect(page.getByText("4 cursos", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("heading", { level: 1 }),
+  ).toHaveText("Cursos");
   const response = await request.get("/api/content/courses");
   const courses = (await response.json()) as { id: string; title: string }[];
   expect(courses.map((item) => item.id)).toEqual(

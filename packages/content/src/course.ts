@@ -6,12 +6,14 @@ export interface Course {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   lessons: LessonEntry[];
 }
 export interface CourseSummary {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   lessonCount: number;
 }
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -40,7 +42,7 @@ function fields(value: Record<string, unknown>, allowed: string[]) {
 }
 export function parseCourse(value: unknown, id: string): Course {
   const course = object(value);
-  fields(course, ["id", "title", "description", "lessons"]);
+  fields(course, ["id", "title", "description", "shortDescription", "lessons"]);
   if (course.id !== id || !validSlug(course.id))
     invalidCourse("id não corresponde à pasta do curso.");
   if (!Array.isArray(course.lessons))
@@ -61,6 +63,15 @@ export function parseCourse(value: unknown, id: string): Course {
     id,
     title: text(course.title, 160, "title"),
     description: text(course.description, 800, "description"),
+    ...(course.shortDescription === undefined
+      ? {}
+      : {
+          shortDescription: text(
+            course.shortDescription,
+            160,
+            "shortDescription",
+          ),
+        }),
     lessons,
   };
 }

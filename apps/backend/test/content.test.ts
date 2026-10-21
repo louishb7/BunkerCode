@@ -231,3 +231,38 @@ test("retired exercise endpoints are absent while course content stays available
     "Preserved retired bytes",
   );
 });
+
+test("optional editorial summaries round-trip through all content routes without replacing full descriptions", async () => {
+  try {
+    await publish(manifest);
+    const legacy = (await (await get("/typescript")).json()) as Course;
+    assert.equal(legacy.shortDescription, undefined);
+    assert.equal(legacy.description, manifest.description);
+    for (const shortDescription of [
+      "Resumo editorial completo.",
+      "x".repeat(160),
+    ]) {
+      await publish({ ...manifest, shortDescription });
+      const listed = (await (await get("")).json()) as Course[];
+      assert.equal(
+        listed.find((entry) => entry.id === "typescript")?.shortDescription,
+        shortDescription,
+      );
+      const detail = (await (await get("/typescript")).json()) as Course;
+      const lesson = (await (
+        await get("/typescript/lessons/first")
+      ).json()) as Lesson;
+      assert.equal(detail.shortDescription, shortDescription);
+      assert.equal(detail.description, manifest.description);
+      assert.equal(lesson.course.shortDescription, shortDescription);
+      assert.equal(lesson.course.description, manifest.description);
+    }
+    for (const shortDescription of [null, 42, "", " ", "x".repeat(161), []]) {
+      await publish({ ...manifest, shortDescription });
+      assert.equal((await get("/typescript")).status, 422);
+      assert.equal((await get("")).status, 422);
+    }
+  } finally {
+    await publish(manifest);
+  }
+});

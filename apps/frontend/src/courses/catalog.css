@@ -23,26 +23,11 @@
   max-width: 1440px;
   padding: 36px clamp(24px, 3.5vw, 56px) 64px;
 }
-.global-page-heading {
-  margin-bottom: 28px;
-}
-.global-page-heading .eyebrow {
-  margin: 0 0 10px;
-  font-size: 10px;
-  letter-spacing: 1.6px;
-  color: var(--color-gold);
-}
-.global-page-heading h1 {
-  margin: 0;
+.catalog-heading {
+  margin: 0 0 24px;
   font-size: 30px;
   font-weight: 600;
   letter-spacing: -0.8px;
-}
-.global-page-heading > p:last-child {
-  margin: 10px 0 0;
-  color: var(--color-subtle);
-  font-size: 14px;
-  line-height: 1.6;
 }
 .home-study-overview {
   display: flex;
@@ -131,8 +116,8 @@
   --course-tint: #e8bd68;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 18px;
+  padding: 24px;
   min-width: 0;
   border: 1px solid #ffffff14;
   border-radius: 8px;
@@ -170,7 +155,7 @@
   height: 34px;
   flex-shrink: 0;
 }
-.course-card h3 {
+.course-card-title {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -184,16 +169,13 @@
   color: var(--color-gold);
 }
 .course-description {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
   margin: 0;
   color: var(--color-subtle);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 14px;
+  line-height: 23px;
 }
 .course-card-details {
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -238,7 +220,7 @@
   .global-content .product-page {
     padding: 28px 20px 48px;
   }
-  .global-page-heading h1 {
+  .catalog-heading {
     font-size: 28px;
   }
   .course-list {

@@ -4,6 +4,10 @@ const coursePath = "/courses/typescript";
 const lessonPath = coursePath + "/lessons/values-and-types";
 const courses: { name: string; change: (course: Course) => unknown }[] = [
   {
+    name: "invalid editorial summary",
+    change: (course) => ({ ...course, shortDescription: null }),
+  },
+  {
     name: "missing lesson list",
     change: (course) => ({ ...course, lessons: null }),
   },

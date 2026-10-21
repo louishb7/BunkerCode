@@ -25,6 +25,7 @@ function fixture() {
       id: "typescript",
       title: "TypeScript",
       description: "Authoring test",
+      shortDescription: "Editorial summary preserved by the CLI.",
       lessons: [],
     }),
   );
@@ -52,6 +53,11 @@ test("authoring creates a standalone Markdown and appends one manifest entry; du
     const file = join(course, "lessons/union-types/lesson.md");
     assert.equal(readFileSync(file, "utf8"), "");
     const manifest = readFileSync(join(course, "course.json"), "utf8");
+    assert.equal(
+      JSON.parse(manifest).shortDescription,
+      "Editorial summary preserved by the CLI.",
+    );
+    assert.equal(JSON.parse(manifest).description, "Authoring test");
     assert.deepEqual(JSON.parse(manifest).lessons, [
       { slug: "union-types", title: "Union Types" },
     ]);

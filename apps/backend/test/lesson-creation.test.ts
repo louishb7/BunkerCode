@@ -38,6 +38,7 @@ before(async () => {
       id: "typescript",
       title: "TypeScript",
       description: "Fixture",
+      shortDescription: "Resumo editorial preservado na criação.",
       lessons: [{ slug: "existing", title: "Existente" }],
     }),
   );
@@ -57,6 +58,11 @@ test("POST creates an empty Markdown, appends in order and returns a directly re
   assert.equal(response.headers.get("cache-control"), "no-store");
   const result = (await response.json()) as { slug: string; markdown: string };
   assert.equal(result.slug, "new-lesson");
+  assert.equal(
+    JSON.parse(manifest()).shortDescription,
+    "Resumo editorial preservado na criação.",
+  );
+  assert.equal(JSON.parse(manifest()).description, "Fixture");
   assert.equal(result.markdown, "");
   assert.equal(
     fs.readFileSync(join(course, "lessons/new-lesson/lesson.md"), "utf8"),

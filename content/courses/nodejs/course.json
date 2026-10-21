@@ -2,6 +2,7 @@
   "id": "nodejs",
   "title": "Node.js",
   "description": "Entenda o runtime e organize código JavaScript em módulos explícitos.",
+  "shortDescription": "O runtime JavaScript e a organização de código em módulos.",
   "lessons": [
     {
       "slug": "runtime",

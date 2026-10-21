@@ -2,6 +2,7 @@
   "id": "javascript",
   "title": "JavaScript Essencial",
   "description": "Valores, funções e escopo: uma base introdutória de JavaScript para começar TypeScript.",
+  "shortDescription": "Uma base de JavaScript para estudar TypeScript e backend.",
   "lessons": [
     {
       "slug": "values",

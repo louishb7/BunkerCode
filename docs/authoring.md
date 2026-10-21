@@ -87,12 +87,13 @@ Crie content/courses/software-architecture/course.json:
       "id": "software-architecture",
       "title": "Arquitetura de software",
       "description": "Minhas revisões e exemplos de organização de sistemas.",
+      "shortDescription": "Revisões sobre organização de sistemas.",
       "lessons": []
     }
 
 Use o comando de autoria com --course software-architecture ou crie Markdown e entrada manualmente. Nenhuma mudança de controller, rota ou componente é necessária.
 
-IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição do curso: até 800. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
+IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição completa do curso: até 800. O campo opcional `shortDescription` aceita até 160 caracteres não vazios e contém uma chamada editorial própria para os cards da Home e do catálogo. Não é gerado por corte da descrição completa. A página individual continua usando `description`; sem chamada curta, o card apresenta `description` integralmente, sem reticências artificiais. A API expõe o campo de forma aditiva e a criação de lições por CLI/Studio o preserva. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
 
 ## Escopo atual
 

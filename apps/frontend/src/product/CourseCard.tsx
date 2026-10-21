@@ -5,7 +5,13 @@ import type { CourseSummary } from "../courses/api";
 import { CourseArtwork } from "./CourseArtwork";
 import { recentLesson } from "./recent";
 
-export function CourseCard({ course }: { course: CourseSummary }) {
+export function CourseCard({
+  course,
+  headingLevel: Heading = "h3",
+}: {
+  course: CourseSummary;
+  headingLevel?: "h2" | "h3";
+}) {
   const [recent] = useState(recentLesson);
   const lastVisited = recent?.course === course.id;
   return (
@@ -18,7 +24,9 @@ export function CourseCard({ course }: { course: CourseSummary }) {
     >
       <div className="course-card-heading">
         <CourseArtwork id={course.id} />
-        <h3 id={`course-${course.id}-title`}>{course.title}</h3>
+        <Heading id={`course-${course.id}-title`} className="course-card-title">
+          {course.title}
+        </Heading>
         <ArrowRight
           className="course-card-arrow"
           size={17}
@@ -26,7 +34,7 @@ export function CourseCard({ course }: { course: CourseSummary }) {
         />
       </div>
       <p id={`course-${course.id}-description`} className="course-description">
-        {course.description}
+        {course.shortDescription ?? course.description}
       </p>
       <div id={`course-${course.id}-details`} className="course-card-details">
         <span>

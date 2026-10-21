@@ -7,12 +7,14 @@ export interface Course {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   lessons: LessonEntry[];
 }
 export interface CourseSummary {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   lessonCount: number;
 }
 export interface Lesson extends LessonEntry {
@@ -48,6 +50,8 @@ function course(value: unknown): value is Course {
     isContentSlug(value.id) &&
     isContentTitle(value.title) &&
     text(value.description, 800) &&
+    (value.shortDescription === undefined ||
+      text(value.shortDescription, 160)) &&
     Array.isArray(value.lessons) &&
     value.lessons.every(entry) &&
     new Set(value.lessons.map((lesson: LessonEntry) => lesson.slug)).size ===
@@ -60,6 +64,8 @@ function summary(value: unknown): value is CourseSummary {
     isContentSlug(value.id) &&
     isContentTitle(value.title) &&
     text(value.description, 800) &&
+    (value.shortDescription === undefined ||
+      text(value.shortDescription, 160)) &&
     typeof value.lessonCount === "number" &&
     Number.isInteger(value.lessonCount) &&
     value.lessonCount >= 0

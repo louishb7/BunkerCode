@@ -19,39 +19,18 @@ export function CoursesPage() {
   const courses = discoverableCourses(data);
   return (
     <Page title="Cursos" className="product-page catalog-page">
-      <header className="global-page-heading">
-        <p className="eyebrow">Explore o acervo</p>
-        <h1>Cursos</h1>
-        <p className="max-w-xl">
-          Um conceito de cada vez. Escolha um curso, percorra as lições e dê
-          forma ao que aprendeu.
+      <h1 className="catalog-heading">Cursos</h1>
+      {courses.length === 0 ? (
+        <p className="empty-content text-subtle">
+          Nenhum curso disponível nesta seleção.
         </p>
-      </header>
-      <section aria-labelledby="courses-title">
-        <div className="collection-heading">
-          <h2 id="courses-title" className="m-0 text-lg">
-            Disponíveis
-          </h2>
-          <span className="text-sm text-subtle">
-            {courses.length} {courses.length === 1 ? "curso" : "cursos"}
-          </span>
+      ) : (
+        <div className="course-list">
+          {courses.map((course) => (
+            <CourseCard key={course.id} course={course} headingLevel="h2" />
+          ))}
         </div>
-        {courses.length === 0 ? (
-          <p className="empty-content rounded-xl border border-line p-8 text-subtle">
-            Nenhum curso disponível nesta seleção.
-          </p>
-        ) : (
-          <div className="course-list">
-            {courses.map((course) => (
-              <CourseCard key={course.id} course={course} />
-            ))}
-          </div>
-        )}
-      </section>
-      <p className="author-note">
-        As lições iniciais são exemplos demonstrativos. Amplie ou substitua o
-        conteúdo com seu próprio entendimento.
-      </p>
+      )}
     </Page>
   );
 }

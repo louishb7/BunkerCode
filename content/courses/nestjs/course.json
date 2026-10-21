@@ -2,6 +2,7 @@
   "id": "nestjs",
   "title": "NestJS",
   "description": "Rotas HTTP e injeção de dependência em uma aplicação modular.",
+  "shortDescription": "Rotas HTTP e injeção de dependência no NestJS.",
   "lessons": [
     {
       "slug": "controllers",

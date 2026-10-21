@@ -156,7 +156,9 @@ test("one real course keeps the catalog useful without artificial volume", async
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/courses");
     await expect(page.locator(".course-card")).toHaveCount(1);
-    await expect(page.getByText("1 curso", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("heading", { level: 1 }),
+    ).toHaveText("Cursos");
     await expect(
       page.getByRole("link", { name: "TypeScript", exact: true }),
     ).toHaveAttribute("href", "/courses/typescript");
