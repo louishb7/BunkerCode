@@ -1,9 +1,9 @@
 import { Fragment, useId } from "react";
-import { choices, type Round } from "./session";
+import { choices, type PointRound } from "./session";
 
 /** Version-1 presentation adapters: one anchored slot in the public source.
  * No semantic parsing, global replacements or access to reference answers. */
-export function codeSlot(round: Round) {
+export function codeSlot(round: PointRound) {
   const lines = round.view.code.trimEnd().split("\n");
   if (round.family === "assignment") {
     const index = 2 + round.view.stepIndex;
@@ -27,18 +27,22 @@ export function codeSlot(round: Round) {
     initial: match[2]!,
   };
 }
-function Tokens({ text }: { text: string }) {
+export function CodeTokens({ text }: { text: string }) {
   return text
-    .split(/(\b(?:const|let|function|return|if|else)\b|-?\d+)/g)
+    .split(
+      /("(?:\\.|[^"\\])*"|\b(?:const|let|function|return|if|else|true|false)\b|-?\d+)/g,
+    )
     .map((part, index) => (
       <span
         key={index}
         className={
-          /^-?\d+$/.test(part)
-            ? "tactic-number"
-            : /^(const|let|function|return|if|else)$/.test(part)
-              ? "tactic-keyword"
-              : undefined
+          part.startsWith('"')
+            ? "tactic-string"
+            : /^-?\d+$/.test(part)
+              ? "tactic-number"
+              : /^(const|let|function|return|if|else|true|false)$/.test(part)
+                ? "tactic-keyword"
+                : undefined
         }
       >
         {part}
@@ -51,7 +55,7 @@ export function TacticCode({
   disabled,
   onSelect,
 }: {
-  round: Round;
+  round: PointRound;
   selection: number | null;
   disabled: boolean;
   onSelect: (index: number) => void;
@@ -87,7 +91,7 @@ export function TacticCode({
             <code>
               {index === slot.index ? (
                 <Fragment>
-                  <Tokens text={slot.before} />
+                  <CodeTokens text={slot.before} />
                   <select
                     aria-label={`Operação no programa, linha ${index + 1}`}
                     aria-describedby={instructionId}
@@ -111,10 +115,10 @@ export function TacticCode({
                       </option>
                     ))}
                   </select>
-                  <Tokens text={slot.after} />
+                  <CodeTokens text={slot.after} />
                 </Fragment>
               ) : (
-                <Tokens text={line || " "} />
+                <CodeTokens text={line || " "} />
               )}
             </code>
           </div>

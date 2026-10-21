@@ -40,8 +40,43 @@ export function TacticExecution({ result }: { result: Execution | null }) {
       >
         {result.value.achieved
           ? "Objetivo atingido."
-          : "Ainda não. Ajuste a operação e tente novamente."}
+          : result.family === "collection"
+            ? "Ainda não. Ajuste a ordem e tente novamente."
+            : "Ainda não. Ajuste a operação e tente novamente."}
       </p>
+      {result.family === "collection" && (
+        <>
+          {result.value.status === "invalid-order" && (
+            <p className="tactic-dependency">
+              A instrução <code>{result.value.blockId}</code> precisa de{" "}
+              <code>{result.value.missing.join(", ")}</code> antes dela.
+            </p>
+          )}
+          <p className="tactic-result-pair">
+            Produzido:{" "}
+            <code>
+              {result.value.produced === null
+                ? "Não produzido"
+                : JSON.stringify(result.value.produced)}
+            </code>
+            {" · "}Esperado:{" "}
+            <code>{JSON.stringify(result.value.expected)}</code>
+          </p>
+          {result.value.trace.length > 0 && (
+            <details className="tactic-step-trace">
+              <summary>Ver execução passo a passo</summary>
+              <ol className="tactic-collection-trace">
+                {result.value.trace.map((step) => (
+                  <li key={step.blockId}>
+                    <code>{step.code}</code>
+                    <code>→ {JSON.stringify(step.value)}</code>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
+        </>
+      )}
       {result.family === "comparison" && (
         <p className="tactic-result-pair">
           Produzido: <code>[{result.value.produced.join(", ")}]</code>

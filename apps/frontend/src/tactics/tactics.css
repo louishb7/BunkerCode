@@ -307,3 +307,89 @@
       background-color 0.12s;
   }
 }
+.tactic-string {
+  color: #7cb961;
+}
+.tactic-order-data {
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.tactic-order-data pre {
+  margin: 0;
+  font:
+    12px/18px ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+}
+.tactic-order-blocks {
+  list-style: none;
+  padding: 0 6px 6px;
+  margin: 0;
+}
+.tactic-order-blocks > li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 88px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 4px;
+  border: 1px solid #454d55;
+  border-radius: 4px;
+  background: #292d32;
+}
+.tactic-order-position {
+  text-align: center;
+  color: #959ba1;
+  font:
+    11px ui-monospace,
+    monospace;
+}
+.tactic-order-source {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 10px 4px;
+}
+.tactic-order-source code {
+  white-space: pre;
+  font:
+    12px/20px ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+}
+.tactic-order-controls {
+  display: flex;
+}
+.tactic-order-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 3px;
+}
+.tactic-order-controls button:enabled:hover {
+  background: #e8bd6814;
+  color: #f2cf8a;
+}
+.tactic-dependency {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #f2cf8a;
+}
+.tactic-collection-trace {
+  margin: 0;
+  padding: 0 0 0 20px;
+}
+.tactic-collection-trace li {
+  margin: 8px 0;
+}
+.tactic-collection-trace code {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}

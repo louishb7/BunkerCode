@@ -46,3 +46,22 @@ export {
   type PublicConditionalTactic,
   type ConditionalEvaluation,
 } from "./conditional";
+export {
+  COLLECTION_GENERATOR_VERSION,
+  COLLECTION_STRUCTURES,
+  generateCollectionReference,
+  transformCollectionProgram,
+  getPublicCollectionTactic,
+  evaluateCollectionAnswer,
+  verifyCollectionTactic,
+  type CollectionStructure,
+  type CollectionUser,
+  type CollectionBlock,
+  type CollectionValue,
+  type CollectionTrace,
+  type CollectionProgram,
+  type CollectionIdentity,
+  type CollectionTactic,
+  type PublicCollectionTactic,
+  type CollectionEvaluation,
+} from "./collection";

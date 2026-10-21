@@ -11,6 +11,14 @@ import {
   transformConditionalProgram,
   getPublicConditionalTactic,
   evaluateConditionalAnswer,
+  COLLECTION_STRUCTURES,
+  generateCollectionReference,
+  transformCollectionProgram,
+  getPublicCollectionTactic,
+  evaluateCollectionAnswer,
+  type CollectionTactic,
+  type PublicCollectionTactic,
+  type CollectionEvaluation,
   type Tactic,
   type PublicTactic,
   type Evaluation,
@@ -22,7 +30,7 @@ import {
   type ConditionalEvaluation,
 } from "@bunkercode/tactics-core";
 
-export type Round =
+export type PointRound =
   | { family: "comparison"; model: Tactic; view: PublicTactic }
   | {
       family: "assignment";
@@ -34,7 +42,30 @@ export type Round =
       model: ConditionalTactic;
       view: PublicConditionalTactic;
     };
+export type Round =
+  | PointRound
+  | {
+      family: "collection";
+      model: CollectionTactic;
+      view: PublicCollectionTactic;
+    };
+export type SessionVersion = 1 | 2;
+export function readSessionVersion(
+  search: URLSearchParams,
+): SessionVersion | null {
+  const values = search.getAll("version");
+  if (values.length === 0) return search.has("seed") ? 1 : 2;
+  if (values.length !== 1) return null;
+  return values[0] === "1" ? 1 : values[0] === "2" ? 2 : null;
+}
 export type Execution =
+  | {
+      family: "collection";
+      value: Extract<
+        CollectionEvaluation,
+        { status: "valid" | "invalid-order" }
+      >;
+    }
   | { family: "comparison"; value: Extract<Evaluation, { status: "valid" }> }
   | {
       family: "assignment";
@@ -66,8 +97,23 @@ export function randomSessionSeed(previous?: number): number {
 
 /** Session v1: a six-mode cycle; odd uint32 stride gives distinct round seeds
  * until the 32-bit cycle wraps. Core generators and their PRNG remain untouched. */
-export function createRound(seed: number, index: number): Round {
+export function createRound(
+  seed: number,
+  index: number,
+  version?: 1,
+): PointRound;
+export function createRound(
+  seed: number,
+  index: number,
+  version: SessionVersion,
+): Round;
+export function createRound(
+  seed: number,
+  index: number,
+  version: SessionVersion = 1,
+): Round {
   if (
+    (version !== 1 && version !== 2) ||
     !Number.isInteger(seed) ||
     seed < 0 ||
     seed > 0xffffffff ||
@@ -77,7 +123,21 @@ export function createRound(seed: number, index: number): Round {
   )
     throw new RangeError("Identidade de sessão inválida.");
   const roundSeed = (seed + Math.imul(index, 0x9e3779b9)) >>> 0;
-  const mode = index % 6;
+  // v2 alternates structural and point interventions. Four structural variants
+  // cycle with a seed-dependent rotation: no repeat in the last three order rounds.
+  if (version === 2 && index % 2 === 0) {
+    const structure =
+      COLLECTION_STRUCTURES[((seed % 4) + Math.floor(index / 2)) % 4]!;
+    const model = transformCollectionProgram(
+      generateCollectionReference(roundSeed, 1, structure),
+    );
+    return {
+      family: "collection",
+      model,
+      view: getPublicCollectionTactic(model),
+    };
+  }
+  const mode = (version === 1 ? index : Math.floor(index / 2)) % 6;
   if (mode === 0 || mode === 3) {
     const model = transformProgram(
       generateReference(roundSeed, 1),
@@ -107,12 +167,24 @@ export function createRound(seed: number, index: number): Round {
   };
 }
 export function choices(round: Round): readonly string[] {
+  if (round.family === "collection")
+    throw new Error("Esta rodada utiliza organização, não alternativas.");
   return round.family === "assignment"
     ? round.view.alternatives.map((step) => `${step.operator} ${step.operand}`)
     : round.view.allowedOperators;
 }
-export function executeRound(round: Round, selection: number): Execution {
+export function executeRound(
+  round: Round,
+  selection: number | readonly string[],
+): Execution {
+  if (round.family === "collection") {
+    const value = evaluateCollectionAnswer(round.model, selection);
+    if (value.status === "valid" || value.status === "invalid-order")
+      return { family: "collection", value };
+    throw new Error("Organização incompatível com esta rodada.");
+  }
   if (
+    typeof selection !== "number" ||
     !Number.isInteger(selection) ||
     selection < 0 ||
     selection >= choices(round).length
@@ -144,6 +216,8 @@ export function executeRound(round: Round, selection: number): Execution {
 
 export interface Session {
   seed: number;
+  version: SessionVersion;
+  order: readonly string[] | null;
   index: number;
   round: Round;
   selection: number | null;
@@ -153,14 +227,29 @@ export interface Session {
   skipped: number;
   error: string | null;
 }
-export type Action = { index: number; seed: number } & (
-  { type: "select"; selection: number } | { type: "run" | "next" | "skip" }
+export type Action = {
+  index: number;
+  seed: number;
+  version?: SessionVersion;
+} & (
+  | { type: "select"; selection: number }
+  | { type: "move"; blockId: string; direction: -1 | 1 }
+  | { type: "run" | "next" | "skip" }
 );
-export function startSession(seed: number): Session {
+export function startSession(
+  seed: number,
+  version: SessionVersion = 1,
+): Session {
+  const round = createRound(seed, 0, version);
   return {
+    version,
+    order:
+      round.family === "collection"
+        ? round.view.blocks.map((block) => block.id)
+        : null,
     seed,
     index: 0,
-    round: createRound(seed, 0),
+    round,
     selection: null,
     result: null,
     completed: false,
@@ -170,10 +259,30 @@ export function startSession(seed: number): Session {
   };
 }
 export function sessionReducer(state: Session, action: Action): Session {
-  if (action.index !== state.index || action.seed !== state.seed) return state;
+  if (
+    action.index !== state.index ||
+    action.seed !== state.seed ||
+    (action.version ?? 1) !== state.version
+  )
+    return state;
+  if (action.type === "move") {
+    if (
+      state.completed ||
+      !state.order ||
+      (action.direction !== -1 && action.direction !== 1)
+    )
+      return state;
+    const index = state.order.indexOf(action.blockId);
+    const target = index + action.direction;
+    if (index < 0 || target < 0 || target >= state.order.length) return state;
+    const order = [...state.order];
+    [order[index], order[target]] = [order[target]!, order[index]!];
+    return { ...state, order, result: null, error: null };
+  }
   if (action.type === "select") {
     if (
       state.completed ||
+      state.round.family === "collection" ||
       !Number.isInteger(action.selection) ||
       action.selection < 0 ||
       action.selection >= choices(state.round).length
@@ -182,9 +291,10 @@ export function sessionReducer(state: Session, action: Action): Session {
     return { ...state, selection: action.selection, result: null, error: null };
   }
   if (action.type === "run") {
-    if (state.completed || state.selection === null) return state;
+    const answer = state.order ?? state.selection;
+    if (state.completed || answer === null) return state;
     try {
-      const result = executeRound(state.round, state.selection);
+      const result = executeRound(state.round, answer);
       return {
         ...state,
         result,
@@ -209,10 +319,15 @@ export function sessionReducer(state: Session, action: Action): Session {
   )
     return state;
   const index = state.index + 1;
+  const round = createRound(state.seed, index, state.version);
   return {
     ...state,
     index,
-    round: createRound(state.seed, index),
+    round,
+    order:
+      round.family === "collection"
+        ? round.view.blocks.map((block) => block.id)
+        : null,
     selection: null,
     result: null,
     completed: false,

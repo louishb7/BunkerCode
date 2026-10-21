@@ -4,23 +4,28 @@ import { ArrowRight, Play, RotateCcw, SkipForward } from "lucide-react";
 import { Page } from "../courses/Page";
 import {
   readSessionSeed,
+  readSessionVersion,
+  type SessionVersion,
   randomSessionSeed,
   sessionReducer,
   startSession,
 } from "./session";
+import { TacticOrdering } from "./TacticOrdering";
 import { TacticCode } from "./TacticCode";
 import { TacticExecution, TacticGoal } from "./TacticExecution";
 import "./tactics.css";
 
 function SessionView({
   initialSeed,
+  version,
   onNewSession,
 }: {
   initialSeed: number | null;
+  version: SessionVersion;
   onNewSession: (previous: number) => void;
 }) {
   const [state, dispatch] = useReducer(sessionReducer, initialSeed, (seed) =>
-    startSession(seed ?? randomSessionSeed()),
+    startSession(seed ?? randomSessionSeed(), version),
   );
   const heading = useRef<HTMLHeadingElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
@@ -45,7 +50,12 @@ function SessionView({
     heading.current?.scrollIntoView({ block: "nearest" });
   }, [state.index, state.completed]);
   const send = (type: "run" | "next" | "skip") =>
-    dispatch({ type, index: state.index, seed: state.seed });
+    dispatch({
+      type,
+      index: state.index,
+      seed: state.seed,
+      version: state.version,
+    });
   const advance = (type: "next" | "skip", clickCount: number) => {
     if (clickCount > 1) return;
     navigationGesture.current = clickCount === 1;
@@ -53,6 +63,7 @@ function SessionView({
   };
   const select = (selection: number) =>
     dispatch({
+      version: state.version,
       type: "select",
       selection,
       index: state.index,
@@ -86,20 +97,40 @@ function SessionView({
       >
         <header className="tactic-round-heading">
           <h2 ref={heading} tabIndex={-1} className="tactic-objective">
-            {state.round.family === "conditional"
-              ? "Faça a função produzir os resultados esperados."
-              : state.round.family === "assignment"
-                ? `Faça value terminar com ${state.round.view.expectedResult}.`
-                : `Filtre os valores para obter [${state.round.view.expectedResult.join(", ")}].`}
+            {state.round.family === "collection"
+              ? state.round.view.objective
+              : state.round.family === "conditional"
+                ? "Faça a função produzir os resultados esperados."
+                : state.round.family === "assignment"
+                  ? `Faça value terminar com ${state.round.view.expectedResult}.`
+                  : `Filtre os valores para obter [${state.round.view.expectedResult.join(", ")}].`}
           </h2>
           <TacticGoal round={state.round} />
         </header>
-        <TacticCode
-          round={state.round}
-          selection={state.selection}
-          disabled={state.completed}
-          onSelect={select}
-        />
+        {state.round.family === "collection" && state.order ? (
+          <TacticOrdering
+            round={state.round}
+            order={state.order}
+            disabled={state.completed}
+            onMove={(blockId, direction) =>
+              dispatch({
+                type: "move",
+                blockId,
+                direction,
+                index: state.index,
+                seed: state.seed,
+                version: state.version,
+              })
+            }
+          />
+        ) : state.round.family !== "collection" ? (
+          <TacticCode
+            round={state.round}
+            selection={state.selection}
+            disabled={state.completed}
+            onSelect={select}
+          />
+        ) : null}
         <div
           className="tactic-actions"
           onPointerDownCapture={(event) => {
@@ -132,7 +163,7 @@ function SessionView({
               </button>
               <button
                 className="tactic-primary"
-                disabled={state.selection === null}
+                disabled={state.order === null && state.selection === null}
                 onClick={() => send("run")}
               >
                 <Play size={16} aria-hidden="true" />
@@ -150,14 +181,16 @@ function SessionView({
           {state.result
             ? state.result.value.achieved
               ? "Objetivo atingido. Próxima rodada disponível."
-              : "Objetivo ainda não atingido. Você pode tentar outra operação."
-            : state.selection === null
-              ? "Selecione uma operação para começar."
-              : "Escolha aplicada ao código. Execute para observar o resultado."}
+              : "Objetivo ainda não atingido. Você pode ajustar o programa."
+            : state.order
+              ? "Organize as instruções e execute para verificar o resultado."
+              : state.selection === null
+                ? "Selecione uma operação para começar."
+                : "Escolha aplicada ao código. Execute para observar o resultado."}
         </p>
         {state.error && <p role="alert">{state.error}</p>}
         <TacticExecution
-          key={`${state.index}:${state.selection}`}
+          key={`${state.index}:${state.selection}:${state.order?.join(",")}`}
           result={state.result}
         />
       </section>
@@ -165,8 +198,13 @@ function SessionView({
         <summary>Opções da sessão</summary>
         <div className="tactics-session-info">
           <p>
-            Seed da sessão <code>{state.seed}</code> · Progresso somente nesta
-            sessão
+            Seed da sessão <code>{state.seed}</code> · Versão {state.version} ·
+            Progresso somente nesta sessão
+          </p>
+          <p>
+            <a href={`?seed=${state.seed}&version=${state.version}`}>
+              Reproduzir sessão
+            </a>
           </p>
           <dl className="tactics-stats" aria-label="Estatísticas da sessão">
             <div>
@@ -195,22 +233,29 @@ function SessionView({
 export default function TacticsLab() {
   const [search, setSearch] = useSearchParams();
   const parsed = readSessionSeed(search);
+  const version = readSessionVersion(search);
   const start = (previous?: number) =>
-    setSearch({ seed: String(randomSessionSeed(previous)) }, { replace: true });
-  if (!parsed.valid)
+    setSearch(
+      { seed: String(randomSessionSeed(previous)), version: "2" },
+      { replace: true },
+    );
+  if (!parsed.valid || version === null)
     return (
       <Page title="Táticas" className="tactics-lab">
         <h1>Táticas</h1>
         <p role="alert">
-          Seed inválida. Use um único inteiro de 0 a 4294967295.
+          {version === null
+            ? "Versão de sessão inválida. Use 1 ou 2."
+            : "Seed inválida. Use um único inteiro de 0 a 4294967295."}
         </p>
         <button onClick={() => start()}>Nova sessão</button>
       </Page>
     );
   return (
     <SessionView
-      key={parsed.seed ?? "random"}
+      key={`${version}:${parsed.seed ?? "random"}`}
       initialSeed={parsed.seed}
+      version={version}
       onNewSession={start}
     />
   );
