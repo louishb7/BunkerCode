@@ -1,7 +1,14 @@
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
 import { Component, lazy, Suspense, type ReactNode } from "react";
-import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router";
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router";
 import { CoursePage, CoursesPage } from "./courses/Pages";
 import { Page, ScrollRestoration } from "./courses/Page";
 import { ContentStatus } from "./courses/ContentStatus";
@@ -33,14 +40,20 @@ class RouteBoundary extends Component<
   }
 }
 function AppRoutes() {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   return (
     <RouteBoundary key={pathname}>
       <Suspense fallback={<ContentStatus error="" />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/lab/tactics" element={<TacticsLab />} />
+          <Route path="/tactics" element={<TacticsLab />} />
+          <Route
+            path="/lab/tactics"
+            element={
+              <Navigate replace to={{ pathname: "/tactics", search, hash }} />
+            }
+          />
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
           <Route

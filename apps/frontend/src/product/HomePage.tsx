@@ -1,3 +1,4 @@
+import { ScanSearch } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Page } from "../courses/Page";
@@ -41,6 +42,27 @@ export function HomePage() {
     <Page title="Início" className="product-page dashboard-page">
       <h1 className="sr-only">Início</h1>
       <ActivityDashboard />
+      <section
+        aria-labelledby="home-tactics"
+        className="mt-6 flex items-center gap-4 rounded-md border border-line px-4 py-3"
+      >
+        <ScanSearch
+          size={24}
+          className="shrink-0 text-gold"
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 id="home-tactics" className="m-0 text-base">
+            Táticas
+          </h2>
+          <p className="m-0 text-sm text-subtle">
+            Prática rápida de programação: ajustar, organizar e investigar.
+          </p>
+        </div>
+        <Link to="/tactics" className="product-link shrink-0 py-3 text-sm">
+          Praticar →
+        </Link>
+      </section>
       <section aria-labelledby="home-courses" className="mt-7">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 id="home-courses" className="m-0 text-xl">

@@ -10,6 +10,8 @@ import {
   sessionReducer,
   startSession,
 } from "./session";
+import { evaluateIterationAnswer } from "@bunkercode/tactics-core";
+import { TacticInvestigation } from "./TacticInvestigation";
 import { TacticOrdering } from "./TacticOrdering";
 import { TacticCode } from "./TacticCode";
 import { TacticExecution, TacticGoal } from "./TacticExecution";
@@ -41,14 +43,14 @@ function SessionView({
     return () => document.removeEventListener("mousedown", preserveFocus, true);
   }, []);
   useLayoutEffect(() => {
-    if (state.completed) {
+    if (state.completed || state.revealed) {
       nextButton.current?.focus({ preventScroll: true });
       return;
     }
     if (state.index === 0) return;
     heading.current?.focus({ preventScroll: true });
     heading.current?.scrollIntoView({ block: "nearest" });
-  }, [state.index, state.completed]);
+  }, [state.index, state.completed, state.revealed]);
   const send = (type: "run" | "next" | "skip") =>
     dispatch({
       type,
@@ -97,7 +99,8 @@ function SessionView({
       >
         <header className="tactic-round-heading">
           <h2 ref={heading} tabIndex={-1} className="tactic-objective">
-            {state.round.family === "collection"
+            {state.round.family === "collection" ||
+            state.round.family === "iteration"
               ? state.round.view.objective
               : state.round.family === "conditional"
                 ? "Faça a função produzir os resultados esperados."
@@ -107,7 +110,23 @@ function SessionView({
           </h2>
           <TacticGoal round={state.round} />
         </header>
-        {state.round.family === "collection" && state.order ? (
+        {state.round.family === "iteration" ? (
+          <TacticInvestigation
+            key={state.index}
+            round={state.round}
+            suspect={state.suspect}
+            disabled={state.completed || state.revealed}
+            onSelect={(instructionId) =>
+              dispatch({
+                type: "suspect",
+                instructionId,
+                index: state.index,
+                seed: state.seed,
+                version: state.version,
+              })
+            }
+          />
+        ) : state.round.family === "collection" && state.order ? (
           <TacticOrdering
             round={state.round}
             order={state.order}
@@ -143,7 +162,7 @@ function SessionView({
               event.preventDefault();
           }}
         >
-          {state.completed ? (
+          {state.completed || state.revealed ? (
             <button
               ref={nextButton}
               className="tactic-primary"
@@ -163,11 +182,17 @@ function SessionView({
               </button>
               <button
                 className="tactic-primary"
-                disabled={state.order === null && state.selection === null}
+                disabled={
+                  state.round.family === "iteration"
+                    ? state.suspect === null
+                    : state.order === null && state.selection === null
+                }
                 onClick={() => send("run")}
               >
                 <Play size={16} aria-hidden="true" />
-                Executar
+                {state.round.family === "iteration"
+                  ? "Confirmar diagnóstico"
+                  : "Executar"}
               </button>
             </>
           )}
@@ -178,17 +203,52 @@ function SessionView({
           aria-live="polite"
           aria-atomic="true"
         >
-          {state.result
-            ? state.result.value.achieved
-              ? "Objetivo atingido. Próxima rodada disponível."
-              : "Objetivo ainda não atingido. Você pode ajustar o programa."
-            : state.order
-              ? "Organize as instruções e execute para verificar o resultado."
-              : state.selection === null
-                ? "Selecione uma operação para começar."
-                : "Escolha aplicada ao código. Execute para observar o resultado."}
+          {state.revealed
+            ? "Investigação pulada. Origem do defeito revelada. Próxima rodada disponível."
+            : state.round.family === "iteration"
+              ? state.result
+                ? state.result.value.achieved
+                  ? "Diagnóstico correto. Próxima rodada disponível."
+                  : "O diagnóstico não corresponde à origem do problema. Continue investigando."
+                : state.suspect
+                  ? "Instrução selecionada. Confirme o diagnóstico para avaliar."
+                  : "Observe a execução e selecione uma instrução suspeita."
+              : state.result
+                ? state.result.value.achieved
+                  ? "Objetivo atingido. Próxima rodada disponível."
+                  : "Objetivo ainda não atingido. Você pode ajustar o programa."
+                : state.order
+                  ? "Organize as instruções e execute para verificar o resultado."
+                  : state.selection === null
+                    ? "Selecione uma operação para começar."
+                    : "Escolha aplicada ao código. Execute para observar o resultado."}
         </p>
         {state.error && <p role="alert">{state.error}</p>}
+        {state.revealed &&
+          state.round.family === "iteration" &&
+          (() => {
+            const round = state.round;
+            const feedback = evaluateIterationAnswer(
+              round.model,
+              round.model.faultId,
+            );
+            return feedback.status === "valid" ? (
+              <section
+                className="tactic-execution investigation-reveal"
+                aria-label="Origem do defeito"
+              >
+                <p>
+                  Pulada. A origem está na linha{" "}
+                  {round.view.lines.findIndex(
+                    (l) => l.instructionId === round.model.faultId,
+                  ) + 1}
+                  .
+                </p>
+                <p>{feedback.explanation}</p>
+                <code>{feedback.correctedCode}</code>
+              </section>
+            ) : null;
+          })()}
         <TacticExecution
           key={`${state.index}:${state.selection}:${state.order?.join(",")}`}
           result={state.result}
@@ -236,7 +296,7 @@ export default function TacticsLab() {
   const version = readSessionVersion(search);
   const start = (previous?: number) =>
     setSearch(
-      { seed: String(randomSessionSeed(previous)), version: "2" },
+      { seed: String(randomSessionSeed(previous)), version: "3" },
       { replace: true },
     );
   if (!parsed.valid || version === null)
@@ -245,7 +305,7 @@ export default function TacticsLab() {
         <h1>Táticas</h1>
         <p role="alert">
           {version === null
-            ? "Versão de sessão inválida. Use 1 ou 2."
+            ? "Versão de sessão inválida. Use 1, 2 ou 3."
             : "Seed inválida. Use um único inteiro de 0 a 4294967295."}
         </p>
         <button onClick={() => start()}>Nova sessão</button>

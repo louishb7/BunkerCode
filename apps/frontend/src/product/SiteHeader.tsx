@@ -41,7 +41,7 @@ export function SiteHeader() {
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
   return (
     <header className="site-header border-b border-line bg-bunker">
-      <div className="site-header-content mx-auto flex min-h-16 max-w-[1720px] items-center gap-5 px-4 sm:gap-8 sm:px-8">
+      <div className="site-header-content mx-auto flex min-h-16 max-w-[1720px] items-center gap-3 px-3 sm:gap-8 sm:px-8">
         <Link
           to="/"
           aria-label="BunkerCode — Início"
@@ -56,7 +56,7 @@ export function SiteHeader() {
           className={
             lesson || learning
               ? "header-lesson-nav"
-              : "flex h-full items-center gap-4 text-sm sm:gap-6"
+              : "flex h-full items-center gap-3 text-sm sm:gap-6"
           }
           aria-label="Navegação principal"
         >
@@ -91,6 +91,12 @@ export function SiteHeader() {
                 className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
               >
                 Cursos
+              </NavLink>
+              <NavLink
+                to="/tactics"
+                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
+              >
+                Táticas
               </NavLink>
             </>
           )}

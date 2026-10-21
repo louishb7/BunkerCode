@@ -196,7 +196,7 @@ test("Markdown stays inert and missing/invalid/empty content has readable states
   }
 });
 
-test("navigation exposes Home and Courses while retired execution routes remain absent", async ({
+test("navigation exposes Home, Courses and Tactics while retired execution routes remain absent", async ({
   page,
 }) => {
   await page.goto("/courses/typescript/lessons/union-types");
@@ -218,7 +218,7 @@ test("navigation exposes Home and Courses while retired execution routes remain 
     page
       .getByRole("navigation", { name: "Navegação principal" })
       .getByRole("link"),
-  ).toHaveText(["Início", "Cursos"]);
+  ).toHaveText(["Início", "Cursos", "Táticas"]);
   await expect(page.locator(".optional-practice")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Prática opcional", exact: true }),

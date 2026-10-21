@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import legacySessions from "./session-legacy.json" with { type: "json" };
 import { expect, test, type Page } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -388,7 +390,7 @@ test("twelve rounds form a milestone, continuation stays procedural and new sess
     String(seed),
   );
   await page.getByRole("button", { name: "Nova sessão", exact: true }).click();
-  await expect(page).toHaveURL(/\/lab\/tactics\?seed=\d+&version=2$/);
+  await expect(page).toHaveURL(/\/tactics\?seed=\d+&version=3$/);
   expect(new URL(page.url()).searchParams.get("seed")).not.toBe(String(seed));
   await expect(stat(page, "performed")).toHaveText("0");
   await expect(page.locator(".tactic-round")).toHaveAttribute(
@@ -478,7 +480,7 @@ test("production graph defers the lab from the catalog and route errors preserve
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Táticas", exact: true }),
-  ).toHaveCount(0);
+  ).toHaveAttribute("href", "/tactics");
   expect(requests).not.toContain("/" + lab.file);
   await page.route("**/" + lab.file, (route) =>
     route.fulfill({ status: 503, body: "Unavailable" }),
@@ -668,14 +670,14 @@ function orderingRound(index: number) {
 }
 
 test("v2 scheduling alternates actual mechanics, rotates four structures and preserves v1 identities and URL compatibility", () => {
-  expect(readSessionVersion(new URLSearchParams())).toBe(2);
+  expect(readSessionVersion(new URLSearchParams())).toBe(3);
   expect(readSessionVersion(new URLSearchParams("seed=4812"))).toBe(1);
   expect(readSessionVersion(new URLSearchParams("seed=4812&version=1"))).toBe(
     1,
   );
   for (const query of [
     "version=0",
-    "version=3",
+    "version=4",
     "version=01",
     "version=",
     "version=1&version=2",
@@ -1036,10 +1038,10 @@ test("a real 24-round v2 session alternates mechanics offline and records struct
   );
 });
 
-test("the default route opens v2, its replay link reproduces the shuffled program and invalid versions are refused", async ({
+test("the explicit v2 route opens ordering, its replay link reproduces the shuffled program and invalid versions are refused", async ({
   page,
 }) => {
-  await page.goto("/lab/tactics");
+  await page.goto("/lab/tactics?version=2");
   await expect(page.locator(".tactic-ordering")).toBeVisible();
   const before = await page.locator(".tactic-ordering").textContent();
   await page.getByText("Opções da sessão", { exact: true }).click();
@@ -1051,7 +1053,7 @@ test("the default route opens v2, its replay link reproduces the shuffled progra
   await expect(page.locator(".tactic-ordering")).toHaveText(before!);
   for (const query of [
     "version=0",
-    "version=3",
+    "version=4",
     "version=01",
     "version=1&version=2",
   ]) {
@@ -1061,4 +1063,476 @@ test("the default route opens v2, its replay link reproduces the shuffled progra
     );
     await expect(page.locator(".tactic-round")).toHaveCount(0);
   }
+});
+
+test("pinned pre-sprint hashes preserve every legacy v1/v2 program, public payload and answer", () => {
+  for (const fixture of legacySessions)
+    fixture.hashes.forEach((hash, index) => {
+      const round = createRound(fixture.seed, index, fixture.version as 1 | 2);
+      expect(
+        createHash("sha256").update(JSON.stringify(round)).digest("hex"),
+      ).toBe(hash);
+    });
+});
+
+test("v3 deterministically balances three mechanics and rotates all iteration and ordering patterns", async ({
+  browserName,
+}, info) => {
+  const audit: Array<{
+    sessionSeed: number;
+    length: number;
+    index: number;
+    identity: Round["view"]["identity"];
+    interaction: string;
+    signature: string;
+    evaluation: string;
+    achieved: boolean;
+    recentRepeat: boolean;
+  }> = [];
+  for (const sessionSeed of [0, 1, 4812, 4294967295])
+    for (const length of [12, 24, 60]) {
+      const rounds = Array.from({ length }, (_, i) =>
+        createRound(sessionSeed, i, 3),
+      );
+      const mechanic = (r: Round) =>
+        r.family === "iteration"
+          ? "investigation"
+          : r.family === "collection"
+            ? "ordering"
+            : "intervention";
+      expect(new Set(rounds.slice(0, 3).map(mechanic)).size).toBe(3);
+      for (const kind of ["investigation", "ordering", "intervention"])
+        expect(rounds.filter((r) => mechanic(r) === kind)).toHaveLength(
+          length / 3,
+        );
+      expect(
+        new Set(
+          rounds
+            .slice(0, 12)
+            .filter((r) => r.family === "iteration")
+            .map((r) => r.view.identity.pattern),
+        ).size,
+      ).toBe(4);
+      expect(
+        new Set(
+          rounds
+            .slice(0, 12)
+            .filter((r) => r.family === "collection")
+            .map((r) => r.view.identity.structure),
+        ).size,
+      ).toBe(4);
+      const orders: string[] = [],
+        patterns: string[] = [];
+      const triples = new Set<string>();
+      rounds.forEach((round, index) => {
+        expect(round).toEqual(createRound(sessionSeed, index, 3));
+        if (index)
+          expect(mechanic(round)).not.toBe(mechanic(rounds[index - 1]!));
+        if (index % 3 === 0)
+          triples.add(
+            rounds
+              .slice(index, index + 3)
+              .map(mechanic)
+              .join("/"),
+          );
+        if (round.family === "collection") {
+          expect(orders.slice(-3)).not.toContain(round.view.identity.structure);
+          orders.push(round.view.identity.structure);
+        }
+        if (round.family === "iteration") {
+          expect(patterns.slice(-3)).not.toContain(round.view.identity.pattern);
+          patterns.push(round.view.identity.pattern);
+        }
+        const answer =
+          round.family === "iteration"
+            ? round.model.faultId
+            : round.family === "collection"
+              ? round.model.reference.blocks.map((b) => b.id)
+              : answers(round).correct;
+        const result = executeRound(round, answer);
+        expect(result.value.achieved).toBe(true);
+        audit.push({
+          sessionSeed,
+          length,
+          index,
+          identity: round.view.identity,
+          interaction: mechanic(round),
+          signature:
+            round.family === "iteration"
+              ? round.view.identity.pattern
+              : round.family === "collection"
+                ? round.view.identity.structure
+                : round.view.identity.kind,
+          evaluation: result.value.status,
+          achieved: result.value.achieved,
+          recentRepeat: false,
+        });
+      });
+      expect(triples.size).toBeGreaterThan(1);
+    }
+  await writeFile(
+    info.outputPath("session-distributions.json"),
+    JSON.stringify({ browserName, rounds: audit }, null, 2),
+  );
+});
+
+async function skipCurrent(page: Page) {
+  await page.getByRole("button", { name: "Pular", exact: true }).click();
+  if (await page.locator(".investigation-reveal").count())
+    await page
+      .getByRole("button", { name: /^(Próxima|Continuar praticando)$/ })
+      .click();
+}
+async function openInvestigation(page: Page, sessionSeed = seed) {
+  await page.goto(`/tactics?seed=${sessionSeed}&version=3`);
+  let index = 0;
+  while (createRound(sessionSeed, index, 3).family !== "iteration") {
+    await skipCurrent(page);
+    index++;
+  }
+  const round = createRound(sessionSeed, index, 3);
+  if (round.family !== "iteration") throw new Error("Expected investigation");
+  await expect(page.locator(".tactic-investigation")).toBeVisible();
+  return round;
+}
+const diagnose = (page: Page) =>
+  page.getByRole("button", { name: "Confirmar diagnóstico", exact: true });
+
+test("official Home and Header access, active navigation, history, refresh, legacy queries and default v3 work with API offline", async ({
+  page,
+}, info) => {
+  await page.route("**/api/**", (r) => r.abort());
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Táticas", exact: true }),
+  ).toBeVisible();
+  await capture(page, info.outputPath("home-tactics-offline.png"));
+  await page.getByRole("link", { name: "Praticar →", exact: true }).click();
+  await expect(page).toHaveURL(/\/tactics$/);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "Táticas" }),
+  ).toHaveAttribute("aria-current", "page");
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  const replay = await page
+    .getByRole("link", { name: "Reproduzir sessão" })
+    .getAttribute("href");
+  expect(replay).toMatch(/version=3$/);
+  await capture(page, info.outputPath("official-tactics-navigation.png"));
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Táticas" })
+    .click();
+  await expect(page.locator(".tactic-round")).toBeVisible();
+  await page.goto(`/tactics${replay}`);
+  const before = await page.locator(".tactic-round").textContent();
+  await skipCurrent(page);
+  await page.reload();
+  await expect(page.locator(".tactic-round")).toHaveText(before!);
+  await page.goto("/lab/tactics?seed=4812&version=2&extra=a%2Fb#programa");
+  await expect(page).toHaveURL(
+    "/tactics?seed=4812&version=2&extra=a%2Fb#programa",
+  );
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-kind",
+    "order-program",
+  );
+});
+
+test("investigation traces, wrong diagnosis, correction, explicit evaluation, disclosure and skip are playable", async ({
+  page,
+}, info) => {
+  const round = await openInvestigation(page);
+  await expect(diagnose(page)).toBeDisabled();
+  await expect(page.locator(".is-suspect,.is-current")).toHaveCount(0);
+  await capture(page, info.outputPath("investigation-before.png"));
+  await page.getByRole("button", { name: "Iniciar execução" }).click();
+  await expect(page.locator(".is-current")).toHaveAttribute(
+    "data-instruction-id",
+    "initialize",
+  );
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".investigation-state")).toContainText(
+    "Iteração 1",
+  );
+  await page
+    .getByRole("button", { name: "Passo anterior", exact: true })
+    .click();
+  await expect(page.locator(".investigation-state")).toContainText(
+    "Estado inicial",
+  );
+  await page.getByRole("button", { name: "Ver resultado final" }).click();
+  await expect(page.locator(".investigation-state")).toContainText(
+    "Resultado final",
+  );
+  await capture(page, info.outputPath("investigation-trace.png"));
+  await page.locator('[data-instruction-id="initialize"]').click();
+  await expect(page.locator(".tactic-verdict")).toHaveCount(0);
+  await diagnose(page).click();
+  await expect(page.locator(".tactic-verdict")).toContainText(
+    "não corresponde",
+  );
+  await expect(
+    page.getByText("Ver instrução correta", { exact: true }),
+  ).toHaveCount(0);
+  const target = page.locator(`[data-instruction-id="${round.model.faultId}"]`);
+  await target.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".tactic-verdict")).toHaveCount(0);
+  await diagnose(page).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".tactic-verdict")).toHaveText(
+    "Diagnóstico correto.",
+  );
+  await page.getByText("Ver instrução correta", { exact: true }).click();
+  await expect(page.locator(".tactic-execution details code")).toHaveText(
+    round.model.reference.lines
+      .find((l) => l.instructionId === round.model.faultId)!
+      .text.trim(),
+  );
+  await capture(page, info.outputPath("investigation-diagnosed.png"));
+  await page.getByRole("button", { name: "Próxima", exact: true }).click();
+  await expect(page.locator(".tactic-objective")).toBeFocused();
+  await openInvestigation(page);
+  await page.getByRole("button", { name: "Pular", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Origem do defeito" }),
+  ).toContainText("Pulada");
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  await expect(stat(page, "solved")).toHaveText("0");
+  await expect(stat(page, "skipped")).toHaveText(
+    String(
+      Number(await page.locator(".tactic-round").getAttribute("data-index")) +
+        1,
+    ),
+  );
+  await page.getByRole("button", { name: "Próxima", exact: true }).click();
+  await expect(page.locator(".tactic-objective")).toBeFocused();
+});
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+  { width: 360, height: 640 },
+]) {
+  test(`investigation and official header fit ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport,
+      hasTouch: viewport.width < 600,
+      isMobile: viewport.width < 600,
+      reducedMotion: "reduce",
+    });
+    const page = await context.newPage();
+    try {
+      const round = await openInvestigation(page);
+      await expect(
+        page.getByRole("navigation").getByRole("link", { name: "Táticas" }),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.getByRole("button", { name: "Ver resultado final" }).click();
+      const control = page.locator(
+        `[data-instruction-id="${round.model.faultId}"]`,
+      );
+      if (viewport.width < 600) {
+        await control.tap();
+        await diagnose(page).tap();
+      } else {
+        await control.click();
+        await diagnose(page).click();
+      }
+      await expect(page.locator(".tactic-verdict")).toHaveText(
+        "Diagnóstico correto.",
+      );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await capture(
+        page,
+        info.outputPath(
+          `investigation-${viewport.width}x${viewport.height}.png`,
+        ),
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("a real 24-round v3 browser session solves every mechanic offline and records all four iteration patterns", async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  await page.route("**/api/**", (route) => route.abort());
+  await page.addInitScript(() => {
+    const forbidden = () => {
+      throw new Error("Dynamic execution forbidden");
+    };
+    Object.defineProperty(globalThis, "eval", { value: forbidden });
+    Object.defineProperty(globalThis, "Function", { value: forbidden });
+    Object.defineProperty(globalThis, "Worker", { value: forbidden });
+    indexedDB.open = forbidden;
+    Storage.prototype.setItem = forbidden;
+  });
+  await page.goto(`/tactics?seed=${seed}&version=3`);
+  const audit = [];
+  for (let index = 0; index < 24; index++) {
+    const round = createRound(seed, index, 3);
+    await expect(page.locator(".tactic-round")).toHaveAttribute(
+      "data-index",
+      String(index),
+    );
+    await expect(page.locator(".tactic-round")).toHaveAttribute(
+      "data-kind",
+      round.view.identity.kind,
+    );
+    await expect(page.locator(".tactic-round")).toHaveAttribute(
+      "data-seed",
+      String(round.view.identity.seed),
+    );
+    await expect(page.locator(".tactic-round")).toHaveAttribute(
+      "data-family",
+      round.view.identity.family,
+    );
+    if (round.family === "iteration")
+      await expect(page.locator(".tactic-objective")).toHaveText(
+        round.view.objective,
+      );
+    let answer: number | string | readonly string[];
+    if (round.family === "iteration") {
+      answer = round.model.faultId;
+      await page.getByRole("button", { name: "Ver resultado final" }).click();
+      await expect(page.locator(".investigation-state")).toContainText(
+        "Resultado final",
+      );
+      await page.locator(`[data-instruction-id="${answer}"]`).click();
+      await diagnose(page).click();
+    } else if (round.family === "collection") {
+      answer = round.model.reference.blocks.map((b) => b.id);
+      await arrange(page, answer);
+      await runButton(page).click();
+    } else {
+      answer = answers(round).correct;
+      await operation(page).selectOption(String(answer));
+      await runButton(page).click();
+    }
+    await expect(page.locator(".tactic-verdict")).toHaveText(
+      round.family === "iteration"
+        ? "Diagnóstico correto."
+        : "Objetivo atingido.",
+    );
+    if (index < 3)
+      await page.screenshot({
+        path: info.outputPath(
+          `v3-alternation-${index + 1}-${round.family}.png`,
+        ),
+        fullPage: true,
+      });
+    const evaluation = executeRound(round, answer);
+    audit.push({
+      round: index + 1,
+      identity: round.view.identity,
+      interaction:
+        round.family === "iteration"
+          ? "investigation"
+          : round.family === "collection"
+            ? "ordering"
+            : "intervention",
+      pattern:
+        round.family === "iteration"
+          ? round.view.identity.pattern
+          : round.family === "collection"
+            ? round.view.identity.structure
+            : round.view.identity.kind,
+      seed: round.view.identity.seed,
+      achieved: evaluation.value.achieved,
+      produced: evaluation.value.produced,
+      code:
+        round.family === "iteration"
+          ? round.view.code
+          : round.family === "collection"
+            ? round.model.reference.code
+            : round.view.code,
+    });
+    if (index < 23)
+      await page
+        .getByRole("button", {
+          name: index === 11 ? "Continuar praticando" : "Próxima",
+          exact: true,
+        })
+        .click();
+  }
+  expect(audit.filter((r) => r.interaction === "investigation")).toHaveLength(
+    8,
+  );
+  expect(audit.filter((r) => r.interaction === "ordering")).toHaveLength(8);
+  expect(
+    new Set(
+      audit
+        .filter((r) => r.interaction === "investigation")
+        .map((r) => r.pattern),
+    ).size,
+  ).toBe(4);
+  await page.getByText("Opções da sessão", { exact: true }).click();
+  await expect(stat(page, "solved")).toHaveText("24");
+  await expect(stat(page, "skipped")).toHaveText("0");
+  await writeFile(
+    info.outputPath("v3-browser-session-24.json"),
+    JSON.stringify({ seed, version: 3, rounds: audit }, null, 2),
+  );
+});
+
+test("investigation reducer rejects stale answers and repeated skips without double counting", () => {
+  let state = startSession(seed, 3);
+  while (state.round.family !== "iteration")
+    state = sessionReducer(state, {
+      type: "skip",
+      seed,
+      version: 3,
+      index: state.index,
+    });
+  const base = { seed, version: 3 as const, index: state.index };
+  expect(
+    sessionReducer(state, {
+      ...base,
+      type: "suspect",
+      instructionId: "unknown",
+    }),
+  ).toBe(state);
+  expect(
+    sessionReducer(state, {
+      ...base,
+      index: state.index + 1,
+      type: "suspect",
+      instructionId: "initialize",
+    }),
+  ).toBe(state);
+  expect(sessionReducer(state, { ...base, type: "run" })).toBe(state);
+  const before = state.skipped;
+  state = sessionReducer(state, { ...base, type: "skip" });
+  expect(state.revealed).toBe(true);
+  expect(state.skipped).toBe(before + 1);
+  expect(sessionReducer(state, { ...base, type: "skip" })).toBe(state);
+  expect(
+    sessionReducer(state, {
+      ...base,
+      type: "suspect",
+      instructionId: "initialize",
+    }),
+  ).toBe(state);
+  state = sessionReducer(state, { ...base, type: "next" });
+  expect(state.index).toBe(base.index + 1);
+  expect(state.skipped).toBe(before + 1);
+  expect(state.solved).toBe(0);
 });

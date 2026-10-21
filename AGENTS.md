@@ -63,3 +63,7 @@ Toda entrega técnica deve incluir um único ZIP completo em `/tmp/codex-handoff
 Evitar pacotes extensos automáticos, relatórios repetidos, buscas redundantes e reruns caros sem motivo concreto. Economia não justifica omitir falha, mudança importante ou risco de perda de dados. Preservar evidências anteriores; não remover dados ignorados ou não rastreados.
 
 HANDOFF ou interrupção: usar a mesma estrutura, registrar objetivo original, concluído/incompleto, arquivos, gates/erros, motivo e próxima operação exata. Terminar somente unidade atômica; não reiniciar implementação/auditoria sem conferir estado existente. Não substituir comportamentos reais por simulações para satisfazer aceitação.
+
+## Fixtures do navegador
+
+Apenas o supervisor `scripts/browser-backend.mjs` cria e limpa a fixture de conteúdo pertencente à execução, em diretório temporário nativo fora do checkout. Configuração e `--list` não copiam conteúdo. Encerramento normal, falhas controladas e SIGINT/SIGTERM limpam a cópia; SIGKILL pode deixar resíduo somente no temporário do sistema. Diretórios fornecidos explicitamente por ambiente nunca são removidos; sobreposição com conteúdo canônico é recusada. Exclusão não acompanha symlinks nem adota diretórios de outras execuções. Preservar resultados, traces, capturas e dados locais. Resíduos antigos exigem inventário, dry-run, comprovação de origem e ausência de consumidores ativos antes de limpeza direcionada. `.bunkerlab` permanece intocado; bancos históricos não são abertos nem migrados.
