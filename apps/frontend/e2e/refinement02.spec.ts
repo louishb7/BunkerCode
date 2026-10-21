@@ -1,4 +1,4 @@
-import { expectSixMonthCalendar } from "./calendar-period";
+import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
 import { expect, test, type Page } from "@playwright/test";
 
 const titles = ["JavaScript Essencial", "TypeScript", "Node.js", "NestJS"];
@@ -46,13 +46,11 @@ async function visibleCourses(page: Page) {
     );
 }
 
-test("Home starts with a compact empty calendar, one real total, keyboard access and four ordered courses", async ({
+test("Home starts with a compact empty calendar, an accessible real total, keyboard access and four ordered courses", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toHaveText(
-    "0 atividades nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 0);
   await visibleCourses(page);
   await expectSixMonthCalendar(page);
   await expect(page.locator(".heatmap-day.heat-0")).toHaveCount(
@@ -117,12 +115,12 @@ test("Home starts with a compact empty calendar, one real total, keyboard access
   expect((await localRecords(page)).activity).toEqual([]);
 });
 
-test("the header sums only represented events across New Year, with five levels and unchanged historical records", async ({
+test("the accessible calendar sums only represented events across New Year, with five levels and unchanged historical records", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-01-02T12:00:00-03:00"));
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toContainText("0 atividades");
+  await expectActivityTotal(page, 0);
   // Explicit persisted-data fixtures, not generated activity in the product.
   await page.evaluate(
     () =>
@@ -173,9 +171,7 @@ test("the header sums only represented events across New Year, with five levels 
   );
   const before = await localRecords(page);
   await page.reload();
-  await expect(page.locator("#activity-title")).toHaveText(
-    "16 atividades nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 16);
   await expectSixMonthCalendar(page);
   await expect(page.locator('.heatmap-day[data-day="2025-07-02"]')).toHaveCount(
     1,
@@ -202,11 +198,14 @@ test("the header sums only represented events across New Year, with five levels 
       ),
     );
   expect(represented).toBe(16);
-  const colors = await page
-    .locator(".heatmap-legend")
-    .evaluateAll((nodes) =>
-      nodes.map((node) => getComputedStyle(node).backgroundColor),
-    );
+  const colors = await Promise.all(
+    [0, 1, 2, 3, 4].map((level) =>
+      page
+        .locator(`.heatmap-day.heat-${level}`)
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundColor),
+    ),
+  );
   expect(new Set(colors).size).toBe(5);
   for (const value of colors.slice(1)) {
     const [red, green, blue] = value.match(/\d+/g)!.map(Number);
@@ -219,7 +218,7 @@ test("the header sums only represented events across New Year, with five levels 
   expect(await localRecords(page)).toEqual(before);
   await page.goto("/courses");
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toContainText("16 atividades");
+  await expectActivityTotal(page, 16);
   expect(await localRecords(page)).toEqual(before);
 });
 
@@ -293,7 +292,7 @@ test("unavailable local activity never masquerades as a zero total", async ({
   await expect(page.locator("#activity-title")).toHaveText("Atividade");
   await expect(page.locator(".heatmap-day")).toHaveCount(0);
   await expect(
-    page.getByText("0 atividades nos últimos seis meses"),
+    page.getByRole("region", { name: "Calendário dos últimos seis meses" }),
   ).toHaveCount(0);
   await visibleCourses(page);
 });
@@ -303,9 +302,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/");
     await visibleCourses(page);
-    await expect(page.locator("#activity-title")).toHaveText(
-      "0 atividades nos últimos seis meses",
-    );
+    await expectActivityTotal(page, 0);
     await page.screenshot({
       path: info.outputPath(`after-home-empty-${width}.png`),
       fullPage: true,
@@ -335,9 +332,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     });
     await page.goto("/");
     await visibleCourses(page);
-    await expect(page.locator("#activity-title")).toHaveText(
-      "3 atividades nos últimos seis meses",
-    );
+    await expectActivityTotal(page, 3);
     await expect(
       page.getByRole("link", { name: "Continuar estudando →" }),
     ).toHaveAttribute("href", lesson);

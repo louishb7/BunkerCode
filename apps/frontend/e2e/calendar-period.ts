@@ -24,3 +24,29 @@ export async function expectSixMonthCalendar(page: Page) {
       86_400_000,
     );
 }
+
+export async function expectActivityTotal(page: Page, count: number) {
+  const calendar = page.getByRole("region", {
+    name: "Calendário dos últimos seis meses",
+    exact: true,
+  });
+  await expect(calendar).toHaveAccessibleDescription(
+    new RegExp(
+      `^${count} ${count === 1 ? "atividade" : "atividades"} nos últimos seis meses\\.`,
+    ),
+  );
+  const total = await page
+    .locator(".heatmap-day")
+    .evaluateAll((nodes) =>
+      nodes.reduce(
+        (sum, node) =>
+          sum +
+          Number(
+            node.getAttribute("aria-label")?.match(/^(\d+) atividade/)?.[1] ??
+              0,
+          ),
+        0,
+      ),
+    );
+  expect(total).toBe(count);
+}

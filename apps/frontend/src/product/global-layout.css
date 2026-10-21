@@ -55,9 +55,6 @@
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
 }
-.global-sidebar-note {
-  display: none;
-}
 .global-content {
   min-width: 0;
 }
@@ -95,11 +92,5 @@
   }
   .global-nav-link[aria-current="page"] {
     border-color: var(--color-gold);
-  }
-  .global-sidebar-note {
-    display: block;
-    margin: auto 16px 0;
-    color: #949b9f;
-    font-size: 12px;
   }
 }

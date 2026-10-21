@@ -33,7 +33,6 @@ export function GlobalLayout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <p className="global-sidebar-note">Seu espaço de estudo.</p>
       </aside>
       <div className="global-content">{children}</div>
     </div>

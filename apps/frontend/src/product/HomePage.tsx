@@ -48,13 +48,11 @@ export function HomePage() {
   const courses = data ? discoverableCourses(data) : undefined;
   return (
     <Page title="Início" className="product-page dashboard-page">
-      <header className="global-page-heading">
-        <p className="eyebrow">Seu espaço de estudo</p>
-        <h1>Início</h1>
-        <p>Retome uma lição ou escolha o próximo assunto para explorar.</p>
-      </header>
-      {recent && <ContinueStudy recent={recent} />}
-      <ActivityDashboard />
+      <h1 className="sr-only">Início</h1>
+      <div className="home-study-overview">
+        {recent && <ContinueStudy recent={recent} />}
+        <ActivityDashboard />
+      </div>
       <section aria-labelledby="home-courses" className="home-courses">
         <div className="collection-heading">
           <h2 id="home-courses">Cursos disponíveis</h2>

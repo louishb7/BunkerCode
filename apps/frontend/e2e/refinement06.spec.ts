@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectSixMonthCalendar } from "./calendar-period";
+import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 test.use({ timezoneId: "America/Recife" });
@@ -32,9 +32,20 @@ for (const viewport of [
     await expect(
       nav.getByRole("link", { name: "Início", exact: true }),
     ).toHaveAttribute("aria-current", "page");
+    await expectActivityTotal(page, 0);
+    await expect(page.locator("h1")).toHaveClass("sr-only");
     await expect(
-      page.getByText("Ainda não há registros neste período."),
-    ).toBeVisible();
+      page.locator(
+        ".global-page-heading, .activity-summary, .heatmap-scale, .global-sidebar-note",
+      ),
+    ).toHaveCount(0);
+    await expect(
+      page.locator(".course-card-art, .course-card-footer"),
+    ).toHaveCount(0);
+    for (const card of await page.locator(".course-card").all()) {
+      await expect(card.locator(".course-card-arrow")).toHaveCount(1);
+      await expect(card.locator("a, button")).toHaveCount(0);
+    }
     await expect(
       page.getByRole("link", { name: "Continuar estudando →", exact: true }),
     ).toHaveCount(0);
@@ -45,12 +56,13 @@ for (const viewport of [
       const cards = await page.locator(".course-card").evaluateAll((nodes) =>
         nodes.map((node) => {
           const rect = node.getBoundingClientRect();
-          return { top: rect.top, bottom: rect.bottom };
+          return { top: rect.top, bottom: rect.bottom, height: rect.height };
         }),
       );
       expect(new Set(cards.map((card) => card.top)).size).toBe(1);
       expect(new Set(cards.map((card) => card.bottom)).size).toBe(1);
       expect(cards[0]!.bottom).toBeLessThan(viewport.height);
+      for (const card of cards) expect(card.height).toBeLessThanOrEqual(210);
     } else {
       expect((await nav.boundingBox())!.height).toBeLessThan(60);
       expect((await page.getByRole("main").boundingBox())!.width).toBe(390);
@@ -183,23 +195,22 @@ test("real last access resumes a validated lesson without manufacturing progress
   await expect(resume).toHaveAttribute("href", lesson);
   await expect(resume).toContainText("TypeScript");
   await expect(resume).toContainText("Valores e tipos");
-  await expect(page.locator("#activity-title")).toHaveText(
-    "1 atividade nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 1);
   await expect(page.locator(".course-last-visit")).toHaveCount(1);
   await expect(
     page.getByRole("link", { name: "TypeScript", exact: true }),
   ).toContainText("Último acesso");
   await expect(page.getByRole("progressbar")).toHaveCount(0);
+  const continuation = await page.locator(".continue-study").boundingBox();
+  const calendar = await page.locator(".activity-dashboard").boundingBox();
+  expect(continuation!.x + continuation!.width).toBeLessThan(calendar!.x);
   expect(
-    await page
-      .locator(".continue-study")
-      .evaluate((node) => node.getBoundingClientRect().bottom),
-  ).toBeLessThan(
-    await page
-      .locator(".activity-dashboard")
-      .evaluate((node) => node.getBoundingClientRect().top),
-  );
+    Math.abs(
+      continuation!.y +
+        continuation!.height / 2 -
+        (calendar!.y + calendar!.height / 2),
+    ),
+  ).toBeLessThan(1);
   await page.screenshot({
     path: info.outputPath("home-resume-1440.png"),
     fullPage: true,

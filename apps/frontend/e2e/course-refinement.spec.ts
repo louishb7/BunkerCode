@@ -68,7 +68,8 @@ for (const width of [390, 768, 1440])
       page.getByRole("heading", { name: "Cursos", exact: true }),
     ).toBeVisible();
     const card = page.getByRole("link", { name: new RegExp("^" + title) });
-    await expect(card).toContainText("Abrir curso →");
+    await expect(card).toHaveAccessibleName(title);
+    await expect(card).toHaveAttribute("href", "/courses/typescript");
     expect(await card.locator("a, button").count()).toBe(0);
     expect(
       await page
@@ -156,9 +157,9 @@ test("one real course keeps the catalog useful without artificial volume", async
     await page.goto("/courses");
     await expect(page.locator(".course-card")).toHaveCount(1);
     await expect(page.getByText("1 curso", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^TypeScript/ })).toContainText(
-      "Abrir curso",
-    );
+    await expect(
+      page.getByRole("link", { name: "TypeScript", exact: true }),
+    ).toHaveAttribute("href", "/courses/typescript");
     await page.screenshot({
       path: info.outputPath(`catalog-one-course-${width}.png`),
       fullPage: true,

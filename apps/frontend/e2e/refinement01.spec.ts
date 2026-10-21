@@ -1,4 +1,4 @@
-import { expectSixMonthCalendar } from "./calendar-period";
+import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
 import { expect as baseExpect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -56,9 +56,7 @@ test("empty calendar has six calendar months of real days, zero activities, mont
   await page.clock.setFixedTime(new Date("2026-01-02T12:00:00-03:00"));
   await page.goto("/");
   await expectSixMonthCalendar(page);
-  await expect(page.locator("#activity-title")).toHaveText(
-    "0 atividades nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 0);
   await expect(
     page.getByText("Retome de onde parou", { exact: true }),
   ).toHaveCount(0);
@@ -115,9 +113,7 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     }),
   ]);
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toHaveText(
-    "1 atividade nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 1);
   await expect(
     page.getByRole("link", { name: /Continuar estudando/ }),
   ).toHaveAttribute("href", lesson);
@@ -128,9 +124,7 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     .poll(async () => (await records(page, "activity")).length)
     .toBe(2);
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toHaveText(
-    "2 atividades nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 2);
 });
 test("calendar crosses year and DST without duplicate or missing days", async ({
   page,
@@ -193,9 +187,7 @@ test("edits and submissions produce distinct genuine activity, with historical o
     .poll(async () => (await records(page, "submissions")).length)
     .toBe(2);
   await page.goto("/");
-  await expect(page.locator("#activity-title")).toHaveText(
-    "4 atividades nos últimos seis meses",
-  );
+  await expectActivityTotal(page, 4);
   expect((await records(page, "activity")).length).toBe(4);
   await expect(page.locator(".heat-4[data-day]")).toHaveCount(1);
 });
@@ -568,10 +560,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
     ] as const) {
       await page.goto(url);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      if (name === "home-activity")
-        await expect(page.locator("#activity-title")).toHaveText(
-          "3 atividades nos últimos seis meses",
-        );
+      if (name === "home-activity") await expectActivityTotal(page, 3);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -645,9 +634,7 @@ test.describe("local timezone calendar", () => {
       .toBe(2);
     await page.goto("/");
     await expectSixMonthCalendar(page);
-    await expect(page.locator("#activity-title")).toHaveText(
-      "2 atividades nos últimos seis meses",
-    );
+    await expectActivityTotal(page, 2);
     expect(await records(page, "activity")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

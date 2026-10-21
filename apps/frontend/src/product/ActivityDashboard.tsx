@@ -85,26 +85,9 @@ export function ActivityDashboard() {
   };
   return (
     <section aria-labelledby="activity-title" className="activity-dashboard">
-      <div className="activity-summary">
-        <p className="eyebrow">Atividade local</p>
-        <h2 id="activity-title" className="activity-title">
-          {error || loading
-            ? "Atividade"
-            : `${period.length} ${period.length === 1 ? "atividade" : "atividades"} nos últimos seis meses`}
-        </h2>
-        {!error && !loading && (
-          <p className="activity-context">
-            {period.length
-              ? "Seus registros neste navegador."
-              : "Ainda não há registros neste período."}
-          </p>
-        )}
-        {!error && !loading && (
-          <p className="activity-period">
-            {dateLabel(calendar.start)} — {dateLabel(calendar.end)}
-          </p>
-        )}
-      </div>
+      <h2 id="activity-title" className="sr-only">
+        Atividade
+      </h2>
       {error ? (
         <p role="alert" className="text-sm">
           {error} O calendário não confirma dados indisponíveis.
@@ -113,10 +96,17 @@ export function ActivityDashboard() {
         <p role="status">Carregando atividade local…</p>
       ) : (
         <div className="activity-calendar">
+          <p id="activity-description" className="sr-only">
+            {period.length} {period.length === 1 ? "atividade" : "atividades"}{" "}
+            nos últimos seis meses. De {dateLabel(calendar.start)} a{" "}
+            {dateLabel(calendar.end)}. Registros locais neste navegador.
+            Intensidade de zero a quatro ou mais atividades por dia.
+          </p>
           <div
             className="heatmap-scroll"
             role="region"
             aria-label="Calendário dos últimos seis meses"
+            aria-describedby="activity-description"
             tabIndex={0}
           >
             <div
@@ -177,18 +167,6 @@ export function ActivityDashboard() {
           <p className="sr-only" aria-live="polite">
             {selected ? description(focusDay) : ""}
           </p>
-          <div className="heatmap-scale text-xs text-subtle">
-            <span
-              role="img"
-              aria-label="Intensidade de zero a quatro ou mais atividades"
-            >
-              Menos{" "}
-              {[0, 1, 2, 3, 4].map((n) => (
-                <i key={n} className={`heatmap-legend heat-${n}`} />
-              ))}{" "}
-              Mais
-            </span>
-          </div>
         </div>
       )}
     </section>
