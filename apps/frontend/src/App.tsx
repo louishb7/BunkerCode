@@ -102,7 +102,8 @@ export function App() {
 function ApplicationShell() {
   const { pathname } = useLocation();
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
-  const globalNavigation = pathname === "/" || /^\/courses\/?$/.test(pathname);
+  const globalNavigation =
+    pathname === "/" || /^\/courses(?:\/[^/]+)?\/?$/.test(pathname);
   if (globalNavigation)
     return (
       <GlobalLayout>

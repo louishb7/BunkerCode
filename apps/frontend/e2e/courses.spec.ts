@@ -35,8 +35,8 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     page.getByRole("heading", { name: "TypeScript", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".lesson-list a")).toHaveText([
-    "01Valores e tiposComeçar →",
-    "02Union typesLer →",
+    "01Valores e tipos",
+    "02Union types",
   ]);
   await page.getByRole("link", { name: "01 Valores e tipos" }).click();
   await expect(

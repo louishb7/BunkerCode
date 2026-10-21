@@ -3,22 +3,125 @@
 .course-page {
   overflow-wrap: anywhere;
 }
-.lesson-list li:not(:last-child)::after {
+/* One editorial column keeps the course introduction and timeline aligned. */
+.course-column {
+  max-width: 960px;
+}
+.course-introduction {
+  padding-block: 4px 12px;
+  margin-bottom: 32px;
+}
+.course-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.course-identity .course-artwork,
+.course-identity .technology-logo {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.course-identity h1 {
+  margin: 0;
+  font-size: clamp(26px, 2.5vw, 32px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+}
+.course-full-description {
+  margin: 20px 0 16px;
+  color: var(--color-subtle);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.course-metadata {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+}
+.course-lessons h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 550;
+  letter-spacing: -0.3px;
+}
+.lesson-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lesson-list > li {
+  position: relative;
+  padding-bottom: 12px;
+}
+.lesson-list > li:last-child {
+  padding-bottom: 0;
+}
+.lesson-list > li:not(:last-child)::after {
   content: "";
   position: absolute;
+  top: 37px;
+  bottom: -37px;
+  left: 35px;
   width: 1px;
   background: #8a7349;
-  height: 16px;
-  bottom: 0;
-  left: 36px;
 }
-@media (min-width: 640px) {
-  .lesson-list li:not(:last-child)::after {
-    left: 40px;
-  }
+.course-lesson {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 74px;
+  padding: 18px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 140ms,
+    background 140ms;
+}
+.lesson-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid #e8bd6866;
+  border-radius: 50%;
+  background: var(--color-bunker);
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.course-lesson-title {
+  align-self: center;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.course-lesson:hover {
+  border-color: #e8bd6870;
+  background: #1d2227;
+}
+.course-lesson:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+.course-lesson:active {
+  background: #24292e;
 }
 
-/* Home and catalog share the collection; reading and authoring own their shells. */
+/* Discovery and course introductions share navigation; reading and authoring own their shells. */
 .global-content .product-page {
   max-width: 1440px;
   padding: 36px clamp(24px, 3.5vw, 56px) 64px;

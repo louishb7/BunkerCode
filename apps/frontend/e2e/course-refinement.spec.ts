@@ -98,10 +98,10 @@ for (const width of [390, 768, 1440])
     const lessons = page.locator(".lesson-list a");
     await expect(lessons).toHaveCount(2);
     await expect(lessons.nth(0)).toContainText(
-      "01" + entries[0]!.title + "Começar →",
+      "01" + entries[0]!.title,
     );
     await expect(lessons.nth(1)).toContainText(
-      "02" + entries[1]!.title + "Ler →",
+      "02" + entries[1]!.title,
     );
     expect(
       await page.evaluate(
@@ -137,7 +137,8 @@ test("empty catalog and empty course expose readable states without dead start a
   await expect(page.getByText(/Este curso ainda não tem lições/)).toBeVisible();
   await expect(page.locator(".lesson-list a")).toHaveCount(0);
   await page
-    .getByRole("link", { name: "← Todos os cursos", exact: true })
+    .getByRole("navigation", { name: "Navegação principal" })
+    .getByRole("link", { name: "Cursos", exact: true })
     .click();
   await expect(page.getByRole("link", { name: /^TypeScript/ })).toBeVisible();
 });
