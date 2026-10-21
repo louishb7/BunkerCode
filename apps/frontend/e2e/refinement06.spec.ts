@@ -1,0 +1,216 @@
+import { expect, test } from "@playwright/test";
+import { expectSixMonthCalendar } from "./calendar-period";
+
+const lesson = "/courses/typescript/lessons/values-and-types";
+test.use({ timezoneId: "America/Recife" });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test(`global navigation and real course collection fit ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(viewport);
+    await page.clock.setFixedTime(new Date("2026-10-21T12:00:00-03:00"));
+    await page.goto("/");
+    await expect(page.locator(".course-card")).toHaveCount(4);
+    await expectSixMonthCalendar(page);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Início");
+    await expect(page.locator(".site-header")).toHaveCount(0);
+    const nav = page.getByRole("navigation", {
+      name: "Navegação principal",
+      exact: true,
+    });
+    await expect(nav).toHaveCount(1);
+    await expect(nav.getByRole("link")).toHaveText([
+      "Início",
+      "Cursos",
+      "Táticas",
+    ]);
+    await expect(
+      nav.getByRole("link", { name: "Início", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(
+      page.getByText("Ainda não há registros neste período."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Continuar estudando →", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.locator(".course-last-visit")).toHaveCount(0);
+    if (viewport.width >= 1024) {
+      const sidebar = await page.locator(".global-sidebar").boundingBox();
+      expect(sidebar!.width).toBe(220);
+      const cards = await page.locator(".course-card").evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        }),
+      );
+      expect(new Set(cards.map((card) => card.top)).size).toBe(1);
+      expect(new Set(cards.map((card) => card.bottom)).size).toBe(1);
+      expect(cards[0]!.bottom).toBeLessThan(viewport.height);
+    } else {
+      expect((await nav.boundingBox())!.height).toBeLessThan(60);
+      expect((await page.getByRole("main").boundingBox())!.width).toBe(390);
+    }
+    await page.screenshot({
+      path: info.outputPath(`home-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await nav.getByRole("link", { name: "Cursos", exact: true }).focus();
+    await expect(
+      nav.getByRole("link", { name: "Cursos", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL("/courses");
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(
+      nav.getByRole("link", { name: "Cursos", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(page.locator(".course-card")).toHaveCount(4);
+    await page.reload();
+    await expect(
+      nav.getByRole("link", { name: "Cursos", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    const card = page.getByRole("link", { name: "TypeScript", exact: true });
+    await card.focus();
+    expect(
+      await card.evaluate((node) => getComputedStyle(node).outlineStyle),
+    ).toBe("solid");
+    await card.hover();
+    expect(await card.evaluate((node) => getComputedStyle(node).cursor)).toBe(
+      "pointer",
+    );
+    await page.screenshot({
+      path: info.outputPath(`catalog-focus-${viewport.width}.png`),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL("/courses/typescript");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "TypeScript",
+    );
+    await page.goto("/");
+    await nav.getByRole("link", { name: "Táticas", exact: true }).click();
+    await expect(page).toHaveURL("/tactics");
+    await expect(page.locator(".global-sidebar")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Táticas", exact: true }),
+    ).toBeVisible();
+  });
+}
+
+for (const [now, first, count, timezoneId] of [
+  ["2026-10-21T12:00:00-03:00", "2026-04-21", 184, "America/Recife"],
+  ["2026-08-01T12:00:00-03:00", "2026-02-01", 182, "America/Recife"],
+  ["2026-10-31T12:00:00-03:00", "2026-04-30", 185, "America/Recife"],
+  ["2026-08-31T12:00:00-03:00", "2026-02-28", 185, "America/Recife"],
+  ["2024-08-31T12:00:00-03:00", "2024-02-29", 185, "America/Recife"],
+  ["2026-01-02T12:00:00-03:00", "2025-07-02", 185, "America/Recife"],
+  ["2026-11-02T12:00:00-05:00", "2026-05-02", 185, "America/New_York"],
+] as const) {
+  test.describe(`calendar boundary ${now}`, () => {
+    test.use({ timezoneId });
+    test("includes both limits, clamps month ends and has no future activity", async ({
+      page,
+    }) => {
+      await page.clock.setFixedTime(new Date(now));
+      await page.goto("/");
+      await expect(page.locator(".heatmap-day")).toHaveCount(count);
+      await expect(page.locator(".heatmap-day").first()).toHaveAttribute(
+        "data-day",
+        first,
+      );
+      await expect(page.locator(".heatmap-day").last()).toHaveAttribute(
+        "data-day",
+        now.slice(0, 10),
+      );
+      await expectSixMonthCalendar(page);
+      const labels = await page
+        .locator(".heatmap-months span")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => {
+            const { left, right } = node.getBoundingClientRect();
+            return { left, right };
+          }),
+        );
+      expect(labels).toHaveLength(7);
+      for (let index = 1; index < labels.length; index++)
+        expect(labels[index - 1]!.right).toBeLessThanOrEqual(
+          labels[index]!.left,
+        );
+      await expect(page.locator(".heatmap-day.heat-0")).toHaveCount(count);
+      await expect(page.locator(".heatmap-day[tabindex='0']")).toHaveCount(1);
+      await page.locator(".heatmap-day[tabindex='0']").focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(page.locator(".heatmap-day:focus")).toHaveAttribute(
+        "data-day",
+        now.slice(0, 10),
+      );
+      await page.keyboard.press("ArrowLeft");
+      await expect(page.locator(".heatmap-day:focus")).not.toHaveAttribute(
+        "data-day",
+        now.slice(0, 10),
+      );
+    });
+  });
+}
+
+test("real last access resumes a validated lesson without manufacturing progress; reader and Studio keep their shells", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(lesson);
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  await expect(page.locator(".global-sidebar")).toHaveCount(0);
+  await expect(page.locator(".learning-shell .site-header")).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Navegação entre lições" }),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("reader-1440.png") });
+  await page.getByRole("link", { name: "Início", exact: true }).click();
+  const resume = page.getByRole("link", {
+    name: "Continuar estudando →",
+    exact: true,
+  });
+  await expect(resume).toHaveAttribute("href", lesson);
+  await expect(resume).toContainText("TypeScript");
+  await expect(resume).toContainText("Valores e tipos");
+  await expect(page.locator("#activity-title")).toHaveText(
+    "1 atividade nos últimos seis meses",
+  );
+  await expect(page.locator(".course-last-visit")).toHaveCount(1);
+  await expect(
+    page.getByRole("link", { name: "TypeScript", exact: true }),
+  ).toContainText("Último acesso");
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".continue-study")
+      .evaluate((node) => node.getBoundingClientRect().bottom),
+  ).toBeLessThan(
+    await page
+      .locator(".activity-dashboard")
+      .evaluate((node) => node.getBoundingClientRect().top),
+  );
+  await page.screenshot({
+    path: info.outputPath("home-resume-1440.png"),
+    fullPage: true,
+  });
+  await resume.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(lesson);
+  await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+  await expect(page.locator(".global-sidebar")).toHaveCount(0);
+  await expect(page.locator(".site-header")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Voltar à lição", exact: true }),
+  ).toBeVisible();
+});

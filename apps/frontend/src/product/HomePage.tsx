@@ -1,4 +1,4 @@
-import { ScanSearch } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Page } from "../courses/Page";
@@ -12,6 +12,7 @@ import { recentLesson, type RecentLesson } from "./recent";
 import { CourseCard } from "./CourseCard";
 import { ActivityDashboard } from "./ActivityDashboard";
 import { discoverableCourses } from "./course-visibility";
+
 function ContinueStudy({ recent }: { recent: RecentLesson }) {
   const { data } = useContent(
     "/" + encodeURIComponent(recent.course),
@@ -21,17 +22,24 @@ function ContinueStudy({ recent }: { recent: RecentLesson }) {
     data?.id === recent.course
       ? data.lessons.find((item) => item.slug === recent.slug)
       : undefined;
-  return lesson ? (
-    <Link
-      className="product-link text-sm"
-      to={lessonPath(recent.course, lesson.slug)}
-    >
-      Continuar estudando →
-    </Link>
-  ) : (
-    <Link className="product-link text-sm" to="/courses">
-      Explorar cursos →
-    </Link>
+  if (!lesson || !data) return null;
+  return (
+    <section className="continue-study" aria-labelledby="continue-title">
+      <h2 id="continue-title">Continuar estudando</h2>
+      <Link
+        to={lessonPath(recent.course, lesson.slug)}
+        aria-label="Continuar estudando →"
+        aria-describedby="continue-lesson"
+        className="continue-link"
+      >
+        <BookOpen size={22} aria-hidden="true" />
+        <span id="continue-lesson">
+          <span className="continue-course">{data.title}</span>
+          <strong>{lesson.title}</strong>
+        </span>
+        <ArrowRight size={20} aria-hidden="true" />
+      </Link>
+    </section>
   );
 }
 export function HomePage() {
@@ -40,46 +48,19 @@ export function HomePage() {
   const courses = data ? discoverableCourses(data) : undefined;
   return (
     <Page title="Início" className="product-page dashboard-page">
-      <h1 className="sr-only">Início</h1>
+      <header className="global-page-heading">
+        <p className="eyebrow">Seu espaço de estudo</p>
+        <h1>Início</h1>
+        <p>Retome uma lição ou escolha o próximo assunto para explorar.</p>
+      </header>
+      {recent && <ContinueStudy recent={recent} />}
       <ActivityDashboard />
-      <section
-        aria-labelledby="home-tactics"
-        className="mt-6 flex items-center gap-4 rounded-md border border-line px-4 py-3"
-      >
-        <ScanSearch
-          size={24}
-          className="shrink-0 text-gold"
-          aria-hidden="true"
-        />
-        <div className="min-w-0 flex-1">
-          <h2 id="home-tactics" className="m-0 text-base">
-            Táticas
-          </h2>
-          <p className="m-0 text-sm text-subtle">
-            Prática rápida de programação: ajustar, organizar e investigar.
-          </p>
-        </div>
-        <Link to="/tactics" className="product-link shrink-0 py-3 text-sm">
-          Praticar →
-        </Link>
-      </section>
-      <section aria-labelledby="home-courses" className="mt-7">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 id="home-courses" className="m-0 text-xl">
-            Cursos
-          </h2>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            {recent ? (
-              <>
-                <ContinueStudy recent={recent} />
-                <Link to="/courses">Ver catálogo →</Link>
-              </>
-            ) : (
-              <Link className="product-link text-sm" to="/courses">
-                Explorar cursos →
-              </Link>
-            )}
-          </div>
+      <section aria-labelledby="home-courses" className="home-courses">
+        <div className="collection-heading">
+          <h2 id="home-courses">Cursos disponíveis</h2>
+          <Link className="collection-link" to="/courses">
+            Explorar cursos →
+          </Link>
         </div>
         {error ? (
           <div role="alert">
@@ -93,7 +74,7 @@ export function HomePage() {
         ) : !courses.length ? (
           <p className="text-subtle">Nenhum curso disponível nesta seleção.</p>
         ) : (
-          <div className="course-list grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="course-list">
             {courses.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}

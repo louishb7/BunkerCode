@@ -2,16 +2,42 @@
 .activity-dashboard {
   --heatmap-cell: 11px;
   --heatmap-gap: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
   max-width: 100%;
-  width: fit-content;
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-  padding: 16px;
+  padding-block: 22px;
+  border-block: 1px solid var(--color-line);
+}
+.activity-summary {
+  flex: 1 1 220px;
+}
+.activity-summary .eyebrow {
+  margin: 0 0 8px;
+  font-size: 10px;
 }
 .activity-title {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.activity-context,
+.activity-period {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--color-subtle);
+  line-height: 1.5;
+}
+.activity-period {
+  color: #939ba1;
+  font-size: 11px;
+}
+.activity-calendar {
+  min-width: 0;
+  max-width: 100%;
 }
 .heatmap-scroll {
   max-width: 100%;
@@ -29,8 +55,8 @@
   font-size: 10px;
   color: var(--text-muted);
 }
-.heatmap-months > span:last-child {
-  text-align: right;
+.heatmap-months > span {
+  width: max-content;
 }
 .heatmap-grid {
   grid-template-rows: repeat(7, var(--heatmap-cell));
@@ -82,11 +108,6 @@
 .heat-4 {
   background: #39d353;
 }
-.course-card .course-artwork {
-  width: 56px;
-  height: 60px;
-  flex-shrink: 0;
-}
 .technology-logo {
   display: block;
   width: 52px;
@@ -99,9 +120,6 @@
 .course-page header .technology-logo {
   width: 120px;
   height: 120px;
-}
-.course-card h3 {
-  overflow-wrap: anywhere;
 }
 .editor-toolbar {
   display: flex;
@@ -195,7 +213,7 @@
 }
 @media (max-width: 767px) {
   .activity-dashboard {
-    padding: 18px 14px;
+    gap: 12px;
   }
   .course-page header .technology-logo {
     width: 80px;
@@ -275,4 +293,11 @@ html:has(.practice-history[open]) {
 .practice-history summary {
   cursor: pointer;
   padding: 8px 0;
+}
+
+@media (max-width: 639px) {
+  .activity-dashboard {
+    --heatmap-cell: 10px;
+    --heatmap-gap: 2px;
+  }
 }

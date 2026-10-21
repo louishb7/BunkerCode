@@ -4,6 +4,7 @@ const dateLabel = (day: string) =>
   new Date(day + "T12:00:00").toLocaleDateString("pt-BR", {
     day: "numeric",
     month: "short",
+    year: "numeric",
   });
 const monthLabel = (day: string) =>
   new Date(day + "T12:00:00")
@@ -66,6 +67,17 @@ export function ActivityDashboard() {
   const groups = new Map<string, Activity[]>();
   for (const record of period)
     groups.set(record.day, [...(groups.get(record.day) ?? []), record]);
+  const months: { day: string; week: number }[] = [];
+  let previousMonth = "";
+  calendar.days.forEach((day, index) => {
+    if (!day || day.slice(0, 7) === previousMonth) return;
+    previousMonth = day.slice(0, 7);
+    // Separate labels even when the first partial month ends in the same week.
+    months.push({
+      day,
+      week: Math.max(Math.floor(index / 7), (months.at(-1)?.week ?? -2) + 2),
+    });
+  });
   const focusDay = calendar.days.includes(selected) ? selected : calendar.end;
   const description = (day: string) => {
     const values = groups.get(day) ?? [];
@@ -73,11 +85,26 @@ export function ActivityDashboard() {
   };
   return (
     <section aria-labelledby="activity-title" className="activity-dashboard">
-      <h2 id="activity-title" className="activity-title">
-        {error || loading
-          ? "Atividade"
-          : `${period.length} ${period.length === 1 ? "atividade" : "atividades"} no último ano`}
-      </h2>
+      <div className="activity-summary">
+        <p className="eyebrow">Atividade local</p>
+        <h2 id="activity-title" className="activity-title">
+          {error || loading
+            ? "Atividade"
+            : `${period.length} ${period.length === 1 ? "atividade" : "atividades"} nos últimos seis meses`}
+        </h2>
+        {!error && !loading && (
+          <p className="activity-context">
+            {period.length
+              ? "Seus registros neste navegador."
+              : "Ainda não há registros neste período."}
+          </p>
+        )}
+        {!error && !loading && (
+          <p className="activity-period">
+            {dateLabel(calendar.start)} — {dateLabel(calendar.end)}
+          </p>
+        )}
+      </div>
       {error ? (
         <p role="alert" className="text-sm">
           {error} O calendário não confirma dados indisponíveis.
@@ -85,11 +112,11 @@ export function ActivityDashboard() {
       ) : loading ? (
         <p role="status">Carregando atividade local…</p>
       ) : (
-        <>
+        <div className="activity-calendar">
           <div
             className="heatmap-scroll"
             role="region"
-            aria-label="Calendário do último ano"
+            aria-label="Calendário dos últimos seis meses"
             tabIndex={0}
           >
             <div
@@ -99,19 +126,11 @@ export function ActivityDashboard() {
               }}
               aria-hidden="true"
             >
-              {Array.from({ length: calendar.days.length / 7 }, (_, week) => {
-                const dates = calendar.days
-                  .slice(week * 7, week * 7 + 7)
-                  .filter((d): d is string => !!d);
-                const first =
-                  dates.find((d) => d.endsWith("-01")) ??
-                  (week === 0 ? dates[0] : undefined);
-                return (
-                  <span key={week}>
-                    {first ? monthLabel(first) : ""}
-                  </span>
-                );
-              })}
+              {months.map(({ day, week }) => (
+                <span key={day} style={{ gridColumn: week + 1 }}>
+                  {monthLabel(day)}
+                </span>
+              ))}
             </div>
             <div
               ref={grid}
@@ -170,7 +189,7 @@ export function ActivityDashboard() {
               Mais
             </span>
           </div>
-        </>
+        </div>
       )}
     </section>
   );

@@ -1,3 +1,4 @@
+import { GlobalLayout } from "./product/GlobalLayout";
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
 import { Component, lazy, Suspense, type ReactNode } from "react";
@@ -101,6 +102,13 @@ export function App() {
 function ApplicationShell() {
   const { pathname } = useLocation();
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
+  const globalNavigation = pathname === "/" || /^\/courses\/?$/.test(pathname);
+  if (globalNavigation)
+    return (
+      <GlobalLayout>
+        <AppRoutes />
+      </GlobalLayout>
+    );
   return (
     <div
       className={

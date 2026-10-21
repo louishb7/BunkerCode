@@ -97,8 +97,14 @@ export async function readActivity(): Promise<Activity[]> {
 }
 export function calendarDays(now = new Date()) {
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start = new Date(end);
-  start.setDate(start.getDate() - 364);
+  // Calendar months, clamped to the target month's final day (e.g. Aug 31 → Feb 28).
+  const start = new Date(end.getFullYear(), end.getMonth() - 6, 1);
+  const lastDay = new Date(
+    start.getFullYear(),
+    start.getMonth() + 1,
+    0,
+  ).getDate();
+  start.setDate(Math.min(end.getDate(), lastDay));
   const first = new Date(start);
   first.setDate(first.getDate() - first.getDay());
   const days: (string | null)[] = [];

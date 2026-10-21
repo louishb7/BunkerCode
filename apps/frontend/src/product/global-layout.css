@@ -1,0 +1,105 @@
+.global-layout {
+  min-height: 100dvh;
+}
+.global-sidebar {
+  background: #15191d;
+  border-bottom: 1px solid var(--color-line);
+  padding: 12px 20px 0;
+}
+.global-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 44px;
+  color: var(--color-ink);
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+  text-decoration: none;
+}
+.global-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.global-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-subtle);
+  font-size: 14px;
+  text-decoration: none;
+  transition:
+    background 120ms,
+    color 120ms;
+}
+.global-nav-link:hover {
+  color: var(--color-ink);
+  background: #ffffff06;
+}
+.global-nav-link[aria-current="page"] {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+  background: #e8bd680a;
+}
+.global-nav-link:active {
+  background: #e8bd6817;
+}
+.global-brand:focus-visible,
+.global-nav-link:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+.global-sidebar-note {
+  display: none;
+}
+.global-content {
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .global-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .global-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 16px 24px;
+    border-bottom: 0;
+    border-right: 1px solid #ffffff0c;
+  }
+  .global-brand {
+    margin-inline: 6px;
+    font-size: 18px;
+  }
+  .global-nav {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 40px;
+  }
+  .global-nav-link {
+    justify-content: flex-start;
+    gap: 12px;
+    padding-inline: 16px;
+    border: 0;
+    border-left: 2px solid transparent;
+    border-radius: 0 5px 5px 0;
+  }
+  .global-nav-link[aria-current="page"] {
+    border-color: var(--color-gold);
+  }
+  .global-sidebar-note {
+    display: block;
+    margin: auto 16px 0;
+    color: #949b9f;
+    font-size: 12px;
+  }
+}

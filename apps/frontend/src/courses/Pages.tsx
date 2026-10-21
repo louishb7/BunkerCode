@@ -19,16 +19,16 @@ export function CoursesPage() {
   const courses = discoverableCourses(data);
   return (
     <Page title="Cursos" className="product-page catalog-page">
-      <header className="mb-8">
-        <p className="eyebrow mb-3">Explore o acervo</p>
-        <h1 className="product-title">Cursos</h1>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-subtle">
+      <header className="global-page-heading">
+        <p className="eyebrow">Explore o acervo</p>
+        <h1>Cursos</h1>
+        <p className="max-w-xl">
           Um conceito de cada vez. Escolha um curso, percorra as lições e dê
           forma ao que aprendeu.
         </p>
       </header>
       <section aria-labelledby="courses-title">
-        <div className="section-heading mb-5 flex items-center justify-between gap-4">
+        <div className="collection-heading">
           <h2 id="courses-title" className="m-0 text-lg">
             Disponíveis
           </h2>
@@ -41,7 +41,7 @@ export function CoursesPage() {
             Nenhum curso disponível nesta seleção.
           </p>
         ) : (
-          <div className="course-list grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="course-list">
             {courses.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}

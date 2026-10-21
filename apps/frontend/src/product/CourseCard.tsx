@@ -1,30 +1,50 @@
+import { useState } from "react";
 import { Link } from "react-router";
-import { BookOpen } from "lucide-react";
+import { ArrowUpRight, BookOpen } from "lucide-react";
 import type { CourseSummary } from "../courses/api";
 import { CourseArtwork } from "./CourseArtwork";
+import { recentLesson } from "./recent";
+
 export function CourseCard({ course }: { course: CourseSummary }) {
+  const [recent] = useState(recentLesson);
+  const lastVisited = recent?.course === course.id;
   return (
     <Link
-      className="course-card group flex min-w-0 flex-col rounded-xl border border-line bg-surface p-5 text-ink no-underline transition-colors hover:border-gold/60"
+      className="course-card"
+      data-course={course.id}
       to={"/courses/" + encodeURIComponent(course.id)}
+      aria-labelledby={`course-${course.id}-title`}
+      aria-describedby={`course-${course.id}-description course-${course.id}-details`}
     >
-      <div className="mb-5 flex items-center gap-4">
+      <div className="course-card-art">
         <CourseArtwork id={course.id} />
-        <h3 className="m-0 text-xl font-semibold tracking-tight">
-          {course.title}
-        </h3>
       </div>
-      <p className="mt-0 mb-5 flex-1 text-sm leading-relaxed text-subtle">
-        {course.description}
-      </p>
-      <div className="course-card-footer flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-xs">
-        <span className="flex items-center gap-2 text-subtle">
-          <BookOpen className="product-icon" aria-hidden="true" />
-          {course.lessonCount} {course.lessonCount === 1 ? "lição" : "lições"}
-        </span>
-        <span className="course-action font-medium text-gold">
-          Abrir curso →
-        </span>
+      <div className="course-card-body">
+        <h3 id={`course-${course.id}-title`}>{course.title}</h3>
+        <p
+          id={`course-${course.id}-description`}
+          className="course-description"
+        >
+          {course.description}
+        </p>
+        <div id={`course-${course.id}-details`} className="course-card-details">
+          <span>
+            <BookOpen size={14} aria-hidden="true" />
+            {course.lessonCount} {course.lessonCount === 1 ? "lição" : "lições"}
+          </span>
+          {lastVisited && (
+            <span
+              className="course-last-visit"
+              title="Último curso acessado neste navegador"
+            >
+              Último acesso
+            </span>
+          )}
+        </div>
+        <div className="course-card-footer">
+          <span className="course-action">Abrir curso →</span>
+          <ArrowUpRight size={17} aria-hidden="true" />
+        </div>
       </div>
     </Link>
   );

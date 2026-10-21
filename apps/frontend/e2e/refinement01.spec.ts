@@ -1,3 +1,4 @@
+import { expectSixMonthCalendar } from "./calendar-period";
 import { expect as baseExpect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -49,13 +50,14 @@ async function records(page: Page, store: string) {
     store,
   );
 }
-test("empty calendar has exactly 365 real days, zero activities, months and contextual courses", async ({
+test("empty calendar has six calendar months of real days, zero activities, months and contextual courses", async ({
   page,
 }) => {
+  await page.clock.setFixedTime(new Date("2026-01-02T12:00:00-03:00"));
   await page.goto("/");
-  await expect(page.locator(".heatmap-day")).toHaveCount(365);
+  await expectSixMonthCalendar(page);
   await expect(page.locator("#activity-title")).toHaveText(
-    "0 atividades no último ano",
+    "0 atividades nos últimos seis meses",
   );
   await expect(
     page.getByText("Retome de onde parou", { exact: true }),
@@ -114,7 +116,7 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
   ]);
   await page.goto("/");
   await expect(page.locator("#activity-title")).toHaveText(
-    "1 atividade no último ano",
+    "1 atividade nos últimos seis meses",
   );
   await expect(
     page.getByRole("link", { name: /Continuar estudando/ }),
@@ -127,16 +129,16 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     .toBe(2);
   await page.goto("/");
   await expect(page.locator("#activity-title")).toHaveText(
-    "2 atividades no último ano",
+    "2 atividades nos últimos seis meses",
   );
 });
-test("calendar crosses leap year and DST without duplicate or missing days", async ({
+test("calendar crosses year and DST without duplicate or missing days", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2025-02-28T12:00:00Z"));
   await page.goto("/");
-  await expect(page.locator(".heatmap-day")).toHaveCount(365);
-  await expect(page.locator('.heatmap-day[data-day="2024-03-01"]')).toHaveCount(
+  await expectSixMonthCalendar(page);
+  await expect(page.locator('.heatmap-day[data-day="2024-08-28"]')).toHaveCount(
     1,
   );
   await expect(page.locator('.heatmap-day[data-day="2025-02-28"]')).toHaveCount(
@@ -145,7 +147,7 @@ test("calendar crosses leap year and DST without duplicate or missing days", asy
   const days = await page
     .locator(".heatmap-day")
     .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-day")));
-  expect(new Set(days).size).toBe(365);
+  expect(new Set(days).size).toBe(185);
   await page.locator(".heatmap-day[tabindex='0']").focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator(".heatmap-day:focus")).toHaveAttribute(
@@ -192,7 +194,7 @@ test("edits and submissions produce distinct genuine activity, with historical o
     .toBe(2);
   await page.goto("/");
   await expect(page.locator("#activity-title")).toHaveText(
-    "4 atividades no último ano",
+    "4 atividades nos últimos seis meses",
   );
   expect((await records(page, "activity")).length).toBe(4);
   await expect(page.locator(".heat-4[data-day]")).toHaveCount(1);
@@ -332,7 +334,7 @@ test("formatter applies actual Prettier output, undo and syntax-error recovery w
   const requests: string[] = [];
   page.on("request", (r) => requests.push(r.url()));
   await page.goto("/");
-  await expect(page.locator(".heatmap-day")).toHaveCount(365);
+  await expectSixMonthCalendar(page);
   expect(
     requests.some((url) =>
       /compiler.worker|formatter.worker|code-editor-core/.test(url),
@@ -525,7 +527,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
   }, info) => {
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/");
-    await expect(page.locator(".heatmap-day")).toHaveCount(365);
+    await expectSixMonthCalendar(page);
     await page.screenshot({
       path: info.outputPath(`home-empty-${width}.png`),
       fullPage: true,
@@ -568,7 +570,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (name === "home-activity")
         await expect(page.locator("#activity-title")).toHaveText(
-          "3 atividades no último ano",
+          "3 atividades nos últimos seis meses",
         );
       expect(
         await page.evaluate(
@@ -642,9 +644,9 @@ test.describe("local timezone calendar", () => {
       .poll(async () => (await records(page, "activity")).length)
       .toBe(2);
     await page.goto("/");
-    await expect(page.locator(".heatmap-day")).toHaveCount(365);
+    await expectSixMonthCalendar(page);
     await expect(page.locator("#activity-title")).toHaveText(
-      "2 atividades no último ano",
+      "2 atividades nos últimos seis meses",
     );
     expect(await records(page, "activity")).toEqual(
       expect.arrayContaining([
