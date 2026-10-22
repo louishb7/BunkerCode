@@ -598,7 +598,7 @@ export default function PracticePanel({
                 )}
               </section>
             )}
-            {(draft.failed || submitError) && (
+            {(draft.failed || draft.recoveryError || submitError) && (
               <section
                 aria-label="Recuperação do código"
                 className="border-t border-line p-4"
@@ -615,13 +615,23 @@ export default function PracticePanel({
                     <Download className="product-icon" aria-hidden="true" />
                     Baixar código
                   </button>
-                  {draft.failed && !draft.conflict && (
+                  {(draft.failed || draft.recoveryError) && !draft.conflict && (
                     <button onClick={draft.retry}>
                       Tentar salvar novamente
                     </button>
                   )}
+                  {draft.failed && !draft.conflict && (
+                    <button onClick={draft.discard}>
+                      Descartar edição pendente
+                    </button>
+                  )}
                 </div>
               </section>
+            )}
+            {draft.recoveryError && (
+              <p role="alert" className="px-4 text-xs">
+                {draft.recoveryError}
+              </p>
             )}
             {draft.activityError && (
               <p role="status" className="px-4 text-xs">
@@ -636,7 +646,8 @@ export default function PracticePanel({
                 <h3 className="mt-0 text-base">Outra versão foi salva</h3>
                 <p className="text-sm text-subtle">
                   Seu texto continua no editor. Compare com a versão abaixo
-                  antes de escolher.
+                  antes de escolher. Carregar o código da outra aba descarta a
+                  edição pendente deste editor.
                 </p>
                 <pre className="result-output">{draft.conflict.code}</pre>
                 <div className="flex flex-wrap gap-2 text-xs">
