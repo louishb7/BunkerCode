@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { lstatSync, readdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   BadRequestException,
@@ -13,6 +13,11 @@ import {
   validSlug,
   type Course,
 } from "@bunkercode/content";
+import {
+  MAX_MANIFEST_BYTES,
+  ManifestReadError,
+  readManifestSource,
+} from "@bunkercode/content/manifest";
 export { validSlug } from "@bunkercode/content";
 export type {
   Course,
@@ -82,11 +87,14 @@ function checkedPath(
 }
 function read(root: string, segments: string[], limit: number): string {
   const path = checkedPath(root, segments, false);
-  if (lstatSync(path).size > limit) invalid(`arquivo excede ${limit} bytes.`);
   try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return invalid(`não foi possível ler ${segments.join("/")}.`);
+    return readManifestSource(path, limit).text;
+  } catch (error) {
+    return invalid(
+      error instanceof ManifestReadError
+        ? error.message
+        : `não foi possível ler ${segments.join("/")}.`,
+    );
   }
 }
 export function loadCourse(id: string, root = coursesRoot()): Course {
@@ -98,7 +106,7 @@ export function loadCourse(id: string, root = coursesRoot()): Course {
       throw new NotFoundException("Curso não encontrado.");
     invalid("pasta de curso indisponível.");
   }
-  const raw = read(root, [id, "course.json"], 65536);
+  const raw = read(root, [id, "course.json"], MAX_MANIFEST_BYTES);
   let value: unknown;
   try {
     value = JSON.parse(raw);

@@ -8,6 +8,12 @@ import {
   type Course,
   type LessonEntry,
 } from "./course";
+import {
+  MAX_MANIFEST_BYTES,
+  ManifestReadError,
+  readManifestSource,
+  type ManifestSource,
+} from "./manifest";
 
 export class LessonCreationError extends Error {
   constructor(
@@ -26,11 +32,13 @@ function directory(path: string) {
     fail(422, "Pasta inválida ou symlink inesperado.");
   return stat;
 }
-function manifestFile(path: string) {
-  const stat = fs.lstatSync(path);
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536)
-    fail(422, "Manifesto inválido ou maior que 64 KiB.");
-  return fs.readFileSync(path, "utf8");
+function manifestFile(path: string): ManifestSource {
+  try {
+    return readManifestSource(path, MAX_MANIFEST_BYTES);
+  } catch (error) {
+    if (error instanceof ManifestReadError) fail(422, error.message);
+    fail(422, "Manifesto inválido ou indisponível.");
+  }
 }
 function writeExclusive(
   path: string,
@@ -124,7 +132,7 @@ export function createLesson(
     const original = manifestFile(manifestPath);
     let manifest: Course;
     try {
-      manifest = parseCourse(JSON.parse(original), course);
+      manifest = parseCourse(JSON.parse(original.text), course);
     } catch (error) {
       fail(422, error instanceof Error ? error.message : "Manifesto inválido.");
     }
@@ -138,7 +146,7 @@ export function createLesson(
       lastModule ? { ...entry, moduleId: lastModule.id } : entry,
     );
     const serialized = JSON.stringify(manifest, null, 2) + "\n";
-    if (Buffer.byteLength(serialized) > 65536)
+    if (Buffer.byteLength(serialized) > MAX_MANIFEST_BYTES)
       fail(422, "O manifesto excederia 64 KiB.");
     try {
       directory(lessons);
@@ -175,7 +183,7 @@ export function createLesson(
       fs.lstatSync(file).isSymbolicLink() ||
       fs.lstatSync(file).ino !== ownedFile?.ino ||
       fs.readFileSync(file, "utf8") !== markdown ||
-      manifestFile(manifestPath) !== original
+      !manifestFile(manifestPath).bytes.equals(original.bytes)
     )
       fail(
         409,
@@ -192,7 +200,7 @@ export function createLesson(
       // A publication with an uncertain outcome, or an external manifest edit,
       // must never turn a listed lesson into a dangling reference during rollback.
       const current = parseCourse(
-        JSON.parse(manifestFile(manifestPath)),
+        JSON.parse(manifestFile(manifestPath).text),
         course,
       );
       if (current.lessons.some((lesson) => lesson.slug === entry.slug))

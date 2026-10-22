@@ -95,6 +95,8 @@ Use o comando de autoria com --course software-architecture ou crie Markdown e e
 
 IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição completa do curso: até 800. O campo opcional `shortDescription` aceita até 160 caracteres não vazios e contém uma chamada editorial própria para os cards da Home e do catálogo. Não é gerado por corte da descrição completa. A página individual continua usando `description`; sem chamada curta, o card apresenta `description` integralmente, sem reticências artificiais. A API expõe o campo de forma aditiva e a criação de lições por CLI/Studio o preserva. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
 
+O manifesto é lido como bytes e precisa ser UTF-8 válido; uma sequência inválida é recusada antes do JSON e nunca é regravada ou normalizada. Preserve o arquivo original para correção manual. O limite de 64 KiB é aplicado aos bytes efetivamente lidos, mesmo que o arquivo cresça após a verificação inicial. Unicode legítimo, acentuação, CRLF e o próprio caractere U+FFFD não causam recusa.
+
 ### Módulos opcionais
 
 Um curso pode agrupar lições em módulos sem criar uma segunda lista de lições. `modules` define a ordem dos agrupamentos e cada entrada de `lessons` referencia seu módulo por `moduleId`. Exemplo mínimo:

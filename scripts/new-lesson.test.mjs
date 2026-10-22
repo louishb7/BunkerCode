@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   existsSync,
+  readdirSync,
   symlinkSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -102,6 +103,41 @@ test("authoring refuses symlink directories and an existing authoring lock", () 
     assert.equal(
       readFileSync(join(course, ".lesson-new.lock"), "utf8"),
       "existing",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("authoring refuses invalid UTF-8 without rewriting the manifest or publishing a lesson", () => {
+  const { root, course } = fixture();
+  try {
+    const path = join(course, "course.json");
+    const raw = Buffer.from(
+      JSON.stringify({
+        id: "typescript",
+        title: "Curso Z",
+        description: "Authoring test",
+        lessons: [],
+      }),
+    );
+    const marker = raw.indexOf(0x5a);
+    assert.ok(marker >= 0);
+    const invalid = Buffer.concat([
+      raw.subarray(0, marker),
+      Buffer.from([0xff]),
+      raw.subarray(marker + 1),
+    ]);
+    writeFileSync(path, invalid);
+    const result = run(root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /UTF-8/);
+    assert.deepEqual(readFileSync(path), invalid);
+    assert.equal(existsSync(join(course, "lessons/union-types")), false);
+    assert.equal(existsSync(join(course, ".lesson-new.lock")), false);
+    assert.equal(
+      readdirSync(course).filter((name) => name.startsWith(".course-")).length,
+      0,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -16,12 +16,19 @@
     "./authoring": {
       "types": "./dist/authoring.d.ts",
       "default": "./dist/authoring.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "default": "./dist/manifest.js"
     }
   },
   "typesVersions": {
     "*": {
       "authoring": [
         "dist/authoring.d.ts"
+      ],
+      "manifest": [
+        "dist/manifest.d.ts"
       ]
     }
   }
