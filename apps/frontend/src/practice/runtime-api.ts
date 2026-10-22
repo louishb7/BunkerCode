@@ -21,17 +21,42 @@ const headers = {
 export async function runtimeStatus(
   signal: AbortSignal,
 ): Promise<RuntimeStatus> {
-  const response = await fetch("/api/practice/runtime", { signal });
-  const value: unknown = await response.json();
-  if (
-    !response.ok ||
-    !value ||
-    typeof value !== "object" ||
-    typeof (value as RuntimeStatus).available !== "boolean" ||
-    typeof (value as RuntimeStatus).reason !== "string"
-  )
-    throw new Error("Não foi possível verificar Run.");
-  return value as RuntimeStatus;
+  const timeout = new AbortController();
+  let timedOut = false;
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    timeout.abort();
+  }, 10000);
+  try {
+    const response = await fetch("/api/practice/runtime", {
+      signal: AbortSignal.any([signal, timeout.signal]),
+    });
+    const value: unknown = await response.json();
+    if (
+      !response.ok ||
+      !value ||
+      typeof value !== "object" ||
+      typeof (value as RuntimeStatus).available !== "boolean" ||
+      typeof (value as RuntimeStatus).reason !== "string"
+    )
+      throw new Error(
+        "Não foi possível verificar Run: resposta de disponibilidade incompatível.",
+      );
+    return value as RuntimeStatus;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    if (timedOut)
+      throw new Error(
+        "Tempo limite da consulta de disponibilidade excedido (10 s). Tente Run ou Submit novamente.",
+      );
+    if (error instanceof TypeError)
+      throw new Error(
+        "Falha de rede ao consultar a disponibilidade de Run. Tente novamente.",
+      );
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 export async function runSolution(
   value: {

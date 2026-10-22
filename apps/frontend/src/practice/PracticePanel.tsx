@@ -14,6 +14,7 @@ import type { Compilation } from "./compiler";
 import { compile } from "./code-tools";
 import { CodeEditor } from "./CodeEditor";
 import { useDraft } from "./useDraft";
+import { useRuntimeAvailability } from "./useRuntimeAvailability";
 import { WorkspacePanels } from "./WorkspacePanels";
 import { ConfirmRestore } from "./ConfirmRestore";
 import { draftScope } from "./draft-store";
@@ -22,13 +23,7 @@ import {
   submitSolution,
   type Submission,
 } from "./submission-store";
-import {
-  runtimeStatus,
-  runSolution,
-  cancelSolution,
-  type RuntimeStatus,
-  type RunResult,
-} from "./runtime-api";
+import { runSolution, cancelSolution, type RunResult } from "./runtime-api";
 interface Result {
   source: string;
   compilation?: Compilation;
@@ -49,9 +44,15 @@ export default function PracticePanel({
   const [file, setFile] = useState<"solution" | "tests">("solution");
   const [formatRequest, setFormatRequest] = useState(0);
   const [formatting, setFormatting] = useState(false);
-  const [runtime, setRuntime] = useState<RuntimeStatus>();
-  const [runtimeError, setRuntimeError] = useState("");
-  const [phase, setPhase] = useState<"idle" | "compiling" | "running">("idle");
+  const {
+    availability,
+    check: checkRuntime,
+    cancelPending: cancelRuntimeCheck,
+  } = useRuntimeAvailability();
+  const submitting = useRef(false);
+  const [phase, setPhase] = useState<
+    "idle" | "compiling" | "checking" | "running"
+  >("idle");
   const [result, setResult] = useState<Result>();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submitError, setSubmitError] = useState("");
@@ -65,15 +66,6 @@ export default function PracticePanel({
   const filename = `solucao.${exercise.language === "typescript" ? "ts" : "js"}`;
   useEffect(() => {
     alive.current = true;
-    const controller = new AbortController();
-    void runtimeStatus(controller.signal)
-      .then(setRuntime)
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted)
-          setRuntimeError(
-            error instanceof Error ? error.message : "Run indisponível.",
-          );
-      });
     void readSubmissions(draftScope(course, lesson, exercise.id))
       .then((values) => {
         if (alive.current)
@@ -93,7 +85,6 @@ export default function PracticePanel({
       });
     return () => {
       alive.current = false;
-      controller.abort();
       const current = job.current;
       current?.controller.abort();
       if (current?.id && !current.finished)
@@ -126,10 +117,10 @@ export default function PracticePanel({
   async function analyze(
     source: string,
   ): Promise<Submission["state"] | undefined> {
+    if (job.current && !job.current.finished) return;
     const controller = new AbortController();
-    const current = {
+    const current: NonNullable<typeof job.current> = {
       controller,
-      id: crypto.randomUUID(),
       finished: false,
     };
     job.current = current;
@@ -142,7 +133,12 @@ export default function PracticePanel({
         exercise.language,
         controller.signal,
       );
-      if (controller.signal.aborted || !alive.current) return;
+      if (
+        controller.signal.aborted ||
+        !alive.current ||
+        job.current !== current
+      )
+        return;
       if (compilation.diagnostics.length) {
         setResult({
           source,
@@ -151,11 +147,27 @@ export default function PracticePanel({
         });
         return "unassessed";
       }
-      if (!runtime?.available) {
+      setPhase("checking");
+      setResult({
+        source,
+        compilation,
+        message: "Compilação concluída. Verificando disponibilidade do runner…",
+      });
+      const readiness = await checkRuntime();
+      if (
+        controller.signal.aborted ||
+        !alive.current ||
+        job.current !== current
+      )
+        return;
+      if (readiness.state !== "available") {
         setResult({
           source,
           compilation,
-          message: `Compilação concluída. Runner indisponível: ${runtime?.reason || runtimeError || "ainda não confirmado"}. Resultado não avaliado.`,
+          message:
+            readiness.state === "unavailable"
+              ? `Compilação concluída. Runner indisponível: ${readiness.status.reason}. Resultado não avaliado.`
+              : `Compilação concluída. ${readiness.message} Resultado não avaliado.`,
         });
         return "unassessed";
       }
@@ -165,6 +177,7 @@ export default function PracticePanel({
         compilation,
         message: "Executando em container isolado…",
       });
+      current.id = crypto.randomUUID();
       const run = await runSolution(
         {
           id: current.id,
@@ -177,7 +190,12 @@ export default function PracticePanel({
         },
         controller.signal,
       );
-      if (controller.signal.aborted || !alive.current) return;
+      if (
+        controller.signal.aborted ||
+        !alive.current ||
+        job.current !== current
+      )
+        return;
       const messages = {
         success: "Execução encerrada.",
         error: "Erro de execução.",
@@ -199,7 +217,11 @@ export default function PracticePanel({
       });
       return assessment ?? "unassessed";
     } catch (error) {
-      if (alive.current && !controller.signal.aborted)
+      if (
+        alive.current &&
+        job.current === current &&
+        !controller.signal.aborted
+      )
         setResult({
           source,
           message:
@@ -207,7 +229,11 @@ export default function PracticePanel({
               ? error.message
               : "Falha ao analisar código.",
         });
-      return controller.signal.aborted ? undefined : "unassessed";
+      return controller.signal.aborted ||
+        !alive.current ||
+        job.current !== current
+        ? undefined
+        : "unassessed";
     } finally {
       if (alive.current && job.current === current) {
         setPhase("idle");
@@ -218,7 +244,8 @@ export default function PracticePanel({
   async function cancel() {
     const current = job.current;
     current?.controller.abort();
-    if (current?.id) {
+    cancelRuntimeCheck();
+    if (current?.id && !current.finished) {
       try {
         await cancelSolution(current.id);
       } catch (error) {
@@ -238,6 +265,8 @@ export default function PracticePanel({
     }
   }
   async function submit() {
+    if (submitting.current || (job.current && !job.current.finished)) return;
+    submitting.current = true;
     const code = draft.code;
     setSending(true);
     setSubmitError("");
@@ -264,6 +293,7 @@ export default function PracticePanel({
             : "Solução não registrada; código preservado.",
         );
     } finally {
+      submitting.current = false;
       if (alive.current) setSending(false);
     }
   }
@@ -353,7 +383,9 @@ export default function PracticePanel({
                 ) : (
                   <button
                     disabled={!draft.ready || sending || phase !== "idle"}
-                    onClick={() => void analyze(draft.code)}
+                    onClick={() => {
+                      if (!submitting.current) void analyze(draft.code);
+                    }}
                     className="practice-run"
                   >
                     <Play className="product-icon" aria-hidden="true" />
@@ -526,11 +558,13 @@ export default function PracticePanel({
                     )}
                   </div>
                 )}
-                {runtime?.available === false && (
-                  <p className="text-xs text-subtle">{runtime.reason}</p>
+                {availability.state === "unavailable" && (
+                  <p className="text-xs text-subtle">
+                    {availability.status.reason}
+                  </p>
                 )}
-                {runtimeError && (
-                  <p className="text-xs text-subtle">{runtimeError}</p>
+                {availability.state === "error" && (
+                  <p className="text-xs text-subtle">{availability.message}</p>
                 )}
                 {submitted && (
                   <p role="status" className="text-sm text-gold">

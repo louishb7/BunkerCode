@@ -1198,26 +1198,37 @@ async function openInvestigation(page: Page, sessionSeed = seed) {
 const diagnose = (page: Page) =>
   page.getByRole("button", { name: "Confirmar diagnóstico", exact: true });
 
-test("official Home and Header access, active navigation, history, refresh, legacy queries and default v3 work with API offline", async ({
+test("global navigation, active state, history, refresh, replay, legacy queries and default v3 work with API offline", async ({
   page,
 }, info) => {
   await page.route("**/api/**", (r) => r.abort());
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Táticas", exact: true }),
-  ).toBeVisible();
+  const tactics = page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Táticas", exact: true });
+  await expect(tactics).toBeVisible();
+  await expect(tactics).not.toHaveAttribute("aria-current", "page");
   await capture(page, info.outputPath("home-tactics-offline.png"));
-  await page.getByRole("link", { name: "Praticar →", exact: true }).click();
+  await tactics.click();
   await expect(page).toHaveURL(/\/tactics$/);
   await expect(
     page.getByRole("navigation").getByRole("link", { name: "Táticas" }),
   ).toHaveAttribute("aria-current", "page");
+  const firstIdentity = await page
+    .locator(".tactic-round")
+    .getAttribute("data-seed");
   await page.getByText("Opções da sessão", { exact: true }).click();
   const replay = await page
     .getByRole("link", { name: "Reproduzir sessão" })
     .getAttribute("href");
-  expect(replay).toMatch(/version=3$/);
+  expect(replay).toMatch(/^\?seed=\d+&version=3$/);
+  const sessionSeed = new URLSearchParams(replay!).get("seed")!;
   await capture(page, info.outputPath("official-tactics-navigation.png"));
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await expect(tactics).not.toHaveAttribute("aria-current", "page");
+  await page.goForward();
+  await expect(tactics).toHaveAttribute("aria-current", "page");
   await page.goBack();
   await expect(page).toHaveURL("/");
   await page
@@ -1226,10 +1237,29 @@ test("official Home and Header access, active navigation, history, refresh, lega
     .click();
   await expect(page.locator(".tactic-round")).toBeVisible();
   await page.goto(`/tactics${replay}`);
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-index",
+    "0",
+  );
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-seed",
+    firstIdentity!,
+  );
+  await expect(page.locator(".tactics-session-info")).toContainText(
+    `Seed da sessão ${sessionSeed} · Versão 3`,
+  );
   const before = await page.locator(".tactic-round").textContent();
   await skipCurrent(page);
   await page.reload();
   await expect(page.locator(".tactic-round")).toHaveText(before!);
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-seed",
+    firstIdentity!,
+  );
+  await expect(page.locator(".tactic-round")).toHaveAttribute(
+    "data-index",
+    "0",
+  );
   await page.goto("/lab/tactics?seed=4812&version=2&extra=a%2Fb#programa");
   await expect(page).toHaveURL(
     "/tactics?seed=4812&version=2&extra=a%2Fb#programa",
@@ -1237,6 +1267,9 @@ test("official Home and Header access, active navigation, history, refresh, lega
   await expect(page.locator(".tactic-round")).toHaveAttribute(
     "data-kind",
     "order-program",
+  );
+  await expect(page.locator(".tactics-session-info")).toContainText(
+    "Seed da sessão 4812 · Versão 2",
   );
 });
 
