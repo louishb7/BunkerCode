@@ -34,7 +34,9 @@ A distribuição v2 intercala organização com as seis modalidades pontuais, co
 
 ## Conteúdo e leitura
 
-course.json define id, título, descrição e ordem das lições. Cada entrada possui somente slug e título; campos obsoletos como activityId são recusados como desconhecidos. O caminho do Markdown é derivado: content/courses/<id>/lessons/<slug>/lesson.md. Não existe path livre vindo do navegador nem um índice duplicado em React/Nest.
+course.json define id, título, descrição e ordem das lições. Cada entrada possui slug e título e, em cursos modulares, um `moduleId`; campos obsoletos como activityId são recusados como desconhecidos. O caminho do Markdown é derivado: content/courses/<id>/lessons/<slug>/lesson.md. Não existe path livre vindo do navegador nem um índice duplicado em React/Nest.
+
+`modules` é opcional e contém identidade, título, descrição opcional e ordem de apresentação dos agrupamentos. A lista `lessons` continua sendo a única fonte plana de identidade e ordem; o `moduleId` associa cada lição a um grupo. Quando há módulos, o validador exige referências existentes, ao menos uma lição por módulo, slugs globais únicos e blocos contíguos na ordem declarada em `modules`, recusando ordenação ambígua. Cursos sem módulos permanecem idênticos. A API devolve a lista plana para anterior/próxima, índice, último acesso e Studio, e `modules` de forma aditiva; a apresentação agrupa sem alterar URLs, Markdown ou o workspace de leitura. A criação de lição acrescenta ao último módulo, mantendo o comportamento de “ao final do curso”.
 
 O Leitor ocupa `100dvh` em um application shell com header, área central flexível e footer permanente. Somente as rotas de lição usam essa contenção; Home, catálogo e Studio mantêm a rolagem de documento. A lição tem rolagem própria e prosa de até 75ch; sumário e resultados também rolam internamente. O botão **Aparência da leitura** (ícone Type) persiste tamanho/tonalidade localmente, sem alterar a fonte do código. Escape devolve o foco ao botão; clicar fora fecha o popover.
 
@@ -46,7 +48,7 @@ Abaixo de 1000px, uma alternância **Lição / Código** mostra um painel por ve
 
 Todas as rotas têm conteúdo principal identificado para o skip link e título de documento contextual. Ao concluir o carregamento de uma rota, o foco vai para o título; navegação comum começa no topo, enquanto Voltar/Avançar restaura a posição registrada por entrada do histórico durante a sessão. No Leitor, essa posição pertence à rolagem interna da lição; nas demais páginas, à janela. Digitação não move o foco da edição. A alternância Fonte/Prévia mantém o foco no controle acionado e restaura a posição de cada vista e a seleção/scroll interno do textarea. Reload/deep link carrega o conteúdo diretamente e começa no topo; não há suporte novo a âncoras Markdown.
 
-Catálogo usa um link por card. A apresentação de curso inclui CTA para a primeira lição e percurso plano com links independentes na ordem editorial; não há capítulos ou conclusão inventados.
+Catálogo usa um link por card. A apresentação de curso mostra a descrição integral e uma timeline com links independentes na ordem editorial. Cursos modulares exibem cabeçalhos discretos com “Módulo 01”, título e descrição opcional, mantendo conectores e numeração sequencial global; não há cards por módulo, segunda sidebar, progresso ou conclusão inventados. Cursos sem módulos preservam a timeline plana anterior.
 
 O cliente valida o formato do conteúdo e distingue falha de rede, erro HTTP e resposta incompatível (incluindo vazia/HTML/JSON inválido), com mensagens em português e tentativa novamente. Diagnósticos válidos do backend são preservados. IDs/slugs, textos, listas sem identidades duplicadas, versão e vizinhos na ordem do manifesto são validados no consumo. Uma resposta de outro curso/lição é recusada como incompatível, incluindo a entrada do Studio, em vez de carregar indefinidamente.
 

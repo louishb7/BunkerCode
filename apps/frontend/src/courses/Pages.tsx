@@ -1,17 +1,40 @@
 import { Link, useParams } from "react-router";
 import { BookOpen } from "lucide-react";
 import {
+  courseSections,
   lessonPath,
   useContent,
   parseCourse,
   parseCourses,
   incompatibleContent,
+  type LessonEntry,
 } from "./api";
 import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
 import { CourseCard } from "../product/CourseCard";
 import { CourseArtwork } from "../product/CourseArtwork";
 import { discoverableCourses } from "../product/course-visibility";
+
+function LessonLink({
+  courseId,
+  lesson,
+  index,
+}: {
+  courseId: string;
+  lesson: LessonEntry;
+  index: number;
+}) {
+  return (
+    <li>
+      <Link className="course-lesson" to={lessonPath(courseId, lesson.slug)}>
+        <span className="lesson-number">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="course-lesson-title">{lesson.title}</span>
+      </Link>
+    </li>
+  );
+}
 
 export function CoursesPage() {
   const { data, error } = useContent("", parseCourses);
@@ -66,20 +89,59 @@ export function CoursePage() {
               Este curso ainda não tem lições. Elas aparecerão aqui quando você
               adicionar conteúdo ao curso.
             </p>
+          ) : course.modules ? (
+            <div className="course-modules">
+              {courseSections(course).map(({ module, lessons }, moduleIndex) =>
+                module ? (
+                  <section
+                    className="course-module"
+                    key={module.id}
+                    aria-labelledby={`course-module-${module.id}`}
+                  >
+                    <header className="course-module-header">
+                      <h3
+                        className="course-module-heading"
+                        id={`course-module-${module.id}`}
+                      >
+                        <span className="course-module-label">
+                          Módulo {String(moduleIndex + 1).padStart(2, "0")}
+                        </span>{" "}
+                        <span className="course-module-title">
+                          {module.title}
+                        </span>
+                      </h3>
+                      {module.description && (
+                        <p className="course-module-description">
+                          {module.description}
+                        </p>
+                      )}
+                    </header>
+                    <ol
+                      className="lesson-list"
+                      start={(lessons[0]?.index ?? 0) + 1}
+                    >
+                      {lessons.map(({ lesson, index }) => (
+                        <LessonLink
+                          key={lesson.slug}
+                          courseId={id}
+                          lesson={lesson}
+                          index={index}
+                        />
+                      ))}
+                    </ol>
+                  </section>
+                ) : null,
+              )}
+            </div>
           ) : (
             <ol className="lesson-list">
               {course.lessons.map((lesson, index) => (
-                <li key={lesson.slug}>
-                  <Link
-                    className="course-lesson"
-                    to={lessonPath(id, lesson.slug)}
-                  >
-                    <span className="lesson-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="course-lesson-title">{lesson.title}</span>
-                  </Link>
-                </li>
+                <LessonLink
+                  key={lesson.slug}
+                  courseId={id}
+                  lesson={lesson}
+                  index={index}
+                />
               ))}
             </ol>
           )}

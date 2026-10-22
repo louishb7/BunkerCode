@@ -14,7 +14,12 @@ import {
   type Course,
 } from "@bunkercode/content";
 export { validSlug } from "@bunkercode/content";
-export type { Course, CourseSummary, LessonEntry } from "@bunkercode/content";
+export type {
+  Course,
+  CourseModule,
+  CourseSummary,
+  LessonEntry,
+} from "@bunkercode/content";
 import type { CourseSummary, LessonEntry } from "@bunkercode/content";
 export interface Lesson extends LessonEntry {
   course: Course;

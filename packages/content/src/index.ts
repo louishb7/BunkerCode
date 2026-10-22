@@ -5,6 +5,7 @@ export {
   parseNewLesson,
   suggestLessonSlug,
   type Course,
+  type CourseModule,
   type LessonEntry,
   type CourseSummary,
 } from "./course";

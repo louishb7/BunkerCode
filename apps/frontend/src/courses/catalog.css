@@ -120,6 +120,52 @@
 .course-lesson:active {
   background: #24292e;
 }
+.course-modules {
+  display: grid;
+  gap: 32px;
+}
+.course-module {
+  min-width: 0;
+}
+.course-module-header {
+  position: relative;
+  margin: 0 0 14px;
+}
+.course-module-header::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 35px;
+  width: 1px;
+  height: 14px;
+  background: #8a7349;
+}
+.course-module-heading {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.35;
+  letter-spacing: -0.2px;
+}
+.course-module-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+.course-module-title {
+  display: block;
+}
+.course-module-description {
+  max-width: 64ch;
+  margin: 6px 0 0;
+  color: var(--color-subtle);
+  font-size: 13px;
+  line-height: 1.6;
+}
 
 /* Discovery and course introductions share navigation; reading and authoring own their shells. */
 .global-content .product-page {
@@ -325,6 +371,9 @@
   }
   .catalog-heading {
     font-size: 28px;
+  }
+  .course-modules {
+    gap: 28px;
   }
   .course-list {
     grid-template-columns: minmax(0, 1fr);

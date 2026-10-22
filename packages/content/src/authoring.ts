@@ -133,7 +133,10 @@ export function createLesson(
         409,
         "Slug já existe no manifesto; nenhum conteúdo foi sobrescrito.",
       );
-    manifest.lessons.push(entry);
+    const lastModule = manifest.modules?.at(-1);
+    manifest.lessons.push(
+      lastModule ? { ...entry, moduleId: lastModule.id } : entry,
+    );
     const serialized = JSON.stringify(manifest, null, 2) + "\n";
     if (Buffer.byteLength(serialized) > 65536)
       fail(422, "O manifesto excederia 64 KiB.");

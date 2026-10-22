@@ -19,6 +19,24 @@ const courses: { name: string; change: (course: Course) => unknown }[] = [
     }),
   },
   {
+    name: "module without lessons",
+    change: (course) => ({
+      ...course,
+      modules: [{ id: "extra", title: "Extra" }],
+    }),
+  },
+  {
+    name: "lesson in an unknown module",
+    change: (course) => ({
+      ...course,
+      modules: [{ id: "extra", title: "Extra" }],
+      lessons: course.lessons.map((lesson, index) => ({
+        ...lesson,
+        moduleId: index === 0 ? "missing" : "extra",
+      })),
+    }),
+  },
+  {
     name: "course from a different route",
     change: (course) => ({ ...course, id: "another-course" }),
   },

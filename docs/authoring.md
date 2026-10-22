@@ -16,7 +16,7 @@ Você pode criar os mesmos dois arquivos manualmente. Exemplo de entrada na list
 
     { "slug": "narrowing", "title": "Narrowing" }
 
-A ordem da lista é a ordem do curso. Não depende de nome de arquivo, timestamp, contador ou componente. Mova uma entrada no manifesto para reordenar.
+A ordem da lista é a ordem do curso. Não depende de nome de arquivo, timestamp, contador ou componente. Mova uma entrada no manifesto para reordenar. Cursos com módulos mantêm a mesma lista plana e apenas acrescentam `moduleId` às entradas; a apresentação agrupa as lições sem alterar URLs ou o Leitor.
 
 ## Escrever Markdown
 
@@ -95,9 +95,36 @@ Use o comando de autoria com --course software-architecture ou crie Markdown e e
 
 IDs/slugs: letras minúsculas, números e hífens, até 80 caracteres. O id precisa coincidir com a pasta. Títulos: até 160 caracteres; descrição completa do curso: até 800. O campo opcional `shortDescription` aceita até 160 caracteres não vazios e contém uma chamada editorial própria para os cards da Home e do catálogo. Não é gerado por corte da descrição completa. A página individual continua usando `description`; sem chamada curta, o card apresenta `description` integralmente, sem reticências artificiais. A API expõe o campo de forma aditiva e a criação de lições por CLI/Studio o preserva. Slugs duplicados, campos desconhecidos, JSON malformado, arquivos ausentes e symlinks geram erro explícito. Não use paths relativos no manifesto. Manifesto até 64 KiB, Markdown até 256 KiB.
 
+### Módulos opcionais
+
+Um curso pode agrupar lições em módulos sem criar uma segunda lista de lições. `modules` define a ordem dos agrupamentos e cada entrada de `lessons` referencia seu módulo por `moduleId`. Exemplo mínimo:
+
+    {
+      "id": "software-architecture",
+      "title": "Arquitetura de software",
+      "description": "Minhas revisões e exemplos de organização de sistemas.",
+      "modules": [
+        { "id": "fundamentos", "title": "Fundamentos", "description": "Conceitos recorrentes." },
+        { "id": "aplicacao", "title": "Aplicação" }
+      ],
+      "lessons": [
+        { "slug": "visao-geral", "title": "Visão geral", "moduleId": "fundamentos" },
+        { "slug": "limites", "title": "Limites", "moduleId": "aplicacao" }
+      ]
+    }
+
+- Sem `modules`, o curso mantém exatamente o formato antigo e uma timeline plana.
+- Com `modules`, toda lição exige `moduleId` de um módulo declarado.
+- Todo módulo precisa de ao menos uma lição.
+- As lições de cada módulo devem ser contíguas em `lessons`, na mesma ordem declarada em `modules`; isso elimina ordenação ambígua.
+- `id` de módulo usa a mesma regra de slug (até 80). Título até 160; descrição opcional até 400.
+- A numeração exibida continua sequencial no curso inteiro; módulos não reiniciam a contagem.
+- A API mantém `lessons` plano para navegação anterior/próxima, índice e último acesso, e expõe `modules` de forma aditiva.
+- `lesson:new` e **Nova lição** acrescentam ao final do curso, portanto ao último módulo quando ele existe. Para inserir em outro módulo ou reordenar grupos, edite o manifesto.
+
 ## Escopo atual
 
-Cursos, Leitor e Studio organizam, apresentam e salvam conteúdo autoral. A entrada de uma lição possui apenas slug e title; activityId foi removido e é recusado pelo validador. Exemplos de código continuam em fences Markdown, com o mesmo tema Darcula no leitor e na prévia, sem execução no site.
+Cursos, Leitor e Studio organizam, apresentam e salvam conteúdo autoral. A entrada de uma lição possui slug e title e, somente em cursos modulares, moduleId; activityId foi removido e é recusado pelo validador. Exemplos de código continuam em fences Markdown, com o mesmo tema Darcula no leitor e na prévia, sem execução no site.
 
 Dados locais anteriores, incluindo bancos e capturas em .bunkercode, .bunkerlab e .backendlab, permanecem preservados e não são usados para editar lições. Não é necessário migrar ou apagar nenhum banco para iniciar a plataforma. Testes de navegador escrevem em cópias descartáveis e geram um diretório novo de capturas por execução.
 

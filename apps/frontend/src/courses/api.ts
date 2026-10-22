@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 export interface LessonEntry {
   slug: string;
   title: string;
+  moduleId?: string;
+}
+export interface CourseModule {
+  id: string;
+  title: string;
+  description?: string;
 }
 export interface Course {
   id: string;
@@ -9,6 +15,7 @@ export interface Course {
   description: string;
   shortDescription?: string;
   lessons: LessonEntry[];
+  modules?: CourseModule[];
 }
 export interface CourseSummary {
   id: string;
@@ -39,23 +46,69 @@ function text(value: unknown, limit: number): value is string {
 }
 export const isContentTitle = (value: unknown): value is string =>
   text(value, 160);
-function entry(value: unknown): value is LessonEntry {
-  return (
-    object(value) && isContentSlug(value.slug) && isContentTitle(value.title)
-  );
+function entry(value: unknown, modular: boolean): value is LessonEntry {
+  if (
+    !object(value) ||
+    !isContentSlug(value.slug) ||
+    !isContentTitle(value.title)
+  )
+    return false;
+  if (value.moduleId === undefined) return !modular;
+  return modular && isContentSlug(value.moduleId);
 }
-function course(value: unknown): value is Course {
+function moduleEntry(value: unknown): value is CourseModule {
   return (
     object(value) &&
     isContentSlug(value.id) &&
     isContentTitle(value.title) &&
-    text(value.description, 800) &&
-    (value.shortDescription === undefined ||
-      text(value.shortDescription, 160)) &&
-    Array.isArray(value.lessons) &&
-    value.lessons.every(entry) &&
-    new Set(value.lessons.map((lesson: LessonEntry) => lesson.slug)).size ===
-      value.lessons.length
+    (value.description === undefined || text(value.description, 400))
+  );
+}
+function uniqueLessons(value: LessonEntry[]) {
+  return new Set(value.map((lesson) => lesson.slug)).size === value.length;
+}
+function course(value: unknown): value is Course {
+  if (
+    !object(value) ||
+    !isContentSlug(value.id) ||
+    !isContentTitle(value.title) ||
+    !text(value.description, 800) ||
+    !(value.shortDescription === undefined ||
+      text(value.shortDescription, 160)) ||
+    !Array.isArray(value.lessons)
+  )
+    return false;
+  if (value.modules === undefined)
+    return (
+      value.lessons.every((lesson) => entry(lesson, false)) &&
+      uniqueLessons(value.lessons)
+    );
+  if (
+    !Array.isArray(value.modules) ||
+    value.modules.length === 0 ||
+    !value.modules.every(moduleEntry) ||
+    !value.lessons.every((lesson) => entry(lesson, true)) ||
+    !uniqueLessons(value.lessons)
+  )
+    return false;
+  const lessons = value.lessons as LessonEntry[];
+  const modules = value.modules as CourseModule[];
+  const moduleIds = new Set(modules.map((module) => module.id));
+  if (moduleIds.size !== modules.length) return false;
+  const used = new Set<string>();
+  const sequence: string[] = [];
+  for (const lesson of lessons) {
+    const moduleId = lesson.moduleId!;
+    if (!moduleIds.has(moduleId)) return false;
+    used.add(moduleId);
+    if (sequence.at(-1) === moduleId) continue;
+    if (sequence.includes(moduleId)) return false;
+    sequence.push(moduleId);
+  }
+  return (
+    used.size === moduleIds.size &&
+    sequence.length === modules.length &&
+    sequence.every((id, index) => id === modules[index]!.id)
   );
 }
 function summary(value: unknown): value is CourseSummary {
@@ -88,14 +141,17 @@ export function parseCourse(value: unknown): Course {
 }
 export function parseLesson(value: unknown): Lesson {
   if (
-    !entry(value) ||
     !object(value) ||
     !course(value.course) ||
+    !entry(value, value.course.modules !== undefined) ||
     typeof value.markdown !== "string" ||
     typeof value.version !== "string" ||
     !/^[a-f0-9]{64}$/.test(value.version) ||
-    !(value.previous === null || entry(value.previous)) ||
-    !(value.next === null || entry(value.next))
+    !(
+      value.previous === null ||
+      entry(value.previous, value.course.modules !== undefined)
+    ) ||
+    !(value.next === null || entry(value.next, value.course.modules !== undefined))
   )
     throw new Error(incompatibleContent);
   const index = value.course.lessons.findIndex(
@@ -106,11 +162,13 @@ export function parseLesson(value: unknown): Lesson {
     expected: LessonEntry | undefined,
   ) =>
     expected
-      ? actual?.slug === expected.slug && actual.title === expected.title
+      ? actual?.slug === expected.slug &&
+        actual.title === expected.title &&
+        actual.moduleId === expected.moduleId
       : actual === null;
   if (
     index < 0 ||
-    value.course.lessons[index]?.title !== value.title ||
+    !matches(value, value.course.lessons[index]) ||
     !matches(value.previous, value.course.lessons[index - 1]) ||
     !matches(value.next, value.course.lessons[index + 1])
   )
@@ -118,6 +176,7 @@ export function parseLesson(value: unknown): Lesson {
   return {
     slug: value.slug,
     title: value.title,
+    ...(value.moduleId === undefined ? {} : { moduleId: value.moduleId }),
     course: value.course,
     markdown: value.markdown,
     version: value.version,
@@ -180,6 +239,18 @@ export function useContent<T>(path: string, parse: (value: unknown) => T) {
     return () => controller.abort();
   }, [path, parse]);
   return state.path === path ? state : { data: null, error: "" };
+}
+export interface CourseSection {
+  module: CourseModule | null;
+  lessons: { lesson: LessonEntry; index: number }[];
+}
+export function courseSections(course: Course): CourseSection[] {
+  const entries = course.lessons.map((lesson, index) => ({ lesson, index }));
+  if (!course.modules) return [{ module: null, lessons: entries }];
+  return course.modules.map((module) => ({
+    module,
+    lessons: entries.filter(({ lesson }) => lesson.moduleId === module.id),
+  }));
 }
 export const lessonPath = (course: string, slug: string) =>
   "/courses/" +

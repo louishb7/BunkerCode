@@ -1,6 +1,12 @@
 export interface LessonEntry {
   slug: string;
   title: string;
+  moduleId?: string;
+}
+export interface CourseModule {
+  id: string;
+  title: string;
+  description?: string;
 }
 export interface Course {
   id: string;
@@ -8,6 +14,7 @@ export interface Course {
   description: string;
   shortDescription?: string;
   lessons: LessonEntry[];
+  modules?: CourseModule[];
 }
 export interface CourseSummary {
   id: string;
@@ -42,23 +49,79 @@ function fields(value: Record<string, unknown>, allowed: string[]) {
 }
 export function parseCourse(value: unknown, id: string): Course {
   const course = object(value);
-  fields(course, ["id", "title", "description", "shortDescription", "lessons"]);
+  fields(course, [
+    "id",
+    "title",
+    "description",
+    "shortDescription",
+    "lessons",
+    "modules",
+  ]);
   if (course.id !== id || !validSlug(course.id))
     invalidCourse("id não corresponde à pasta do curso.");
   if (!Array.isArray(course.lessons))
     invalidCourse("lessons deve ser uma lista ordenada.");
+  const moduleIds = new Set<string>();
+  let modules: CourseModule[] | undefined;
+  if (course.modules !== undefined) {
+    if (!Array.isArray(course.modules) || course.modules.length === 0)
+      invalidCourse("modules deve ser uma lista ordenada e não vazia.");
+    modules = course.modules.map((value): CourseModule => {
+      const module = object(value);
+      fields(module, ["id", "title", "description"]);
+      if (!validSlug(module.id)) invalidCourse("id de módulo inválido.");
+      if (moduleIds.has(module.id))
+        invalidCourse(`módulo duplicado: ${module.id}.`);
+      moduleIds.add(module.id);
+      return {
+        id: module.id,
+        title: text(module.title, 160, "title"),
+        ...(module.description === undefined
+          ? {}
+          : { description: text(module.description, 400, "description") }),
+      };
+    });
+  }
   const seen = new Set<string>();
   const lessons = course.lessons.map((value): LessonEntry => {
     const lesson = object(value);
-    fields(lesson, ["slug", "title"]);
+    fields(lesson, modules ? ["slug", "title", "moduleId"] : ["slug", "title"]);
     if (!validSlug(lesson.slug)) invalidCourse("slug de lição inválido.");
     if (seen.has(lesson.slug)) invalidCourse(`slug duplicado: ${lesson.slug}.`);
     seen.add(lesson.slug);
+    if (!modules)
+      return {
+        slug: lesson.slug,
+        title: text(lesson.title, 160, "title"),
+      };
+    if (!validSlug(lesson.moduleId) || !moduleIds.has(lesson.moduleId))
+      invalidCourse(`módulo de lição inexistente: ${String(lesson.moduleId)}.`);
     return {
       slug: lesson.slug,
       title: text(lesson.title, 160, "title"),
+      moduleId: lesson.moduleId,
     };
   });
+  if (modules) {
+    const used = new Set(lessons.map((lesson) => lesson.moduleId));
+    for (const module of modules)
+      if (!used.has(module.id))
+        invalidCourse(`módulo sem lições: ${module.id}.`);
+    const sequence: string[] = [];
+    for (const lesson of lessons) {
+      if (sequence.at(-1) === lesson.moduleId) continue;
+      if (sequence.includes(lesson.moduleId!))
+        invalidCourse(
+          `lições do módulo ${lesson.moduleId} devem ser contíguas.`,
+        );
+      sequence.push(lesson.moduleId!);
+    }
+    if (
+      sequence.length !== modules.length ||
+      sequence.some((id, index) => id !== modules![index]!.id)
+    )
+      invalidCourse("a ordem das lições deve seguir a ordem dos módulos.");
+  }
   return {
     id,
     title: text(course.title, 160, "title"),
@@ -73,6 +136,7 @@ export function parseCourse(value: unknown, id: string): Course {
           ),
         }),
     lessons,
+    ...(modules ? { modules } : {}),
   };
 }
 
