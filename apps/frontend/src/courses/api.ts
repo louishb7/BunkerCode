@@ -34,6 +34,9 @@ export interface Lesson extends LessonEntry {
 function object(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
+function only(value: Record<string, unknown>, allowed: string[]) {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
 export function isContentSlug(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -46,9 +49,19 @@ function text(value: unknown, limit: number): value is string {
 }
 export const isContentTitle = (value: unknown): value is string =>
   text(value, 160);
-function entry(value: unknown, modular: boolean): value is LessonEntry {
+function entry(
+  value: unknown,
+  modular: boolean,
+  extra: string[] = [],
+): value is LessonEntry {
   if (
     !object(value) ||
+    !only(
+      value,
+      modular
+        ? ["slug", "title", "moduleId", ...extra]
+        : ["slug", "title", ...extra],
+    ) ||
     !isContentSlug(value.slug) ||
     !isContentTitle(value.title)
   )
@@ -59,6 +72,7 @@ function entry(value: unknown, modular: boolean): value is LessonEntry {
 function moduleEntry(value: unknown): value is CourseModule {
   return (
     object(value) &&
+    only(value, ["id", "title", "description"]) &&
     isContentSlug(value.id) &&
     isContentTitle(value.title) &&
     (value.description === undefined || text(value.description, 400))
@@ -70,6 +84,14 @@ function uniqueLessons(value: LessonEntry[]) {
 function course(value: unknown): value is Course {
   if (
     !object(value) ||
+    !only(value, [
+      "id",
+      "title",
+      "description",
+      "shortDescription",
+      "lessons",
+      "modules",
+    ]) ||
     !isContentSlug(value.id) ||
     !isContentTitle(value.title) ||
     !text(value.description, 800) ||
@@ -143,7 +165,13 @@ export function parseLesson(value: unknown): Lesson {
   if (
     !object(value) ||
     !course(value.course) ||
-    !entry(value, value.course.modules !== undefined) ||
+    !entry(value, value.course.modules !== undefined, [
+      "course",
+      "markdown",
+      "version",
+      "previous",
+      "next",
+    ]) ||
     typeof value.markdown !== "string" ||
     typeof value.version !== "string" ||
     !/^[a-f0-9]{64}$/.test(value.version) ||
