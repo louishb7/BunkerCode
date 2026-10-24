@@ -1,4 +1,4 @@
-import { studioTools } from "./studio-controls";
+import { selectStudioText, studioTools } from "./studio-controls";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -43,79 +43,126 @@ test.beforeEach(async () => {
 
 async function selectReference(page: Page) {
   const text = page.locator(".visual-document p").first();
-  await text.click();
-  await page.keyboard.press("Home");
-  for (let i = 0; i < 19; i++) await page.keyboard.press("ArrowRight");
+  await selectStudioText(text, "referência", true);
   for (let i = 0; i < 10; i++) await page.keyboard.press("Shift+ArrowRight");
   await expect
     .poll(() => page.evaluate(() => getSelection()?.toString()))
     .toBe("referência");
 }
 
-test("link popover preserves selection, validates URL, edits, cancels and removes without native prompts", async ({
-  page,
-}) => {
-  let prompts = 0;
-  page.on("dialog", async (dialog) => {
-    prompts++;
-    await dialog.dismiss();
+for (const [width, height] of [
+  [1440, 900],
+  [1280, 800],
+  [390, 844],
+  [360, 800],
+]) {
+  test.describe(`link interaction at ${width}px`, () => {
+    test.use({ hasTouch: width! < 700, isMobile: width! < 700 });
+    test(`link popover preserves selection, validates URL, edits, cancels and removes without native prompts at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: width!, height: height! });
+      let prompts = 0;
+      page.on("dialog", async (dialog) => {
+        prompts++;
+        await dialog.dismiss();
+      });
+      await page.goto(url);
+      await expect(page.locator(".visual-document")).toBeVisible();
+      await selectReference(page);
+      await studioTools(page);
+      const linkButton = page.getByRole("button", {
+        name: "Link",
+        exact: true,
+      });
+      if (width! < 700) await linkButton.tap();
+      else await linkButton.click();
+      const form = page.getByRole("form", { name: "Editar link", exact: true });
+      await form.getByLabel("URL", { exact: true }).fill("javascript:alert(1)");
+      await form
+        .getByRole("button", { name: "Confirmar", exact: true })
+        .click();
+      await expect(form.getByRole("alert")).toBeVisible();
+      await form
+        .getByLabel("URL", { exact: true })
+        .fill("https://example.com/reference");
+      await form
+        .getByRole("button", { name: "Confirmar", exact: true })
+        .click();
+      const link = page.locator(
+        '.visual-document a[href="https://example.com/reference"]',
+      );
+      await expect(link).toHaveText("referência");
+      if (width! < 700) await link.tap();
+      else await link.click();
+      await studioTools(page);
+      await page.getByRole("button", { name: "Link", exact: true }).click();
+      await expect(form.getByLabel("URL", { exact: true })).toHaveValue(
+        "https://example.com/reference",
+      );
+      await form
+        .getByLabel("URL", { exact: true })
+        .fill("https://example.com/changed");
+      await page.keyboard.press("Escape");
+      await expect(form).toHaveCount(0);
+      await expect(link).toHaveText("referência");
+      await expect
+        .poll(() => page.evaluate(() => getSelection()?.toString()))
+        .toBe("referência");
+      await studioTools(page);
+      await linkButton.click();
+      await form
+        .getByLabel("URL", { exact: true })
+        .fill("https://example.com/cancelled");
+      await form.getByRole("button", { name: "Cancelar", exact: true }).click();
+      await expect(form).toHaveCount(0);
+      await expect(link).toHaveText("referência");
+      await expect
+        .poll(() => page.evaluate(() => getSelection()?.toString()))
+        .toBe("referência");
+      await studioTools(page);
+      await linkButton.focus();
+      await page.keyboard.press("Enter");
+      await form
+        .getByLabel("URL", { exact: true })
+        .fill("https://example.com/changed");
+      await form
+        .getByRole("button", { name: "Confirmar", exact: true })
+        .click();
+      await expect(
+        page.locator('.visual-document a[href="https://example.com/changed"]'),
+      ).toHaveText("referência");
+      await studioTools(page);
+      await page.getByRole("button", { name: "Link", exact: true }).click();
+      await form
+        .getByRole("button", { name: "Remover link", exact: true })
+        .click();
+      await expect(page.locator(".visual-document a")).toHaveCount(0);
+      await expect(page.locator(".visual-document p").first()).toHaveText(
+        "Uma explicação com referência e autoria.",
+      );
+      await page.locator(".visual-document p").first().click();
+      await page.keyboard.press("End");
+      await studioTools(page);
+      await page.getByRole("button", { name: "Link", exact: true }).click();
+      await form
+        .getByLabel("URL", { exact: true })
+        .fill("https://example.com/cursor");
+      await form
+        .getByRole("button", { name: "Confirmar", exact: true })
+        .click();
+      await expect(
+        page.locator('.visual-document a[href="https://example.com/cursor"]'),
+      ).toHaveText("https://example.com/cursor");
+      const box = await page.locator(".visual-document").boundingBox();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width!);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(width);
+      expect(prompts).toBe(0);
+    });
   });
-  await page.goto(url);
-  await expect(page.locator(".visual-document")).toBeVisible();
-  await selectReference(page);
-  await studioTools(page);
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  const form = page.getByRole("form", { name: "Editar link", exact: true });
-  await form.getByLabel("URL", { exact: true }).fill("javascript:alert(1)");
-  await form.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await expect(form.getByRole("alert")).toBeVisible();
-  await form
-    .getByLabel("URL", { exact: true })
-    .fill("https://example.com/reference");
-  await form.getByRole("button", { name: "Confirmar", exact: true }).click();
-  const link = page.locator(
-    '.visual-document a[href="https://example.com/reference"]',
-  );
-  await expect(link).toHaveText("referência");
-  await link.click();
-  await studioTools(page);
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  await expect(form.getByLabel("URL", { exact: true })).toHaveValue(
-    "https://example.com/reference",
-  );
-  await form
-    .getByLabel("URL", { exact: true })
-    .fill("https://example.com/changed");
-  await page.keyboard.press("Escape");
-  await expect(form).toHaveCount(0);
-  await expect(link).toHaveText("referência");
-  await studioTools(page);
-  await page.getByRole("button", { name: "Link", exact: true }).focus();
-  await page.keyboard.press("Enter");
-  await form
-    .getByLabel("URL", { exact: true })
-    .fill("https://example.com/changed");
-  await form.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await expect(
-    page.locator('.visual-document a[href="https://example.com/changed"]'),
-  ).toHaveText("referência");
-  await studioTools(page);
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  await form.getByRole("button", { name: "Remover link", exact: true }).click();
-  await expect(page.locator(".visual-document a")).toHaveCount(0);
-  await page.locator(".visual-document p").first().click();
-  await page.keyboard.press("End");
-  await studioTools(page);
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  await form
-    .getByLabel("URL", { exact: true })
-    .fill("https://example.com/cursor");
-  await form.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await expect(
-    page.locator('.visual-document a[href="https://example.com/cursor"]'),
-  ).toHaveText("https://example.com/cursor");
-  expect(prompts).toBe(0);
-});
+}
 
 for (const width of [390, 1440]) {
   test(`contextual insertion, contained multiline code, quiz and first-character continuity at ${width}px`, async ({

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { studioView } from "./studio-controls";
+import { selectStudioText, studioView } from "./studio-controls";
 const root = join(
   process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
   "courses/document-workspace",
@@ -55,9 +55,10 @@ for (const width of [390, 1280, 1440, 1920])
       .getByRole("button", { name: "Continuação", exact: true })
       .click();
     await expect(outline).toHaveCount(0);
-    await doc.locator("p").first().click();
-    await page.keyboard.press("Home");
-    await page.keyboard.press("Shift+End");
+    await selectStudioText(
+      doc.locator("p").first(),
+      "Uma explicação para editar diretamente.",
+    );
     await expect(
       page.getByRole("group", { name: "Formatação do conteúdo" }),
     ).toBeVisible();

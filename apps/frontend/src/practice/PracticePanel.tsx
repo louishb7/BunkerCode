@@ -479,7 +479,7 @@ export default function PracticePanel({
                   {result?.message ??
                     (capabilities.remoteExecution
                       ? "Aguardando execução"
-                      : "Prática local: escreva e formate seu código. O rascunho fica neste navegador; execução e envio indisponíveis no ambiente público.")}
+                      : "Prática local: escreva e formate seu código. O rascunho fica neste navegador. O código não é executado, enviado nem avaliado no ambiente público.")}
                 </p>
                 {result && result.source !== draft.code && (
                   <p className="text-xs text-gold">

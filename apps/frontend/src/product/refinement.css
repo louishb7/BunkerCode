@@ -51,19 +51,49 @@
   outline-offset: 2px;
 }
 .heat-0 {
-  background: #161b22;
+  --heatmap-color: #161b22;
+  background: var(--heatmap-color);
 }
 .heat-1 {
-  background: #0e4429;
+  --heatmap-color: #0e4429;
+  background: var(--heatmap-color);
 }
 .heat-2 {
-  background: #006d32;
+  --heatmap-color: #006d32;
+  background: var(--heatmap-color);
 }
 .heat-3 {
-  background: #26a641;
+  --heatmap-color: #26a641;
+  background: var(--heatmap-color);
 }
 .heat-4 {
-  background: #39d353;
+  --heatmap-color: #39d353;
+  background: var(--heatmap-color);
+}
+.heatmap-details {
+  position: fixed;
+  z-index: 20;
+  transform: translateX(-50%);
+  width: min(240px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-raised);
+  color: var(--color-ink);
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px #0006;
+}
+.heatmap-details span {
+  display: block;
+  color: var(--text-muted);
+}
+/* Keep the hover path connected across the small gap around the detail. */
+.heatmap-details::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+  z-index: -1;
 }
 .technology-logo {
   display: block;
@@ -237,5 +267,17 @@ html:has(.practice-history[open]) {
   .activity-dashboard {
     --heatmap-cell: 10px;
     --heatmap-gap: 2px;
+  }
+}
+/* Distinct 24px touch targets, with the same small visual square and no overlap. */
+@media (pointer: coarse) {
+  .activity-dashboard {
+    --heatmap-cell: 24px;
+    --heatmap-gap: 0px;
+  }
+  .heatmap-day {
+    border: 0;
+    background: linear-gradient(var(--heatmap-color), var(--heatmap-color))
+      center / 11px 11px no-repeat;
   }
 }

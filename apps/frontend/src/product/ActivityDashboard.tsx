@@ -16,8 +16,70 @@ export function ActivityDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
+  const [details, setDetails] = useState<{
+    day: string;
+    left: number;
+    top: number;
+  } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const grid = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
+  const anchor = useRef<HTMLButtonElement>(null);
+  function hideDetails() {
+    anchor.current = null;
+    setDetails(null);
+  }
+  useEffect(() => {
+    if (!details) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target))
+        hideDetails();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") hideDetails();
+    };
+    const reposition = () => {
+      const button = anchor.current;
+      const day = button?.dataset.day;
+      const viewport = grid.current?.parentElement?.getBoundingClientRect();
+      if (!button || !day || !viewport || !button.isConnected) return;
+      const rect = button.getBoundingClientRect();
+      if (
+        rect.right <= viewport.left ||
+        rect.left >= viewport.right ||
+        rect.bottom <= 0 ||
+        rect.top >= innerHeight
+      )
+        hideDetails();
+      else showDetails(day, button);
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", hideDetails);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+      document.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", hideDetails);
+    };
+  }, [details]);
+  function showDetails(day: string, button: HTMLButtonElement) {
+    anchor.current = button;
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(240, innerWidth - 16);
+    setDetails({
+      day,
+      left: Math.max(
+        width / 2 + 8,
+        Math.min(innerWidth - width / 2 - 8, rect.left + rect.width / 2),
+      ),
+      top: Math.max(
+        8,
+        rect.bottom + 64 < innerHeight ? rect.bottom + 8 : rect.top - 64,
+      ),
+    });
+  }
   useEffect(() => {
     let alive = true,
       sequence = 0;
@@ -84,7 +146,17 @@ export function ActivityDashboard() {
     return `${values.length} ${values.length === 1 ? "atividade" : "atividades"} em ${dateLabel(day)}.`;
   };
   return (
-    <section aria-labelledby="activity-title" className="activity-dashboard">
+    <section
+      ref={root}
+      aria-labelledby="activity-title"
+      className="activity-dashboard"
+      onPointerLeave={() => {
+        if (!grid.current?.contains(document.activeElement)) hideDetails();
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) hideDetails();
+      }}
+    >
       <h2 id="activity-title" className="sr-only">
         Atividade
       </h2>
@@ -136,10 +208,23 @@ export function ActivityDashboard() {
                     className={`heatmap-day heat-${Math.min(4, groups.get(day)?.length ?? 0)}`}
                     title={description(day)}
                     aria-label={description(day)}
+                    aria-describedby={
+                      details?.day === day ? "activity-day-details" : undefined
+                    }
                     data-day={day}
                     tabIndex={day === focusDay ? 0 : -1}
-                    onFocus={() => setSelected(day)}
-                    onClick={() => setSelected(day)}
+                    onFocus={(event) => {
+                      setSelected(day);
+                      showDetails(day, event.currentTarget);
+                    }}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType === "mouse")
+                        showDetails(day, event.currentTarget);
+                    }}
+                    onClick={(event) => {
+                      setSelected(day);
+                      showDetails(day, event.currentTarget);
+                    }}
                     onKeyDown={(event) => {
                       const delta = {
                         ArrowLeft: -7,
@@ -167,6 +252,19 @@ export function ActivityDashboard() {
           <p className="sr-only" aria-live="polite">
             {selected ? description(focusDay) : ""}
           </p>
+          {details && (
+            <div
+              id="activity-day-details"
+              role="tooltip"
+              className="heatmap-details"
+              style={{ left: details.left, top: details.top }}
+            >
+              {description(details.day)}
+              {!groups.get(details.day)?.length && (
+                <span>Sem atividade registrada.</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </section>

@@ -211,11 +211,17 @@ async function titlePresentation(title: Locator) {
   });
 }
 async function measure(prose: Locator) {
-  return prose.evaluate((node) => ({
-    width: node.getBoundingClientRect().width,
-    fontSize: getComputedStyle(node).fontSize,
-    lineHeight: getComputedStyle(node).lineHeight,
-  }));
+  return prose.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const context = document.createElement("canvas").getContext("2d")!;
+    context.font = `${style.fontSize} ${style.fontFamily}`;
+    return {
+      width: node.getBoundingClientRect().width,
+      fontSize: style.fontSize,
+      lineHeight: style.lineHeight,
+      measureLimit: context.measureText("0").width * 75,
+    };
+  });
 }
 for (const width of [390, 768, 1024, 1440])
   test(`reader and preview retain readable typography at ${width}px with an overlay index`, async ({
@@ -232,7 +238,8 @@ for (const width of [390, 768, 1024, 1440])
     );
     // The reader now shares desktop width with its resizable outline.
     expect(reader.width).toBeGreaterThan(width < 700 ? 300 : 600);
-    expect(reader.width).toBeLessThanOrEqual(800);
+    // The approved 75ch measure varies with font metrics and reading preferences.
+    expect(reader.width).toBeLessThanOrEqual(reader.measureLimit + 1);
     expect(
       await page
         .getByRole("heading", { level: 1 })

@@ -6,6 +6,42 @@ import { join } from "node:path";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 
+for (const [width, height] of [
+  [1440, 900],
+  [1280, 800],
+  [390, 844],
+  [360, 800],
+])
+  test(`public practice explains local-only editing at ${width}x${height}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: width!, height: height! });
+    await page.goto(lesson);
+    await expect(
+      page.getByRole("heading", { name: "Valores e tipos", exact: true }),
+    ).toBeVisible();
+    if (width! < 1000)
+      await page.getByRole("button", { name: "Código", exact: true }).click();
+    await expect(
+      page.getByText(
+        "O código não é executado, enviado nem avaliado no ambiente público.",
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Run", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Submit", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+    await page.screenshot({
+      path: info.outputPath(`public-reader-${width}.png`),
+    });
+  });
+
 test("published course opens its reader and previous/next navigation survives reload", async ({
   page,
 }) => {
