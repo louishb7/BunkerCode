@@ -27,24 +27,29 @@ test("browser fixture cleans success and controlled failure without touching ano
   writeFileSync(join(source, "lesson.md"), "canonical");
   writeFileSync(join(outside, "keep.md"), "evidence");
   try {
-    for (const failure of [false, true]) {
-      const env = owned();
-      const other = owned();
-      mkdirSync(other.BUNKERCODE_BROWSER_CONTENT_DIR);
-      const promise = withBrowserFixture(env, source, async (path) => {
+    for (const profile of ["authoring", "public"]) {
+      for (const failure of [false, true]) {
+        const env = { ...owned(), BUNKERCODE_PROFILE: profile };
+        const other = owned();
+        mkdirSync(other.BUNKERCODE_BROWSER_CONTENT_DIR);
+        const promise = withBrowserFixture(env, source, async (path) => {
+          assert.equal(
+            readFileSync(join(path, "lesson.md"), "utf8"),
+            "canonical",
+          );
+          symlinkSync(outside, join(path, "link"));
+          if (failure) throw new Error("controlled failure");
+        });
+        if (failure) await assert.rejects(promise, /controlled failure/);
+        else await promise;
+        assert.equal(existsSync(env.BUNKERCODE_BROWSER_CONTENT_DIR), false);
+        assert.equal(existsSync(other.BUNKERCODE_BROWSER_CONTENT_DIR), true);
         assert.equal(
-          readFileSync(join(path, "lesson.md"), "utf8"),
-          "canonical",
+          readFileSync(join(outside, "keep.md"), "utf8"),
+          "evidence",
         );
-        symlinkSync(outside, join(path, "link"));
-        if (failure) throw new Error("controlled failure");
-      });
-      if (failure) await assert.rejects(promise, /controlled failure/);
-      else await promise;
-      assert.equal(existsSync(env.BUNKERCODE_BROWSER_CONTENT_DIR), false);
-      assert.equal(existsSync(other.BUNKERCODE_BROWSER_CONTENT_DIR), true);
-      assert.equal(readFileSync(join(outside, "keep.md"), "utf8"), "evidence");
-      rmSync(other.BUNKERCODE_BROWSER_CONTENT_DIR, { recursive: true });
+        rmSync(other.BUNKERCODE_BROWSER_CONTENT_DIR, { recursive: true });
+      }
     }
     await withBrowserFixture(
       { BUNKERCODE_BROWSER_CONTENT_DIR: outside },

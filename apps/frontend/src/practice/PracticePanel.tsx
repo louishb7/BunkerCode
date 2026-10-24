@@ -1,3 +1,4 @@
+import { capabilities } from "../capabilities";
 import { useEffect, useRef, useState } from "react";
 import {
   History,
@@ -370,37 +371,39 @@ export default function PracticePanel({
               aria-label="Ações do código"
               className="editor-actions"
             >
-              <div className="code-primary-actions">
-                {phase !== "idle" ? (
-                  <button
-                    aria-label="Cancelar operação"
-                    onClick={() => void cancel()}
-                    className="text-xs"
-                  >
-                    <Square className="product-icon" aria-hidden="true" />
-                    Cancelar
-                  </button>
-                ) : (
+              {capabilities.remoteExecution && (
+                <div className="code-primary-actions">
+                  {phase !== "idle" ? (
+                    <button
+                      aria-label="Cancelar operação"
+                      onClick={() => void cancel()}
+                      className="text-xs"
+                    >
+                      <Square className="product-icon" aria-hidden="true" />
+                      Cancelar
+                    </button>
+                  ) : (
+                    <button
+                      disabled={!draft.ready || sending || phase !== "idle"}
+                      onClick={() => {
+                        if (!submitting.current) void analyze(draft.code);
+                      }}
+                      className="practice-run"
+                    >
+                      <Play className="product-icon" aria-hidden="true" />
+                      Run
+                    </button>
+                  )}
                   <button
                     disabled={!draft.ready || sending || phase !== "idle"}
-                    onClick={() => {
-                      if (!submitting.current) void analyze(draft.code);
-                    }}
-                    className="practice-run"
+                    onClick={() => void submit()}
+                    className="product-primary flex items-center gap-1 text-xs"
                   >
-                    <Play className="product-icon" aria-hidden="true" />
-                    Run
+                    <Send className="product-icon" aria-hidden="true" />
+                    {sending ? "Registrando…" : "Submit"}
                   </button>
-                )}
-                <button
-                  disabled={!draft.ready || sending || phase !== "idle"}
-                  onClick={() => void submit()}
-                  className="product-primary flex items-center gap-1 text-xs"
-                >
-                  <Send className="product-icon" aria-hidden="true" />
-                  {sending ? "Registrando…" : "Submit"}
-                </button>
-              </div>
+                </div>
+              )}
               {divider}
               <div className="code-utilities">
                 <button
@@ -473,7 +476,10 @@ export default function PracticePanel({
               >
                 <h2 className="result-heading">Resultado</h2>
                 <p role="status" className="text-sm">
-                  {result?.message ?? "Aguardando execução"}
+                  {result?.message ??
+                    (capabilities.remoteExecution
+                      ? "Aguardando execução"
+                      : "Prática local: escreva e formate seu código. O rascunho fica neste navegador; execução e envio indisponíveis no ambiente público.")}
                 </p>
                 {result && result.source !== draft.code && (
                   <p className="text-xs text-gold">
@@ -595,8 +601,9 @@ export default function PracticePanel({
                 <h2 className="result-heading">Histórico do código</h2>
                 {!draft.previous && !submissions.length && (
                   <p>
-                    Nenhuma solução registrada. Submit guarda o snapshot
-                    analisado.
+                    {capabilities.remoteExecution
+                      ? "Nenhuma solução registrada. Submit guarda o snapshot analisado."
+                      : "Nenhuma solução registrada neste navegador. Seu rascunho é salvo localmente."}
                   </p>
                 )}
                 {draft.previous && (

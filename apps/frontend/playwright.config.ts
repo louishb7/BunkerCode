@@ -53,6 +53,7 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         PORT: "3012",
+        BUNKERCODE_PROFILE: "authoring",
         NODE_PATH: "",
         BUNKERCODE_STUDIO_ORIGIN: "http://127.0.0.1:5184",
         BUNKERCODE_CONTENT_DIR: process.env.BUNKERCODE_BROWSER_CONTENT_DIR,
@@ -63,7 +64,10 @@ export default defineConfig({
         "pnpm exec vite preview --host 127.0.0.1 --port 5184 --strictPort",
       url: "http://127.0.0.1:5184",
       reuseExistingServer: false,
-      env: { BUNKERCODE_API_URL: "http://127.0.0.1:3012" },
+      env: {
+        BUNKERCODE_API_URL: "http://127.0.0.1:3012",
+        BUNKERCODE_PROFILE: "authoring",
+      },
     },
   ],
 });

@@ -41,8 +41,10 @@ export async function withBrowserFixture(env, source, run) {
   mkdirSync(path, { mode: 0o700 }); // Exclusive: never adopt another execution's directory.
   const identity = lstatSync(path);
   try {
-    cpSync(source, path, { recursive: true, dereference: false });
-    return await run(path);
+    const content =
+      env.BUNKERCODE_PROFILE === "public" ? join(path, "authoring") : path;
+    cpSync(source, content, { recursive: true, dereference: false });
+    return await run(content);
   } finally {
     const current = lstatSync(path, { throwIfNoEntry: false });
     if (

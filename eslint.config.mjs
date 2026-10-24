@@ -5,6 +5,7 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      "**/dist-public/**",
       "**/node_modules/**",
       ".bunkercode/**",
       ".bunkerlab/**",

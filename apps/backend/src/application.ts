@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { json, type NextFunction, type Request, type Response } from "express";
 import { AppModule } from "./app.module";
+import { operationalConfig } from "./operational-profile";
 const loopbackHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
 function studioOrigin() {
   const configured =
@@ -20,8 +21,10 @@ function studioOrigin() {
   return configured;
 }
 export async function createApplication(quiet = false) {
-  const allowedOrigin = studioOrigin();
-  const app = await NestFactory.create(AppModule, {
+  const config = operationalConfig();
+  const allowedOrigin =
+    config.profile === "authoring" ? studioOrigin() : undefined;
+  const app = await NestFactory.create(await AppModule.configure(config), {
     logger: quiet ? false : undefined,
     bodyParser: false,
   });
@@ -32,6 +35,12 @@ export async function createApplication(quiet = false) {
       (req.path.toLowerCase().startsWith("/content/courses") ||
         req.path.toLowerCase().startsWith("/practice"))
     ) {
+      if (config.profile === "public") {
+        res
+          .status(403)
+          .json({ message: "Operação indisponível no perfil público." });
+        return;
+      }
       let localHost = false;
       try {
         const host = req.headers.host ?? "";

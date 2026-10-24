@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm build && tsx watch src/main.ts",
+    "dev": "pnpm build && BUNKERCODE_PROFILE=authoring tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "test": "pnpm build && tsx --test test/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit"
+    "test": "pnpm build && BUNKERCODE_PROFILE=authoring tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
+    "start:authoring": "BUNKERCODE_PROFILE=authoring node dist/main.js",
+    "start:public": "BUNKERCODE_PROFILE=public node dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",

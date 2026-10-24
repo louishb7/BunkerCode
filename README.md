@@ -11,7 +11,7 @@ Requisitos: Node.js 24+ e pnpm 11.
     pnpm install
     pnpm dev
 
-Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001.
+Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar a leitura anônima, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção inicialmente vazia em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
 
 ## Escrever uma lição
 
@@ -19,9 +19,9 @@ Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e ba
 
 Abra a lição no site e clique em **Editar lição** para escrever no Studio visual com Tiptap, inserir código, notas e quizzes e salvar no próprio lesson.md. No Studio, o seletor percorre as lições do curso e **Nova lição** cria um documento vazio sem terminal. **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior. Você também pode editar o arquivo no VS Code. Confira git diff e faça seu commit manualmente; não há rebuild nem commit automático. Também é possível criar o Markdown e inserir a entrada no course.json manualmente. A ordem do manifesto define a navegação. No Leitor, **Lições** e anterior/próxima ficam no footer permanente. O leitor organiza artigo, sumário e prática conforme o conteúdo, com preferências de leitura e divisores acessíveis. Veja [autoria visual e avaliação](docs/visual-authoring.md).
 
-Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. O catálogo descobre a pasta automaticamente. Cursos podem declarar módulos opcionais em `modules`, associando cada lição por `moduleId`. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
+Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. A API privada descobre a pasta automaticamente; no ambiente público é necessária seleção explícita. Cursos podem declarar módulos opcionais em `modules`, associando cada lição por `moduleId`. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-A descoberta inicial mostra JavaScript Essencial, TypeScript, Node.js e NestJS, nesta ordem. PostgreSQL, Git, Linux e Docker permanecem no conteúdo/API e nas rotas diretas, temporariamente ocultos da Home e do catálogo. Os sete cursos introdutórios têm duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições. [Política de visibilidade](docs/product/course-visibility.md).
+No perfil privado, a descoberta inicial mostra JavaScript Essencial, TypeScript, Node.js e NestJS, nesta ordem. PostgreSQL, Git, Linux e Docker permanecem no conteúdo/API e nas rotas diretas, temporariamente ocultos da Home e do catálogo. Os sete cursos introdutórios têm duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições. [Política de visibilidade](docs/product/course-visibility.md).
 
 ## Organização
 

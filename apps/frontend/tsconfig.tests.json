@@ -3,5 +3,11 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["playwright.config.ts", "e2e/*.spec.ts", "e2e/*.test.ts"]
+  "include": [
+    "playwright.config.ts",
+    "e2e/*.spec.ts",
+    "e2e/*.test.ts",
+    "playwright.public.config.ts",
+    "e2e-public/*.spec.ts"
+  ]
 }

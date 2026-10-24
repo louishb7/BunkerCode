@@ -1,3 +1,4 @@
+import { capabilities } from "../capabilities";
 import { validateEditorial } from "@bunkercode/content";
 import {
   ReadingArticle,
@@ -139,12 +140,14 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                   ) + 1}
                 </p>
                 <h1>{lesson.title}</h1>
-                <Link
-                  className="edit-lesson-link"
-                  to={lessonPath(id, slug) + "/edit"}
-                >
-                  Editar lição
-                </Link>
+                {capabilities.authoring && (
+                  <Link
+                    className="edit-lesson-link"
+                    to={lessonPath(id, slug) + "/edit"}
+                  >
+                    Editar lição
+                  </Link>
+                )}
               </header>
               <div className="prose">
                 {body.trim() ? (

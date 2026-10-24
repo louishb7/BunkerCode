@@ -1,3 +1,4 @@
+import { capabilities } from "../capabilities";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { runtimeStatus, type RuntimeStatus } from "./runtime-api";
 
@@ -22,6 +23,15 @@ export function useRuntimeAvailability() {
   const request = useRef<RuntimeCheck>(undefined);
   const mounted = useRef(false);
   const check = useCallback(() => {
+    if (!capabilities.remoteExecution)
+      return Promise.resolve<RuntimeDecision>({
+        state: "unavailable",
+        status: {
+          available: false,
+          reason:
+            "Execução remota indisponível no ambiente público. O rascunho fica neste navegador.",
+        },
+      });
     const previous = request.current;
     if (
       previous &&
@@ -67,7 +77,7 @@ export function useRuntimeAvailability() {
   }, []);
   useEffect(() => {
     mounted.current = true;
-    void check();
+    if (capabilities.remoteExecution) void check();
     return () => {
       mounted.current = false;
       request.current?.controller.abort();

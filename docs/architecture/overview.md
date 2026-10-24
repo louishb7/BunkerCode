@@ -1,8 +1,14 @@
 # Arquitetura atual do BunkerCode
 
-Data: 2026-10-21. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. O Refinamento 01 adiciona atividade local, compilação, execução isolada e submissão não avaliada, com módulos específicos; a infraestrutura aposentada no MVP 02 permanece removida.
+Data: 2026-10-22. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. O Refinamento 01 adiciona atividade local, compilação, execução isolada e submissão não avaliada, com módulos específicos; a infraestrutura aposentada no MVP 02 permanece removida.
 
 BunkerCode é uma plataforma pessoal e aberta para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
+
+## Perfis operacionais
+
+A Estabilização 05 separa `authoring` e `public` por configuração explícita capturada no bootstrap, independente de `NODE_ENV` e dos dados HTTP. `pnpm dev` preserva a autoria local. O backend público registra somente leitura: controllers de autoria e prática/runner não são importados. Uma defesa central nega mutações editoriais e de execução mesmo com headers locais forjados. Configuração ausente/inválida encerra o processo antes de ouvir HTTP.
+
+`config/publication.json` seleciona cursos inteiros e começa vazio. `pnpm publication:prepare <novo-destino>` valida e copia apenas manifestos, lições declaradas e exercícios para snapshot imutável; o processo público exige esse diretório explícito, sem permissões de escrita e sem arquivos extras ou symlinks. A seleção congelada controla listagem, acesso direto e exercício. O frontend público em `dist-public` exclui Studio/Tiptap, rotas de edição e ações remotas; conserva leitura, rascunhos e Táticas locais. O catálogo público usa todos os cursos autorizados pela API, sem a lista visual privada. Não há autenticação nem deploy. A hospedagem futura deve isolar usuário, filesystem e assets conforme o [guia de publicação](../publication.md).
 
 ## Estrutura
 

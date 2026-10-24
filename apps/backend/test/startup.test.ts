@@ -42,6 +42,7 @@ test(
       // Deliberately do not inherit NODE_PATH, NODE_OPTIONS or package-manager settings.
       env: {
         PATH: process.env.PATH,
+        BUNKERCODE_PROFILE: "authoring",
         PORT: String(port),
         BUNKERCODE_CONTENT_DIR: content,
         BUNKERCODE_STUDIO_ORIGIN: origin,

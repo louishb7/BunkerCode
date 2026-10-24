@@ -19,9 +19,13 @@ const LessonPage = lazy(() =>
     default: module.LessonPage,
   })),
 );
-const StudioPage = lazy(() =>
-  import("./courses/Studio").then((module) => ({ default: module.StudioPage })),
-);
+const StudioPage = __BUNKERCODE_AUTHORING__
+  ? lazy(() =>
+      import("./courses/Studio").then((module) => ({
+        default: module.StudioPage,
+      })),
+    )
+  : undefined;
 const TacticsLab = lazy(() => import("./tactics/TacticsLab"));
 
 class RouteBoundary extends Component<
@@ -57,10 +61,12 @@ function AppRoutes() {
           />
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
-          <Route
-            path="/courses/:id/lessons/:slug/edit"
-            element={<StudioPage />}
-          />
+          {StudioPage && (
+            <Route
+              path="/courses/:id/lessons/:slug/edit"
+              element={<StudioPage />}
+            />
+          )}
           <Route
             path="*"
             element={

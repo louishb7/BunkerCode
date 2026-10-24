@@ -9,7 +9,12 @@
     "test": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/tactics-core test && pnpm --filter @bunkercode/backend test && node --test --test-isolation=none scripts/*.test.mjs && pnpm --filter @bunkercode/backend exec tsx --test ../frontend/e2e/visual-markdown.test.ts ../frontend/e2e/content-parity.test.ts",
     "build": "pnpm -r --if-present build",
     "test:browser": "pnpm build && pnpm --filter @bunkercode/frontend test:browser",
-    "lesson:new": "pnpm --filter @bunkercode/content build && node scripts/new-lesson.mjs"
+    "lesson:new": "pnpm --filter @bunkercode/content build && node scripts/new-lesson.mjs",
+    "build:public": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/backend build && pnpm --filter @bunkercode/frontend build:public",
+    "publication:prepare": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/backend build && node scripts/prepare-publication.mjs",
+    "start:public": "pnpm --filter @bunkercode/backend start:public",
+    "preview:public": "pnpm --filter @bunkercode/frontend preview:public",
+    "test:browser:public": "pnpm build:public && pnpm --filter @bunkercode/frontend test:browser:public"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

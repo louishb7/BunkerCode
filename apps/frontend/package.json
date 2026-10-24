@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "dev": "BUNKERCODE_PROFILE=authoring vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json --noEmit && BUNKERCODE_PROFILE=authoring vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "build:public": "tsc -p tsconfig.json --noEmit && BUNKERCODE_PROFILE=public vite build",
+    "preview:authoring": "BUNKERCODE_PROFILE=authoring vite preview --host 127.0.0.1",
+    "preview:public": "BUNKERCODE_PROFILE=public vite preview --host 127.0.0.1",
+    "test:browser:public": "playwright test -c playwright.public.config.ts"
   },
   "dependencies": {
     "@bunkercode/content": "workspace:*",
