@@ -162,8 +162,18 @@ test(
       return response;
     };
     try {
+      const local = {
+        host: new URL(url).host,
+        origin: "http://127.0.0.1:5173",
+        "sec-fetch-site": "same-origin",
+        "x-bunkercode-client": "local",
+        "x-bunkercode-profile": "authoring",
+        "x-forwarded-host": "localhost",
+        "content-type": "application/json",
+      };
       const list = await observedFetch(url + "/content/courses");
       assert.equal(list.status, 200);
+      assert.equal(list.headers.get("cache-control"), "no-store");
       assert.deepEqual(
         ((await list.json()) as { id: string }[]).map((c) => c.id),
         ["open"],
@@ -181,6 +191,7 @@ test(
         "/content/courses/private",
         "/content/courses/private/lessons/first",
         "/content/courses/private/lessons/first/exercise",
+        "/content/courses/private?profile=authoring",
         "/content/courses/open/internal-notes.txt",
         "/publication.json",
         "/.env",
@@ -188,19 +199,18 @@ test(
         "/learning/activities",
         "/content/courses/open/lessons/first/markdown",
       ]) {
-        const response = await observedFetch(url + path);
-        assert.equal(response.status, 404, path);
-        assert.doesNotMatch(await response.text(), /CONFIDENTIAL/);
+        for (const headers of [{}, local]) {
+          const response = await observedFetch(url + path, { headers });
+          assert.equal(response.status, 404, path);
+          assert.doesNotMatch(await response.text(), /CONFIDENTIAL/);
+        }
+        assert.equal(
+          (await observedFetch(url + path, { method: "HEAD", headers: local }))
+            .status,
+          404,
+          `HEAD ${path}`,
+        );
       }
-      const local = {
-        host: new URL(url).host,
-        origin: "http://127.0.0.1:5173",
-        "sec-fetch-site": "same-origin",
-        "x-bunkercode-client": "local",
-        "x-bunkercode-profile": "authoring",
-        "x-forwarded-host": "localhost",
-        "content-type": "application/json",
-      };
       for (const [method, path] of [
         ["POST", "/content/courses/open/lessons"],
         ["PUT", "/content/courses/open/lessons/first/markdown"],

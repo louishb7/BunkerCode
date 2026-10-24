@@ -6,6 +6,30 @@ import { join } from "node:path";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 
+test("published course opens its reader and previous/next navigation survives reload", async ({
+  page,
+}) => {
+  await page.goto("/courses/typescript");
+  await expect(
+    page.getByRole("heading", { name: "TypeScript", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: /Valores e tipos/ }).click();
+  await expect(page).toHaveURL(lesson);
+  await expect(
+    page.getByRole("heading", { name: "Valores e tipos", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Union types", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("link", { name: "Lição anterior", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Valores e tipos", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('a[href$="/edit"]')).toHaveCount(0);
+});
+
 test("public home and catalog include only explicitly selected fixture courses", async ({
   page,
 }, info) => {
