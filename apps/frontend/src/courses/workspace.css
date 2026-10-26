@@ -4,6 +4,10 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
 }
+.learning-shell > .site-header {
+  position: relative;
+  z-index: 10;
+}
 .learning-shell .site-header-content {
   max-width: none;
   min-height: 56px;
@@ -36,7 +40,7 @@
   min-height: 0;
   display: grid;
   gap: 0;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
 }
 .study-explanation {
   position: relative;
@@ -47,25 +51,13 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
-.study-explanation > .prose {
-  margin-inline: auto;
-}
-.study-explanation > .lesson-heading,
-.study-explanation > .inline-exercise {
-  max-width: 75ch;
+.study-explanation > * {
+  width: 100%;
+  max-width: calc(var(--prose-size, 17px) * 43);
   margin-inline: auto;
 }
 .lesson-heading .eyebrow {
   margin-top: 0;
-}
-.study-outline {
-  min-width: 0;
-  min-height: 0;
-  max-height: 22dvh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 12px 24px;
-  background: var(--color-surface);
 }
 .study-divider {
   display: none;
@@ -233,65 +225,66 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .workspace-navigation {
-  min-height: 46px;
-  display: flex;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-width: 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 .footer-course {
   display: flex;
+  justify-self: start;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  max-width: 25%;
-  min-height: 36px;
+  min-height: 44px;
   text-decoration: none;
   color: var(--text-muted);
+  border-radius: 4px;
+  padding: 4px 8px;
 }
 .footer-course svg {
   flex-shrink: 0;
-}
-.footer-course span,
-.footer-lesson {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.footer-lesson {
-  color: var(--text-muted);
-  min-width: 0;
 }
 .workspace-navigation .lesson-index-trigger {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 4px 8px;
-  border: 0;
-  background: transparent;
-  border-radius: 3px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: 6px;
 }
 .footer-neighbors {
   display: flex;
+  justify-self: end;
+  align-items: center;
   gap: 4px;
-  margin-left: auto;
-  flex-shrink: 0;
+}
+.footer-position {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .footer-neighbors > a,
 .footer-neighbors > button {
   display: grid;
   place-items: center;
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 4px;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-surface);
 }
-.footer-neighbors > a:hover {
+.footer-neighbors > a:hover,
+.footer-course:hover {
   background: var(--color-raised);
+  color: var(--accent);
 }
 .learning-shell :is(button, a, [role="separator"]):focus-visible {
   outline-offset: -2px;
@@ -329,10 +322,6 @@
   .study-divider:focus-visible {
     background: var(--accent);
   }
-  .study-outline {
-    max-height: none;
-    padding-top: 24px;
-  }
 }
 @media (max-width: 999px) {
   .study-explanation {
@@ -369,14 +358,18 @@
     padding-inline: 8px;
   }
   .workspace-navigation {
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
   }
   .footer-course {
-    max-width: 30%;
     gap: 5px;
+    padding-inline: 4px;
   }
-  .footer-lesson {
-    flex: 1;
+  .workspace-navigation .lesson-index-trigger {
+    padding-inline: 8px;
+  }
+  .footer-neighbors {
+    gap: 2px;
   }
   .learning-shell .site-header-content {
     padding-inline: 16px;

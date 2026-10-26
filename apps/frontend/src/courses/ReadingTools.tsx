@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Type } from "lucide-react";
+import { createPortal } from "react-dom";
 function preference(key: string, fallback: number, min: number, max: number) {
   try {
     const raw = localStorage.getItem(key);
@@ -17,7 +18,17 @@ function preference(key: string, fallback: number, min: number, max: number) {
     return fallback;
   }
 }
-export function ReadingArticle({ children }: { children: ReactNode }) {
+export function ReadingArticle({
+  children,
+  tools,
+}: {
+  children: ReactNode;
+  tools?: ReactNode;
+}) {
+  const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setToolbar(document.getElementById("reading-tools"));
+  }, []);
   const [size, setSize] = useState(() =>
     preference("bunkercode:reading-size", 17, 16, 21),
   );
@@ -68,51 +79,58 @@ export function ReadingArticle({ children }: { children: ReactNode }) {
       className={`study-explanation reading-tone-${tone}`}
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
-      <div className="reading-settings" ref={settings}>
-        <button
-          ref={trigger}
-          type="button"
-          aria-label="Aparência da leitura"
-          title="Aparência da leitura"
-          aria-expanded={open}
-          aria-controls="reading-appearance"
-          onClick={() => setOpen(!open)}
-        >
-          <Type size={21} aria-hidden="true" />
-        </button>
-        {open && (
-          <div
-            id="reading-appearance"
-            role="group"
-            aria-label="Preferências de leitura"
-          >
-            <label>
-              Tamanho do texto
-              <input
-                type="range"
-                min="16"
-                max="21"
-                value={size}
-                onChange={(e) => save(Number(e.target.value), tone)}
-              />
-            </label>
-            <label>
-              Tonalidade
-              <select
-                aria-label="Tonalidade"
-                value={tone}
-                onChange={(e) => save(size, Number(e.target.value))}
+      {toolbar &&
+        createPortal(
+          <>
+            {tools}
+            <div className="reading-settings" ref={settings}>
+              <button
+                ref={trigger}
+                type="button"
+                aria-label="Aparência da leitura"
+                title="Aparência da leitura"
+                aria-expanded={open}
+                aria-controls="reading-appearance"
+                onClick={() => setOpen(!open)}
               >
-                <option value="0">Padrão BunkerCode</option>
-                <option value="1">Azul profundo</option>
-                <option value="2">Alto contraste</option>
-              </select>
-            </label>
-            <button onClick={() => save(17, 0)}>Restaurar padrões</button>
-            {error && <p role="status">{error}</p>}
-          </div>
+                <Type size={21} aria-hidden="true" />
+              </button>
+              {open && (
+                <div
+                  id="reading-appearance"
+                  role="group"
+                  aria-label="Preferências de leitura"
+                >
+                  <label>
+                    Tamanho do texto
+                    <input
+                      type="range"
+                      min="16"
+                      max="21"
+                      value={size}
+                      onChange={(e) => save(Number(e.target.value), tone)}
+                    />
+                  </label>
+                  <label>
+                    Tonalidade
+                    <select
+                      aria-label="Tonalidade"
+                      value={tone}
+                      onChange={(e) => save(size, Number(e.target.value))}
+                    >
+                      <option value="0">Padrão BunkerCode</option>
+                      <option value="1">Azul profundo</option>
+                      <option value="2">Alto contraste</option>
+                    </select>
+                  </label>
+                  <button onClick={() => save(17, 0)}>Restaurar padrões</button>
+                  {error && <p role="status">{error}</p>}
+                </div>
+              )}
+            </div>
+          </>,
+          toolbar,
         )}
-      </div>
       {children}
     </article>
   );
@@ -128,10 +146,8 @@ export function StudySplit({
   practice?: boolean;
   mobileView?: "reading" | "code";
 }) {
-  const key = practice
-    ? "bunkercode:practice-width"
-    : "bunkercode:reading-width";
-  const initial = practice ? 46 : 74;
+  const key = "bunkercode:practice-width";
+  const initial = 46;
   const container = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
   const [available, setAvailable] = useState(0);
@@ -154,12 +170,8 @@ export function StudySplit({
     return () => observer.disconnect();
   }, []);
   // Both fractional tracks share exactly the space left after the gutter and handle.
-  const min = available
-    ? Math.min(50, ((practice ? 360 : 420) / available) * 100)
-    : 0;
-  const max = available
-    ? 100 - Math.min(50, ((practice ? 360 : 180) / available) * 100)
-    : 100;
+  const min = available ? Math.min(50, (360 / available) * 100) : 0;
+  const max = available ? 100 - Math.min(50, (360 / available) * 100) : 100;
   const effective = Math.max(min, Math.min(max, width));
   function update(value: number) {
     const next = Math.max(min, Math.min(max, value));
@@ -188,11 +200,7 @@ export function StudySplit({
         <>
           <div
             role="separator"
-            aria-label={
-              practice
-                ? "Largura do artigo e editor"
-                : "Largura do artigo e sumário"
-            }
+            aria-label="Largura do artigo e editor"
             aria-orientation="vertical"
             aria-valuemin={Math.round(min)}
             aria-valuemax={Math.round(max)}
@@ -251,54 +259,10 @@ export function StudySplit({
               drag.current = null;
             }}
           />
-          <div className={practice ? "study-code" : "study-outline"}>
-            {right}
-          </div>
+          <div className="study-code">{right}</div>
         </>
       )}
       {error && <p role="status">{error}</p>}
     </div>
-  );
-}
-export function outlineHeadings(source: string) {
-  let fence: { marker: string; size: number } | undefined;
-  const headings: { label: string; line: number }[] = [];
-  source.split("\n").forEach((line, index) => {
-    const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-    if (match) {
-      if (!fence) fence = { marker: match[1]![0]!, size: match[1]!.length };
-      else if (
-        match[1]![0] === fence.marker &&
-        match[1]!.length >= fence.size &&
-        !line.slice(match[0].length).trim()
-      )
-        fence = undefined;
-      return;
-    }
-    if (!fence && /^#{2,3} /.test(line))
-      headings.push({
-        label: line.replace(/^#+\s+/, "").replace(/[*`_]/g, ""),
-        line: index + 1,
-      });
-  });
-  return headings;
-}
-export function LessonOutline({
-  headings,
-}: {
-  headings: ReturnType<typeof outlineHeadings>;
-}) {
-  if (!headings.length) return null;
-  return (
-    <details open className="lesson-outline">
-      <summary>Nesta lição</summary>
-      <nav aria-label="Sumário da lição">
-        {headings.map((h) => (
-          <a key={h.line} href={`#section-line-${h.line}`}>
-            {h.label}
-          </a>
-        ))}
-      </nav>
-    </details>
   );
 }

@@ -189,16 +189,17 @@ for (const width of [390, 1280, 1440, 1920])
     await expect(page.locator(".study-explanation")).toHaveClass(
       /reading-tone-2/,
     );
-    const separator = page.getByRole("separator");
-    if (width >= 1000) {
-      await separator.focus();
-      await page.keyboard.press("ArrowLeft");
-      await expect(separator).toHaveAttribute("aria-valuenow", "72");
-      await page.reload();
-      await expect(separator).toHaveAttribute("aria-valuenow", "72");
-      await separator.dblclick();
-      await expect(separator).toHaveAttribute("aria-valuenow", "74");
-    } else await expect(separator).not.toBeVisible();
+    await expect(page.getByRole("separator")).toHaveCount(0);
+    await expect(page.locator(".study-explanation > .prose")).toHaveCSS(
+      "font-size",
+      "19px",
+    );
+    const heading = (await page.locator(".lesson-heading").boundingBox())!;
+    const prose = (await page
+      .locator(".study-explanation > .prose")
+      .boundingBox())!;
+    expect(heading.x).toBeCloseTo(prose.x, 1);
+    expect(heading.width).toBeCloseTo(prose.width, 1);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -374,14 +375,14 @@ test("multiple quizzes retain independent answers, retry and an inline exercise 
   const second = page.getByRole("group", { name: "segundo", exact: true });
   await first.getByRole("radio", { name: "Não", exact: true }).check();
   await first.getByRole("button", { name: "Verificar resposta" }).click();
-  await expect(first.getByRole("status")).toHaveText("Reveja primeiro");
+  await expect(first.getByRole("status")).toContainText("Reveja primeiro");
   await first.getByRole("button", { name: "Tentar novamente" }).click();
   await first.getByRole("radio", { name: "Sim", exact: true }).check();
   await first.getByRole("button", { name: "Verificar resposta" }).click();
   await second.getByRole("radio", { name: "Sim", exact: true }).check();
   await second.getByRole("button", { name: "Verificar resposta" }).click();
-  await expect(first.getByRole("status")).toHaveText("Correto primeiro");
-  await expect(second.getByRole("status")).toHaveText("Correto segundo");
+  await expect(first.getByRole("status")).toContainText("Correto primeiro");
+  await expect(second.getByRole("status")).toContainText("Correto segundo");
   await expect(
     second.getByRole("button", { name: "Tentar novamente" }),
   ).toHaveCount(0);
@@ -465,9 +466,13 @@ test("late exercise loading initializes the practice split with its own persiste
   );
   try {
     await page.goto(url);
-    await expect(
-      page.getByRole("separator", { name: "Largura do artigo e sumário" }),
-    ).toHaveAttribute("aria-valuenow", "74");
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Autoria visual",
+    );
+    await expect(page.locator(".study-divider, .study-outline")).toHaveCount(0);
+    await expect(page.locator(".study-explanation h2[id]")).toHaveText(
+      "Continuação",
+    );
     release();
     await expect(
       page.getByRole("textbox", { name: "Código da solução", exact: true }),
@@ -537,7 +542,7 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
   const interaction = page.locator(".inline-quiz");
   await interaction.getByRole("radio", { name: "Guess", exact: true }).check();
   await interaction.getByRole("button", { name: "Verificar resposta" }).click();
-  await expect(interaction.getByRole("status").locator("p")).toHaveCount(2);
+  await expect(interaction.locator(".quiz-feedback-text p")).toHaveCount(2);
   await expect(interaction.getByRole("status").locator("em")).toHaveText(
     "the evidence",
   );
@@ -546,8 +551,8 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
     .getByRole("radio", { name: "Investigate", exact: true })
     .check();
   await interaction.getByRole("button", { name: "Verificar resposta" }).click();
-  await expect(interaction.getByRole("status").locator("p")).toHaveCount(2);
-  await expect(interaction.getByRole("status").locator("strong")).toHaveText(
+  await expect(interaction.locator(".quiz-feedback-text p")).toHaveCount(2);
+  await expect(interaction.locator(".quiz-feedback-text strong")).toHaveText(
     "investigating",
   );
   await page.reload();

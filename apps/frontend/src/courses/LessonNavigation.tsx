@@ -1,9 +1,12 @@
-import { ArrowLeft, ArrowRight, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, CornerUpLeft } from "lucide-react";
 import { Link } from "react-router";
 import { LessonIndex } from "./LessonIndex";
 import { lessonPath, type Lesson } from "./api";
 
 export function LessonNavigation({ lesson }: { lesson: Lesson }) {
+  const position =
+    lesson.course.lessons.findIndex((entry) => entry.slug === lesson.slug) + 1;
+  const total = lesson.course.lessons.length;
   return (
     <footer className="learning-footer">
       <nav className="workspace-navigation" aria-label="Navegação entre lições">
@@ -13,14 +16,17 @@ export function LessonNavigation({ lesson }: { lesson: Lesson }) {
           to={"/courses/" + encodeURIComponent(lesson.course.id)}
           title={lesson.course.title}
         >
-          <BookOpen size={16} aria-hidden="true" />
-          <span>{lesson.course.title}</span>
+          <CornerUpLeft size={16} aria-hidden="true" />
+          <span>Curso</span>
         </Link>
-        <span className="footer-lesson" title={lesson.title}>
-          {lesson.title}
-        </span>
         <LessonIndex course={lesson.course} />
         <div className="footer-neighbors">
+          <span
+            className="footer-position"
+            aria-label={`Lição ${position} de ${total}`}
+          >
+            {String(position).padStart(2, "0")}/{String(total).padStart(2, "0")}
+          </span>
           {(
             [
               [-1, lesson.previous],

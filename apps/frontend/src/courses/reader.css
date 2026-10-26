@@ -84,13 +84,19 @@ html:has(.lesson-index[open]) {
   margin: 16px 0 var(--reading-heading-gap);
 }
 .edit-lesson-link {
-  display: inline-block;
-  font-size: 14px;
-  padding: 10px 14px;
-  border: 1px solid #66533e;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  color: var(--text-muted);
   border-radius: 6px;
   text-decoration: none;
 }
+.edit-lesson-link:hover {
+  color: var(--accent);
+  background: var(--color-raised);
+}
+
 .prose {
   font-size: 17px;
   line-height: 1.85;
@@ -262,10 +268,8 @@ html:has(.lesson-index[open]) {
 
 .study-explanation > .prose {
   font-size: var(--prose-size, 17px);
-  max-width: 75ch;
 }
 .reading-settings {
-  float: right;
   position: relative;
   z-index: 2;
   font-size: 14px;
@@ -295,25 +299,6 @@ html:has(.lesson-index[open]) {
   gap: 8px;
   margin-bottom: 14px;
 }
-.lesson-outline {
-  font-size: 14px;
-  color: #b3b5b4;
-}
-.lesson-outline summary {
-  cursor: pointer;
-  font-weight: 600;
-  padding: 10px 0;
-  color: var(--accent);
-}
-.lesson-outline nav {
-  display: grid;
-  gap: 14px;
-  padding: 14px 0;
-}
-.lesson-outline a {
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
 .inline-exercise {
   margin-top: 40px;
   border-left: 2px solid var(--accent);
@@ -321,41 +306,130 @@ html:has(.lesson-index[open]) {
 }
 .inline-quiz {
   min-width: 0;
-  margin: 28px 0;
-  padding: 18px 0;
+  margin: 36px 0;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+}
+.inline-quiz fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-top: 1px solid #4e4533;
 }
 .inline-quiz legend {
+  padding: 0;
   font-weight: 600;
-  padding: 0 8px 0 0;
+  line-height: 1.6;
+}
+.quiz-options {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
 }
 .quiz-option {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
-  padding: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
   cursor: pointer;
+  line-height: 1.65;
 }
 .quiz-option input {
-  accent-color: #e8bd68;
+  flex-shrink: 0;
+  margin: 0.4em 0 0;
+  accent-color: var(--accent);
+}
+.quiz-option > span {
+  flex: 1;
+  min-width: 0;
+}
+.quiz-option > svg {
+  flex-shrink: 0;
+  margin-top: 0.25em;
+}
+.quiz-option:has(input:checked):not([data-result]) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.quiz-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.quiz-option[data-result="correct"],
+.quiz-feedback[data-result="correct"] {
+  border-color: #7cb48b;
+  background: #7cb48b0d;
+}
+.quiz-option[data-result="incorrect"],
+.quiz-feedback[data-result="incorrect"] {
+  border-color: #dc9595;
+  background: #dc95950d;
+}
+[data-result="correct"] > svg,
+.quiz-feedback[data-result="correct"] .quiz-result {
+  color: #9dceaa;
+}
+[data-result="incorrect"] > svg,
+.quiz-feedback[data-result="incorrect"] .quiz-result {
+  color: #efaaaa;
 }
 .inline-quiz button {
-  margin: 12px 0 0;
+  margin: 20px 0 0;
   padding: 8px 16px;
   min-height: 44px;
-  border: 1px solid #66533e;
+  border: 1px solid var(--color-line);
   border-radius: 6px;
-  color: #e8bd68;
+  color: var(--accent);
+}
+.quiz-feedback {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid;
+  border-radius: 6px;
+}
+.prose .quiz-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.quiz-result svg {
+  flex-shrink: 0;
+}
+.quiz-feedback-text > p:last-child {
+  margin-bottom: 0;
 }
 .editorial-note {
-  margin: 24px 0;
-  padding: 16px 20px;
-  border-left: 2px solid #b68658;
-  background: #1c2023;
+  margin: 28px 0;
+  padding: 18px 20px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--color-raised) 65%, transparent);
 }
-.editorial-note p {
+.editorial-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.note-symbol {
+  flex-shrink: 0;
+  margin-top: 0.4em;
+  color: var(--accent);
+}
+.editorial-note-content {
+  min-width: 0;
+}
+.editorial-note-content > p {
   white-space: pre-wrap;
+}
+.editorial-note-content > p:first-child {
+  margin-top: 0;
+}
+.editorial-note-content > p:last-child {
   margin-bottom: 0;
 }
 .reading-settings > button:hover {
@@ -364,9 +438,6 @@ html:has(.lesson-index[open]) {
 .reading-settings > button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-.study-outline {
-  min-width: 0;
 }
 .site-header-content {
   width: 100%;
@@ -456,7 +527,6 @@ html:has(.lesson-index[open]) {
 }
 
 .header-home {
-  margin-left: auto;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -497,4 +567,18 @@ html:has(.lesson-index[open]) {
 .reading-tone-1 > .prose a,
 .reading-tone-2 > .prose a {
   color: #eac17b;
+}
+
+.header-reading-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.learning-shell .header-lesson-nav {
+  flex: 0 1 auto;
+}
+.lesson-heading .eyebrow {
+  text-transform: none;
+  letter-spacing: 0.6px;
 }

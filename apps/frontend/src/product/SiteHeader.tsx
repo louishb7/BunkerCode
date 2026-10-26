@@ -101,6 +101,9 @@ export function SiteHeader() {
             </>
           )}
         </nav>
+        {learning && (
+          <div id="reading-tools" className="header-reading-tools" />
+        )}
       </div>
     </header>
   );

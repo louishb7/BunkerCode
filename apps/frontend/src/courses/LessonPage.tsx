@@ -1,11 +1,7 @@
+import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
 import { validateEditorial } from "@bunkercode/content";
-import {
-  ReadingArticle,
-  StudySplit,
-  LessonOutline,
-  outlineHeadings,
-} from "./ReadingTools";
+import { ReadingArticle, StudySplit } from "./ReadingTools";
 import { recordActivity } from "../product/activity-store";
 import { memo, lazy, Suspense, useEffect, useState } from "react";
 import { parseExercise } from "../practice/exercise-api";
@@ -72,7 +68,13 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     };
   }, [id, slug]);
   const body = lessonBody(lesson.markdown, lesson.title);
-  const headings = outlineHeadings(body);
+  const lessonNumber =
+    lesson.course.lessons.findIndex((item) => item.slug === slug) + 1;
+  const moduleIndex =
+    lesson.course.modules?.findIndex(
+      (module) => module.id === lesson.moduleId,
+    ) ?? -1;
+  const module = lesson.course.modules?.[moduleIndex];
   let placedExercise = false;
   try {
     placedExercise = validateEditorial(body);
@@ -126,7 +128,20 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           practice={!!exercise}
           mobileView={mobileView}
           left={
-            <ReadingArticle>
+            <ReadingArticle
+              tools={
+                capabilities.authoring && (
+                  <Link
+                    className="edit-lesson-link"
+                    aria-label="Editar lição"
+                    title="Editar lição"
+                    to={lessonPath(id, slug) + "/edit"}
+                  >
+                    <FilePenLine size={19} aria-hidden="true" />
+                  </Link>
+                )
+              }
+            >
               {activityError && (
                 <p role="status" className="text-xs text-subtle">
                   Acesso não registrado: {activityError}
@@ -134,20 +149,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
               )}
               <header className="lesson-heading">
                 <p className="eyebrow">
-                  {lesson.course.title} · lição{" "}
-                  {lesson.course.lessons.findIndex(
-                    (item) => item.slug === slug,
-                  ) + 1}
+                  {module &&
+                    `Módulo ${String(module.number ?? moduleIndex + 1).padStart(2, "0")} · `}
+                  Lição {String(lessonNumber).padStart(2, "0")}
                 </p>
                 <h1>{lesson.title}</h1>
-                {capabilities.authoring && (
-                  <Link
-                    className="edit-lesson-link"
-                    to={lessonPath(id, slug) + "/edit"}
-                  >
-                    Editar lição
-                  </Link>
-                )}
               </header>
               <div className="prose">
                 {body.trim() ? (
@@ -194,8 +200,6 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                   />
                 </Suspense>
               </div>
-            ) : headings.length > 0 ? (
-              <LessonOutline headings={headings} />
             ) : undefined
           }
         />

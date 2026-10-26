@@ -107,7 +107,8 @@ for (const [width, height] of [
     expect(
       (await page.locator(".editor-actions").boundingBox())!.height,
     ).toBeLessThanOrEqual(38);
-    expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(48);
+    expect((await footer.boundingBox())!.height).toBeGreaterThanOrEqual(56);
+    expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(60);
     if (width! >= 1000) {
       const article = (await page.locator(".study-explanation").boundingBox())!;
       const editor = (await page.locator(".study-code").boundingBox())!;
@@ -268,10 +269,25 @@ test("divider moves both ways, limits expansion and reclamps after viewport resi
   expect((await results.boundingBox())!.height).toBeLessThan(121);
   await page.screenshot({ path: info.outputPath("editor-expanded.png") });
   await page.setViewportSize({ width: 1280, height: 400 });
+  // At 400px high, the larger footer reduces the space shared by code/results.
+  // Both panes must split the actual remaining space, without hiding controls.
+  const shortHalf = await page.locator(".workspace-panels").evaluate((node) => {
+    const tabs = node.querySelector(".editor-toolbar")!;
+    const actions = node.querySelector(".editor-actions")!;
+    return (
+      (node.getBoundingClientRect().height -
+        tabs.getBoundingClientRect().height -
+        actions.getBoundingClientRect().height) /
+      2
+    );
+  });
+  expect(shortHalf).toBeGreaterThan(100);
   await expect
-    .poll(async () => (await results.boundingBox())!.height)
-    .toBeGreaterThanOrEqual(109);
-  expect((await editor.boundingBox())!.height).toBeGreaterThanOrEqual(109);
+    .poll(async () =>
+      Math.abs((await results.boundingBox())!.height - shortHalf),
+    )
+    .toBeLessThan(1);
+  expect((await editor.boundingBox())!.height).toBeCloseTo(shortHalf, 0);
   await expect(
     page.getByRole("button", { name: "Run", exact: true }),
   ).toBeInViewport();

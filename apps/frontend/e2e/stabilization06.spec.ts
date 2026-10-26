@@ -134,7 +134,7 @@ test("360px routes expose their actual overflow geometry", async ({
   console.log("MOBILE_GEOMETRY", JSON.stringify(observations));
 });
 
-test("reader measure follows the approved 75 character contract across fonts, panes and resize", async ({
+test("reader measure scales with reading size across fonts, panes and resize", async ({
   page,
 }, info) => {
   const measurements = [];
@@ -160,14 +160,11 @@ test("reader measure follows the approved 75 character contract across fonts, pa
           .locator(".study-explanation > .prose")
           .evaluate((node) => {
             const style = getComputedStyle(node);
-            const canvas = document.createElement("canvas");
-            const context = canvas.getContext("2d")!;
-            context.font = `${style.fontSize} ${style.fontFamily}`;
             const parent = node.parentElement!;
             const padding = getComputedStyle(parent);
             return {
               width: node.getBoundingClientRect().width,
-              limit: context.measureText("0").width * 75,
+              limit: parseFloat(style.fontSize) * 43,
               font: style.font,
               available:
                 parent.clientWidth -

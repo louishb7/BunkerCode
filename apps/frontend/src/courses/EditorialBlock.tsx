@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { CircleCheck, CircleX, MessageSquareText } from "lucide-react";
 import { parseEditorial, type Quiz, type Note } from "@bunkercode/content";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
@@ -21,61 +22,98 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
   const name = useId();
   const [choice, setChoice] = useState("");
   const [answer, setAnswer] = useState("");
+  const correct = answer === quiz.correct;
+  const ResultIcon = correct ? CircleCheck : CircleX;
   return (
-    <fieldset className="inline-quiz">
-      <legend>{quiz.question}</legend>
-      {quiz.options.map((option) => (
-        <label key={option.id} className="quiz-option">
-          <input
-            type="radio"
-            name={name}
-            value={option.id}
-            checked={choice === option.id}
-            disabled={!!answer}
-            onChange={() => setChoice(option.id)}
-          />
-          <span>{option.text}</span>
-        </label>
-      ))}
-      {!answer ? (
-        <button disabled={!choice} onClick={() => setAnswer(choice)}>
-          Verificar resposta
-        </button>
-      ) : (
-        <>
-          <div role="status">
-            <EditorialText
-              text={
-                answer === quiz.correct
-                  ? quiz.feedbackCorrect
-                  : quiz.feedbackIncorrect
+    <section className="inline-quiz" aria-labelledby={`${name}-question`}>
+      <fieldset>
+        <legend id={`${name}-question`}>{quiz.question}</legend>
+        <div className="quiz-options">
+          {quiz.options.map((option) => (
+            <label
+              key={option.id}
+              className="quiz-option"
+              data-result={
+                answer === option.id
+                  ? correct
+                    ? "correct"
+                    : "incorrect"
+                  : undefined
               }
-            />
-          </div>
-          {quiz.retry && (
-            <button
-              onClick={() => {
-                setAnswer("");
-                setChoice("");
-              }}
             >
-              Tentar novamente
-            </button>
+              <input
+                type="radio"
+                name={name}
+                value={option.id}
+                checked={choice === option.id}
+                disabled={!!answer}
+                onChange={() => setChoice(option.id)}
+              />
+              <span>{option.text}</span>
+              {answer === option.id && (
+                <ResultIcon size={19} aria-hidden="true" />
+              )}
+            </label>
+          ))}
+        </div>
+        {!answer && (
+          <button
+            type="button"
+            disabled={!choice}
+            onClick={() => setAnswer(choice)}
+          >
+            Verificar resposta
+          </button>
+        )}
+        <div role="status" aria-atomic="true">
+          {answer && (
+            <div
+              className="quiz-feedback"
+              data-result={correct ? "correct" : "incorrect"}
+            >
+              <p className="quiz-result">
+                <ResultIcon size={20} aria-hidden="true" />
+                <strong>
+                  {correct ? "Resposta correta" : "Resposta incorreta"}
+                </strong>
+              </p>
+              <div className="quiz-feedback-text">
+                <EditorialText
+                  text={correct ? quiz.feedbackCorrect : quiz.feedbackIncorrect}
+                />
+              </div>
+            </div>
           )}
-        </>
-      )}
-    </fieldset>
+        </div>
+        {answer && quiz.retry && (
+          <button
+            type="button"
+            onClick={() => {
+              setAnswer("");
+              setChoice("");
+            }}
+          >
+            Tentar novamente
+          </button>
+        )}
+      </fieldset>
+    </section>
   );
 }
 export function NoteBlock({ note }: { note: Note }) {
-  const labels = { info: "Informação", tip: "Dica", warning: "Atenção" };
   return (
-    <aside className={`editorial-note note-${note.kind}`}>
-      <strong>{labels[note.kind]}</strong>
-      <EditorialText text={note.text} />
+    <aside
+      className={`editorial-note editorial-comment note-${note.kind}`}
+      aria-label="Nota"
+    >
+      <MessageSquareText className="note-symbol" size={18} aria-hidden="true" />
+      <div className="editorial-note-content">
+        <EditorialText text={note.text} />
+      </div>
     </aside>
   );
 }
+
 export function EditorialBlock({
   language,
   source,

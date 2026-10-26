@@ -54,12 +54,10 @@ for (const width of [390, 1280, 1440, 1920]) {
         /reading-tone-2/,
       );
       const divider = page.getByRole("separator", {
-        name: programming
-          ? "Largura do artigo e editor"
-          : "Largura do artigo e sumário",
+        name: "Largura do artigo e editor",
         exact: true,
       });
-      if (width >= 1000) {
+      if (programming && width >= 1000) {
         await expect(divider).toBeVisible();
         const panel = page.locator(".study-explanation");
         const initial = await panel.boundingBox();
@@ -82,20 +80,26 @@ for (const width of [390, 1280, 1440, 1920]) {
         await expect(divider).toHaveAttribute("aria-valuenow", saved!);
         await divider.focus();
         await page.keyboard.press("End");
-        const right = await page
-          .locator(programming ? ".study-code" : ".study-outline")
-          .boundingBox();
-        expect(right!.width).toBeGreaterThanOrEqual(programming ? 359 : 179);
+        const right = await page.locator(".study-code").boundingBox();
+        expect(right!.width).toBeGreaterThanOrEqual(359);
         await page.keyboard.press("Home");
-        expect((await panel.boundingBox())!.width).toBeGreaterThanOrEqual(
-          programming ? 359 : 419,
-        );
+        expect((await panel.boundingBox())!.width).toBeGreaterThanOrEqual(359);
         await page.keyboard.press("Enter");
-        await expect(divider).toHaveAttribute(
-          "aria-valuenow",
-          programming ? "46" : "74",
-        );
-      } else await expect(divider).not.toBeVisible();
+        await expect(divider).toHaveAttribute("aria-valuenow", "46");
+      } else {
+        await expect(divider).not.toBeVisible();
+        if (!programming) {
+          await expect(
+            page.locator(".study-outline, .study-divider"),
+          ).toHaveCount(0);
+          const article = await page
+            .locator(".study-explanation")
+            .boundingBox();
+          const split = await page.locator(".study-split").boundingBox();
+          // Scrollbars consume clientWidth inside the full-width panel.
+          expect(article!.width).toBeCloseTo(split!.width, 1);
+        }
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

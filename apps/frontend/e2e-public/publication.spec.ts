@@ -82,10 +82,10 @@ test("public home and catalog include only explicitly selected fixture courses",
   await page.screenshot({ path: info.outputPath("home-publica.png") });
   await page.goto("/courses");
   const courses = page.locator('a[href^="/courses/"]');
-  await expect(courses).toHaveCount(3);
+  await expect(courses).toHaveCount(4);
   await expect(page.getByRole("link", { name: /PostgreSQL/ })).toBeVisible();
   await page.reload();
-  await expect(courses).toHaveCount(3);
+  await expect(courses).toHaveCount(4);
   await page.screenshot({ path: info.outputPath("catalogo-publico.png") });
 });
 

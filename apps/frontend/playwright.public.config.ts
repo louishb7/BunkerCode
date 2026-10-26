@@ -19,7 +19,7 @@ export default defineConfig({
         BUNKERCODE_PROFILE: "public",
         // Test selection applies only to the supervisor's disposable copy.
         BUNKERCODE_BROWSER_PUBLIC_COURSES:
-          '["typescript","postgresql",{"id":"linux","lessons":["pipes"]}]',
+          '["typescript","postgresql",{"id":"linux","lessons":["pipes"]},"fundamentos-programacao-javascript"]',
       },
     },
     {
