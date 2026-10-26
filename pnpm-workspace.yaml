@@ -3,3 +3,7 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+# Security patches until upstream Express/NestJS update their transitive pins.
+overrides:
+  body-parser@2.3.0: 2.4.0
+  multer@2.4.0: 2.5.0

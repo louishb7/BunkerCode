@@ -13,6 +13,8 @@ import {
   publicationSelection,
   publicationInventory,
   selectedPublicationFiles,
+  publicationCourse,
+  publicationCourseId,
 } from "./publication";
 
 // Copies only declared public payloads, never entire course folders or static assets.
@@ -47,6 +49,19 @@ export function preparePublication(
       join(source, file),
       join(destination, file),
       constants.COPYFILE_EXCL,
+    );
+  }
+  // Only the generated snapshot manifest is projected; authoring stays untouched.
+  for (const selection of courses) {
+    if (typeof selection === "string") continue;
+    writeFileSync(
+      join(
+        destination,
+        "courses",
+        publicationCourseId(selection),
+        "course.json",
+      ),
+      JSON.stringify(publicationCourse(source, selection), null, 2) + "\n",
     );
   }
   writeFileSync(

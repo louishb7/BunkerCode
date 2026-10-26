@@ -7,30 +7,84 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { readManifestSource } from "@bunkercode/content/manifest";
-import { validSlug } from "@bunkercode/content";
+import { type Course, validSlug } from "@bunkercode/content";
 import { loadCourse, loadLesson } from "./content/courses";
 import { loadExercise } from "./content/exercise";
 
-export function publicationSelection(value: unknown): string[] {
+export type PublicationCourse = string | { id: string; lessons: string[] };
+
+export function publicationSelection(value: unknown): PublicationCourse[] {
+  const invalid = (): never => {
+    throw new Error(
+      "Publication selection requires unique courses and explicit nonempty lesson lists for partial courses",
+    );
+  };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
     Object.keys(value).length !== 1 ||
     !("courses" in value) ||
-    !Array.isArray(value.courses) ||
-    !value.courses.every(
-      (id: unknown) => typeof id === "string" && validSlug(id),
-    ) ||
-    new Set(value.courses).size !== value.courses.length
+    !Array.isArray(value.courses)
   )
-    throw new Error(
-      'Publication selection must be exactly { "courses": [unique valid course IDs] }',
-    );
-  return [...value.courses] as string[];
+    return invalid();
+  const courses: PublicationCourse[] = [];
+  for (const entry of value.courses as unknown[]) {
+    if (typeof entry === "string" && validSlug(entry)) courses.push(entry);
+    else {
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        Array.isArray(entry) ||
+        Object.keys(entry).length !== 2 ||
+        !("id" in entry) ||
+        typeof entry.id !== "string" ||
+        !validSlug(entry.id) ||
+        !("lessons" in entry) ||
+        !Array.isArray(entry.lessons) ||
+        entry.lessons.length === 0 ||
+        !entry.lessons.every(
+          (slug: unknown) => typeof slug === "string" && validSlug(slug),
+        ) ||
+        new Set(entry.lessons).size !== entry.lessons.length
+      )
+        return invalid();
+      courses.push({ id: entry.id, lessons: [...entry.lessons] as string[] });
+    }
+  }
+  if (new Set(courses.map(publicationCourseId)).size !== courses.length)
+    return invalid();
+  return courses;
 }
-export function readPublicationSelection(file: string): string[] {
+export function publicationCourseId(course: PublicationCourse): string {
+  return typeof course === "string" ? course : course.id;
+}
+export function readPublicationSelection(file: string): PublicationCourse[] {
   return publicationSelection(JSON.parse(readManifestSource(file).text));
+}
+
+// Projection is derived from the canonical manifest; never maintain a second editorial source.
+export function publicationCourse(
+  source: string,
+  selection: PublicationCourse,
+): Course {
+  const course = loadCourse(
+    publicationCourseId(selection),
+    join(source, "courses"),
+  );
+  if (typeof selection === "string") return course;
+  for (const slug of selection.lessons)
+    if (!course.lessons.some((lesson) => lesson.slug === slug))
+      throw new Error(`Unknown publication lesson: ${selection.id}/${slug}`);
+  const lessons = course.lessons.filter((lesson) =>
+    selection.lessons.includes(lesson.slug),
+  );
+  const projected = { ...course, lessons };
+  if (course.modules)
+    projected.modules = course.modules.filter((module) =>
+      lessons.some((lesson) => lesson.moduleId === module.id),
+    );
+  return projected;
 }
 
 export function publicationInventory(
@@ -73,12 +127,13 @@ export function publicationInventory(
 
 export function selectedPublicationFiles(
   source: string,
-  courses: readonly string[],
+  courses: readonly PublicationCourse[],
 ): string[] {
   const root = join(source, "courses");
   const files: string[] = [];
-  for (const id of courses) {
-    const course = loadCourse(id, root);
+  for (const selection of courses) {
+    const id = publicationCourseId(selection);
+    const course = publicationCourse(source, selection);
     files.push(`courses/${id}/course.json`);
     for (const lesson of course.lessons) {
       loadLesson(id, lesson.slug, root);
@@ -111,5 +166,15 @@ export function validatePublication(directory: string): string[] {
   );
   if (JSON.stringify(entries) !== JSON.stringify(expected))
     throw new Error("Publication contains missing or unselected files");
-  return courses;
+  for (const selection of courses) {
+    const id = publicationCourseId(selection);
+    if (
+      JSON.stringify(loadCourse(id, join(directory, "courses"))) !==
+      JSON.stringify(publicationCourse(directory, selection))
+    )
+      throw new Error(
+        "Publication manifest contains unselected lessons or modules",
+      );
+  }
+  return courses.map(publicationCourseId);
 }

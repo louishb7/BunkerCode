@@ -416,3 +416,131 @@ test("publication selection rejects broad, ambiguous or invalid values and never
     rmSync(root, { recursive: true });
   }
 });
+
+test("partial publication projects editorial order and modules and denies omitted lessons over real HTTP", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-partial-public-"));
+  const source = fixture(root);
+  const coursePath = join(source, "courses/open/course.json");
+  const course = {
+    id: "open",
+    title: "Open",
+    description: "Partial publication",
+    modules: [
+      { id: "intro", title: "Intro" },
+      { id: "drafts", title: "Drafts" },
+      { id: "end", title: "End" },
+    ],
+    lessons: [
+      { slug: "first", title: "First", moduleId: "intro" },
+      { slug: "draft", title: "CONFIDENTIAL TITLE", moduleId: "drafts" },
+      { slug: "last", title: "Last", moduleId: "end" },
+    ],
+  };
+  writeFileSync(coursePath, JSON.stringify(course));
+  for (const slug of ["draft", "last"]) {
+    const path = join(source, "courses/open/lessons", slug);
+    mkdirSync(path);
+    writeFileSync(join(path, "lesson.md"), `# ${slug}\n`);
+  }
+  const before = digest(source);
+  const snapshot = join(root, "public");
+  // Reverse selection order must never reorder the canonical curriculum.
+  preparePublication(
+    source,
+    { courses: [{ id: "open", lessons: ["last", "first"] }] },
+    snapshot,
+  );
+  const { child, url } = await start(snapshot);
+  try {
+    const published = (await (
+      await fetch(url + "/content/courses/open")
+    ).json()) as typeof course;
+    assert.deepEqual(
+      published.lessons.map((lesson) => lesson.slug),
+      ["first", "last"],
+    );
+    assert.deepEqual(
+      published.modules.map((module) => module.id),
+      ["intro", "end"],
+    );
+    assert.doesNotMatch(JSON.stringify(published), /CONFIDENTIAL|draft/);
+    const first = (await (
+      await fetch(url + "/content/courses/open/lessons/first")
+    ).json()) as { previous: unknown; next: { slug: string } };
+    const last = (await (
+      await fetch(url + "/content/courses/open/lessons/last")
+    ).json()) as { previous: { slug: string }; next: unknown };
+    assert.equal(first.previous, null);
+    assert.equal(first.next.slug, "last");
+    assert.equal(last.previous.slug, "first");
+    assert.equal(last.next, null);
+    for (const suffix of ["", "/exercise"])
+      for (const method of ["GET", "HEAD"])
+        assert.equal(
+          (
+            await fetch(url + "/content/courses/open/lessons/draft" + suffix, {
+              method,
+              headers: {
+                "x-bunkercode-profile": "authoring",
+                "x-bunkercode-client": "local",
+              },
+            })
+          ).status,
+          404,
+        );
+    assert.deepEqual(readdirSync(join(snapshot, "courses/open/lessons")), [
+      "first",
+      "last",
+    ]);
+    assert.deepEqual(JSON.parse(readFileSync(coursePath, "utf8")), course);
+    assert.equal(digest(source), before);
+  } finally {
+    await stop(child);
+    writable(root);
+    rmSync(root, { recursive: true });
+  }
+});
+
+test("partial selection fails closed for invalid lists, unknown lessons and expanded snapshot manifests", async () => {
+  for (const courses of [
+    [{ id: "open", lessons: [] }],
+    [{ id: "open", lessons: ["first", "first"] }],
+    [{ id: "open", lessons: ["../private"] }],
+    [{ id: "open", lessons: ["first"], all: true }],
+    ["open", { id: "open", lessons: ["first"] }],
+    [{ id: "open" }],
+  ])
+    assert.throws(() => publicationSelection({ courses }));
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-partial-invalid-"));
+  const source = fixture(root);
+  try {
+    assert.throws(
+      () =>
+        preparePublication(
+          source,
+          { courses: [{ id: "open", lessons: ["missing"] }] },
+          join(root, "missing"),
+        ),
+      /Unknown publication lesson/,
+    );
+    const snapshot = join(root, "public");
+    preparePublication(
+      source,
+      { courses: [{ id: "open", lessons: ["first"] }] },
+      snapshot,
+    );
+    // An expanded manifest with no extra payload must fail at bootstrap too.
+    const manifest = join(snapshot, "courses/open/course.json");
+    chmodSync(manifest, 0o600);
+    const course = JSON.parse(readFileSync(manifest, "utf8")) as {
+      lessons: { slug: string; title: string }[];
+    };
+    course.lessons.push({ slug: "hidden", title: "Hidden" });
+    writeFileSync(manifest, JSON.stringify(course));
+    chmodSync(manifest, 0o444);
+    await assert.rejects(start(snapshot), /unselected lessons/);
+  } finally {
+    writable(root);
+    rmSync(root, { recursive: true });
+  }
+});

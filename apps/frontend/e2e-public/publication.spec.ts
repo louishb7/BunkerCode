@@ -82,10 +82,10 @@ test("public home and catalog include only explicitly selected fixture courses",
   await page.screenshot({ path: info.outputPath("home-publica.png") });
   await page.goto("/courses");
   const courses = page.locator('a[href^="/courses/"]');
-  await expect(courses).toHaveCount(2);
+  await expect(courses).toHaveCount(3);
   await expect(page.getByRole("link", { name: /PostgreSQL/ })).toBeVisible();
   await page.reload();
-  await expect(courses).toHaveCount(2);
+  await expect(courses).toHaveCount(3);
   await page.screenshot({ path: info.outputPath("catalogo-publico.png") });
 });
 
@@ -290,4 +290,39 @@ test("public tactics remain browser-only", async ({ page }) => {
   await page.reload();
   await expect(page.locator("main")).toBeVisible();
   expect(privateCalls).toEqual([]);
+});
+
+test("partial fixture course exposes only the selected lesson through reader and direct HTTP", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/courses/linux");
+  await expect(
+    page.getByRole("link", { name: /Pipes e fluxo de texto/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Diretórios e caminhos/ }),
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: /Pipes e fluxo de texto/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Pipes e fluxo de texto", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Lição anterior", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Próxima lição", exact: true }),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Pipes e fluxo de texto", exact: true }),
+  ).toBeVisible();
+  for (const suffix of ["", "/exercise"])
+    expect(
+      (
+        await request.get("/api/content/courses/linux/lessons/paths" + suffix)
+      ).status(),
+    ).toBe(404);
+  await page.goto("/courses/linux/lessons/paths");
+  await expect(page.getByRole("alert")).toBeVisible();
 });

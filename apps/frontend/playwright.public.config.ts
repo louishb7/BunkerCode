@@ -18,7 +18,8 @@ export default defineConfig({
         NODE_PATH: "",
         BUNKERCODE_PROFILE: "public",
         // Test selection applies only to the supervisor's disposable copy.
-        BUNKERCODE_BROWSER_PUBLIC_COURSES: '["typescript","postgresql"]',
+        BUNKERCODE_BROWSER_PUBLIC_COURSES:
+          '["typescript","postgresql",{"id":"linux","lessons":["pipes"]}]',
       },
     },
     {

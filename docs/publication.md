@@ -18,7 +18,15 @@ A única seleção editorial para publicação é `config/publication.json`, ini
 { "courses": [] }
 ```
 
-Nenhum curso foi autorizado nesta tarefa. O proprietário deve preencher `courses` com IDs reais depois de revisar **todas as lições e exercícios** dos cursos escolhidos. A unidade de publicação é o curso inteiro, incluindo títulos, descrição, módulos, ordem, Markdown e exercícios declarados. Não há publicação independente de lições. IDs desconhecidos, repetidos, inválidos, curingas e campos extras são recusados. Uma seleção vazia produz catálogo vazio e nega qualquer ID direto.
+A seleção canônica continua vazia: nenhuma lição autoral foi identificada e autorizada na Estabilização 07. Não usar as lições demonstrativas como substitutas. Para publicar somente lições revisadas, o proprietário pode escolher explicitamente os slugs:
+
+```json
+{ "courses": [{ "id": "curso-autorizado", "lessons": ["licao-autorizada"] }] }
+```
+
+Os nomes acima são ilustrativos e não correspondem a conteúdo autorizado. Entradas string continuam significando autorização do **curso inteiro**, incluindo todas as lições e exercícios: use-as apenas após revisão integral. Objetos exigem `id` e uma lista `lessons` não vazia, sem duplicatas, curingas, paths ou slugs desconhecidos. A seleção vazia no topo continua sendo o padrão restritivo.
+
+O snapshot deriva seu manifesto da fonte canônica: mantém metadados do curso, filtra lições na ordem original (independente da ordem da seleção) e elimina módulos que ficaram sem lições. Títulos e descrições do curso e dos módulos mantidos também precisam de revisão editorial. Markdown e exercícios selecionados são copiados sem alteração; anterior/próxima e acesso direto usam somente o manifesto filtrado. O bootstrap recusa manifestos ampliados em desacordo com a seleção congelada. O Studio local continua lendo o manifesto integral; não há cópia editorial mantida manualmente. Uma seleção vazia produz catálogo vazio e nega qualquer ID direto.
 
 Gere um diretório novo, fora do checkout, cujo pai já exista:
 
@@ -74,10 +82,21 @@ O provedor ainda deve definir: TLS/domínio, proxy que encaminha `/api` à API l
 
 ## Validação
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` e `pnpm build:public` verificam os contratos e os dois builds. `pnpm test:browser:public` inicia backend público real, snapshot read-only descartável e preview público nas portas 3014/5186. Somente a fixture seleciona TypeScript e PostgreSQL; a seleção canônica permanece vazia. Verifica leitura direta/reload, acesso privado negado, headers forjados, inexistência de Studio e artefatos privados, persistência local, responsividade e Táticas. `pnpm test:browser` mantém a suíte completa privada nas portas 3012/5184, incluindo criar/editar/pré-visualizar/salvar/reabrir no Studio em fixture. Só o supervisor do navegador cria e limpa suas cópias temporárias; `--list` não cria conteúdo. Saídas de cada rodada usam UUID novo e são preservadas.
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` e `pnpm build:public` verificam os contratos e os dois builds. `pnpm test:browser:public` inicia backend público real, snapshot read-only descartável e preview público nas portas 3014/5186. Somente a fixture seleciona TypeScript e PostgreSQL completos e a lição `pipes` de Linux; a seleção canônica permanece vazia. Verifica leitura direta/reload, acesso privado negado, headers forjados, inexistência de Studio e artefatos privados, persistência local, responsividade e Táticas. `pnpm test:browser` mantém a suíte completa privada nas portas 3012/5184, incluindo criar/editar/pré-visualizar/salvar/reabrir no Studio em fixture. Só o supervisor do navegador cria e limpa suas cópias temporárias; `--list` não cria conteúdo. Saídas de cada rodada usam UUID novo e são preservadas.
 
 Os testes backend iniciam processos públicos reais, verificam ausência de módulos privados no cache de módulos, catálogo vazio, seleção e negativas de startup (perfil ausente/inválido, diretório ausente/gravável, manifesto inválido, UTF-8 inválido, symlink, arquivo extra). Leitura de conteúdo privado é negada também com GET/HEAD, headers locais forjados e query de perfil; o catálogo público mantém `Cache-Control: no-store`. Comparações SHA-256 demonstram que tentativas negadas não alteram snapshot nem fonte editorial.
 
 Os testes de scripts também iniciam o Vite real para comprovar que perfil ausente, vazio ou desconhecido falha antes de ouvir HTTP, mesmo com `NODE_ENV=production` e `VITE_BUNKERCODE_PROFILE=authoring`. O servidor de desenvolvimento recusa o perfil público; use o build público e seu preview. O E2E público percorre apresentação do curso, leitor, próxima/anterior e reload pelos links reais.
 
 O lançamento público deste ciclo não requer Docker porque não disponibiliza Run. Eventual exposição futura exigirá nova decisão de produto e segurança: testes reais de limites de CPU/memória/PIDs/saída/timeout, filesystem read-only, usuário sem privilégios, rede bloqueada, capabilities/seccomp/cgroup v2, ausência de mounts/segredos/socket, compilação confiável no backend, cancelamento, concorrência e abuso de recursos. Skips por Docker ausente não são aprovação desse isolamento, e a validação local atual não autoriza Run público.
+
+
+## Checklist de implantação da versão candidata
+
+- Preparação local não equivale a deploy. Identificar e revisar a lição autoral, seus metadados, referências e exercícios; preencher a seleção apenas por decisão do proprietário. Recriar snapshot exclusivo e repetir leitura real nas quatro resoluções antes do lançamento.
+- Executar serviço sem privilégios com `BUNKERCODE_PROFILE=public`, `BUNKERCODE_CONTENT_DIR` absoluto, `PORT` definido, snapshot montado read-only e acesso restrito ao runtime compilado. Não conceder socket Docker nem filesystem de autoria. `BUNKERCODE_RUNNER_ENABLED` não habilita runner público.
+- Supervisionar o processo, capturar stderr de falhas de bootstrap e testar restart/rollback. O backend ouve loopback; somente o reverse proxy recebe tráfego externo.
+- Publicar exclusivamente `dist-public`; negar dotfiles, `.vite/`, source maps, diretórios de conteúdo, arquivos de backend e aliases para o checkout. Aplicar fallback SPA apenas às rotas da UI, preservando 403/404 da API e 404 de assets ausentes.
+- Configurar HTTPS e redirecionamento HTTP, proxy `/api/` sem prefixo para a API, limites de corpo/tempo e firewall. No host/proxy, definir e verificar `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, bloqueio de frames (`frame-ancestors 'none'` na CSP), HSTS após HTTPS validado e política CSP compatível com os workers de compilação e recursos efetivamente usados. Os previews Vite não comprovam esses controles da hospedagem.
+- Não registrar corpos de requisições, rascunhos nem headers sensíveis; limitar retenção/permissões de access/error logs. Definir responsável operacional por alertas e atualização das dependências.
+- Conferir externamente home, catálogo, leitor, deep link/reload, assets, headers TLS/HTTP, erros e negativas de escrita/runner/conteúdo omitido. Esses gates dependem do ambiente real; nenhum provedor foi escolhido ou configurado.
