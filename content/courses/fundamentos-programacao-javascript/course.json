@@ -1,0 +1,21 @@
+{
+  "id": "fundamentos-programacao-javascript",
+  "title": "Fundamentos de Programação com JavaScript",
+  "description": "Uma introdução à lógica de programação e à resolução de problemas. Antes de decorar sintaxe, você aprenderá a questionar instruções, decompor situações, formular regras verificáveis e testar hipóteses. O JavaScript será a ferramenta para transformar esse raciocínio em programas, mesmo que você nunca tenha programado.",
+  "shortDescription": "Aprenda a investigar problemas, criar regras claras e transformar ideias em código com JavaScript.",
+  "lessons": [
+    {
+      "slug": "o-que-significa-programar",
+      "title": "O que significa programar?",
+      "moduleId": "antes-do-codigo"
+    }
+  ],
+  "modules": [
+    {
+      "id": "antes-do-codigo",
+      "title": "Antes do Código",
+      "description": "O fim do piloto automático: da intenção humana às instruções verificáveis.",
+      "number": 0
+    }
+  ]
+}

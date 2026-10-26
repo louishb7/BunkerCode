@@ -17,7 +17,7 @@ function rejectLinks(path) {
 }
 
 /** Only the server supervisor owns the disposable copy. Config/--list never copy. */
-export async function withBrowserFixture(env, source, run) {
+export async function withBrowserFixture(env, source, run, testCourses) {
   const path = env.BUNKERCODE_BROWSER_CONTENT_DIR;
   if (!path) throw new Error("Missing browser content directory");
   const owned = env.BUNKERCODE_BROWSER_OWNED_CONTENT_DIR === path;
@@ -44,6 +44,24 @@ export async function withBrowserFixture(env, source, run) {
     const content =
       env.BUNKERCODE_PROFILE === "public" ? join(path, "authoring") : path;
     cpSync(source, content, { recursive: true, dereference: false });
+    if (testCourses) {
+      rejectLinks(testCourses);
+      const courses = join(content, "courses");
+      mkdirSync(courses, { recursive: true });
+      for (const id of readdirSync(testCourses)) {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id))
+          throw new Error("Invalid test course identity");
+        const target = join(courses, id);
+        if (lstatSync(target, { throwIfNoEntry: false }))
+          throw new Error("Test course must not replace canonical content");
+        cpSync(join(testCourses, id), target, {
+          recursive: true,
+          dereference: false,
+          force: false,
+          errorOnExist: true,
+        });
+      }
+    }
     return await run(content);
   } finally {
     const current = lstatSync(path, { throwIfNoEntry: false });

@@ -2,7 +2,12 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import type { Course, CourseSummary } from "../src/courses/api";
 
-const ids = ["javascript", "typescript", "nodejs", "nestjs"];
+const ids = [
+  "fundamentos-programacao-javascript",
+  "typescript",
+  "nodejs",
+  "nestjs",
+];
 async function metadata(request: APIRequestContext) {
   const response = await request.get("/api/content/courses");
   expect(response.ok()).toBe(true);
@@ -90,8 +95,9 @@ for (const viewport of [
       }
     }
     if (viewport.width >= 1280) {
-      expect(new Set(metrics.map((card) => card.top)).size).toBe(1);
-      expect(new Set(metrics.map((card) => card.metadataBottom)).size).toBe(1);
+      const rows = viewport.width >= 1440 ? 1 : 2;
+      expect(new Set(metrics.map((card) => card.top)).size).toBe(rows);
+      expect(new Set(metrics.map((card) => card.metadataBottom)).size).toBe(rows);
     }
     expect(
       await page.evaluate(

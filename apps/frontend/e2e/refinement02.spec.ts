@@ -1,8 +1,18 @@
 import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
 import { expect, test, type Page } from "@playwright/test";
 
-const titles = ["JavaScript Essencial", "TypeScript", "Node.js", "NestJS"];
-const ids = ["javascript", "typescript", "nodejs", "nestjs"];
+const titles = [
+  "Fundamentos de Programação com JavaScript",
+  "TypeScript",
+  "Node.js",
+  "NestJS",
+];
+const ids = [
+  "fundamentos-programacao-javascript",
+  "typescript",
+  "nodejs",
+  "nestjs",
+];
 const hidden = ["postgresql", "git", "linux", "docker"];
 const lesson = "/courses/typescript/lessons/values-and-types";
 test.use({ timezoneId: "America/Recife" });

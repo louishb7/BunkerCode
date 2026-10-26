@@ -2,7 +2,12 @@ import { capabilities } from "../capabilities";
 import type { CourseSummary } from "../courses/api";
 
 // Editorial discovery only; direct routes and the content API remain available.
-const visibleCourseIds = ["javascript", "typescript", "nodejs", "nestjs"];
+const visibleCourseIds = [
+  "fundamentos-programacao-javascript",
+  "typescript",
+  "nodejs",
+  "nestjs",
+];
 
 export function discoverableCourses(courses: readonly CourseSummary[]) {
   if (!capabilities.authoring) return [...courses];

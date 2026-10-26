@@ -1,5 +1,22 @@
 import { useId, useState } from "react";
 import { parseEditorial, type Quiz, type Note } from "@bunkercode/content";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
+
+// Editorial text keeps paragraphs and inline emphasis without allowing nested
+// components, executable HTML, or a second document inside a note/feedback.
+function EditorialText({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      skipHtml
+      rehypePlugins={[rehypeSanitize]}
+      allowedElements={["p", "em", "strong", "code", "br"]}
+      unwrapDisallowed
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
 export function QuizBlock({ quiz }: { quiz: Quiz }) {
   const name = useId();
   const [choice, setChoice] = useState("");
@@ -26,11 +43,15 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
         </button>
       ) : (
         <>
-          <p role="status">
-            {answer === quiz.correct
-              ? quiz.feedbackCorrect
-              : quiz.feedbackIncorrect}
-          </p>
+          <div role="status">
+            <EditorialText
+              text={
+                answer === quiz.correct
+                  ? quiz.feedbackCorrect
+                  : quiz.feedbackIncorrect
+              }
+            />
+          </div>
           {quiz.retry && (
             <button
               onClick={() => {
@@ -51,7 +72,7 @@ export function NoteBlock({ note }: { note: Note }) {
   return (
     <aside className={`editorial-note note-${note.kind}`}>
       <strong>{labels[note.kind]}</strong>
-      <p>{note.text}</p>
+      <EditorialText text={note.text} />
     </aside>
   );
 }

@@ -1,3 +1,10 @@
 {
-  "courses": []
+  "courses": [
+    {
+      "id": "fundamentos-programacao-javascript",
+      "lessons": [
+        "o-que-significa-programar"
+      ]
+    }
+  ]
 }

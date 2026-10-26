@@ -59,10 +59,13 @@ for (const viewport of [
           return { top: rect.top, bottom: rect.bottom, height: rect.height };
         }),
       );
-      expect(new Set(cards.map((card) => card.top)).size).toBe(1);
-      expect(new Set(cards.map((card) => card.bottom)).size).toBe(1);
-      expect(cards[0]!.bottom).toBeLessThan(viewport.height);
-      for (const card of cards) expect(card.height).toBeLessThanOrEqual(240);
+      const rows = viewport.width >= 1440 ? 1 : 2;
+      expect(new Set(cards.map((card) => card.top)).size).toBe(rows);
+      expect(new Set(cards.map((card) => card.bottom)).size).toBe(rows);
+      for (const card of cards) {
+        expect(card.bottom).toBeLessThan(viewport.height);
+        expect(card.height).toBeLessThanOrEqual(240);
+      }
     } else {
       expect((await nav.boundingBox())!.height).toBeLessThan(60);
       expect((await page.getByRole("main").boundingBox())!.width).toBe(390);

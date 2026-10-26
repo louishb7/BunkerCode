@@ -281,7 +281,8 @@
     border-color 140ms,
     background 140ms;
 }
-.course-card[data-course="javascript"] {
+.course-card[data-course="javascript"],
+.course-card[data-course="fundamentos-programacao-javascript"] {
   --course-tint: #f7df1e;
 }
 .course-card[data-course="typescript"] {
@@ -359,7 +360,7 @@
 .course-card:active {
   background: #24292e;
 }
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   .course-list {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;

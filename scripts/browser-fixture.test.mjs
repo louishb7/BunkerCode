@@ -87,3 +87,62 @@ test("browser fixture cleans success and controlled failure without touching ano
     rmSync(outside, { recursive: true });
   }
 });
+
+test("legacy test courses are added only to an owned copy without shadowing canonical courses", async () => {
+  const source = mkdtempSync(join(tmpdir(), "browser-canonical-"));
+  const extra = mkdtempSync(join(tmpdir(), "browser-test-courses-"));
+  const external = mkdtempSync(join(tmpdir(), "browser-explicit-"));
+  mkdirSync(join(source, "courses/canonical"), { recursive: true });
+  writeFileSync(join(source, "courses/canonical/course.json"), "canonical");
+  mkdirSync(join(extra, "legacy"));
+  writeFileSync(join(extra, "legacy/course.json"), "test-only");
+  try {
+    const env = owned();
+    await withBrowserFixture(
+      env,
+      source,
+      async (content) => {
+        assert.equal(
+          readFileSync(join(content, "courses/legacy/course.json"), "utf8"),
+          "test-only",
+        );
+        assert.equal(
+          readFileSync(join(content, "courses/canonical/course.json"), "utf8"),
+          "canonical",
+        );
+      },
+      extra,
+    );
+    assert.equal(existsSync(env.BUNKERCODE_BROWSER_CONTENT_DIR), false);
+    assert.equal(existsSync(join(source, "courses/legacy")), false);
+    await withBrowserFixture(
+      { BUNKERCODE_BROWSER_CONTENT_DIR: external },
+      source,
+      async () => {
+        assert.equal(existsSync(join(external, "courses")), false);
+      },
+      extra,
+    );
+    mkdirSync(join(extra, "canonical"));
+    writeFileSync(join(extra, "canonical/course.json"), "must not shadow");
+    const conflict = owned();
+    await assert.rejects(
+      withBrowserFixture(
+        conflict,
+        source,
+        async () => assert.fail("Shadowed content must never start"),
+        extra,
+      ),
+      /must not replace/,
+    );
+    assert.equal(existsSync(conflict.BUNKERCODE_BROWSER_CONTENT_DIR), false);
+    assert.equal(
+      readFileSync(join(source, "courses/canonical/course.json"), "utf8"),
+      "canonical",
+    );
+  } finally {
+    rmSync(source, { recursive: true });
+    rmSync(extra, { recursive: true });
+    rmSync(external, { recursive: true });
+  }
+});

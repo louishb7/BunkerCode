@@ -1,16 +1,16 @@
-# Visibilidade editorial dos cursos
+# Catálogo editorial ativo
 
-Esta política visual aplica-se somente ao perfil privado de autoria. No perfil público da Estabilização 05, a API e o catálogo usam exclusivamente a seleção congelada no snapshot, derivada de `config/publication.json`. Cursos fora da seleção retornam 404 também por URL direta. A seleção começa vazia; nenhum curso foi publicado automaticamente. Veja [preparação e fronteiras de publicação](../publication.md).
+A Integração Editorial 01 substitui a decisão visual anterior. No perfil privado, Home e catálogo apresentam, nesta ordem:
 
-Decisão temporária do Refinamento 02, em 2026-10-09. Home e catálogo apresentam somente:
+1. Fundamentos de Programação com JavaScript — identidade nova `fundamentos-programacao-javascript`, com a Lição 01 autoral integrada no Módulo 00.
+2. TypeScript — em preparação.
+3. Node.js — em preparação.
+4. NestJS — em preparação.
 
-1. JavaScript Essencial — preparação introdutória para TypeScript; não é uma formação completa de JavaScript.
-2. TypeScript.
-3. Node.js.
-4. NestJS.
+A API normal contém esses quatro cursos. JavaScript Essencial, PostgreSQL, Git, Linux e Docker foram removidos do diretório editorial ativo após inventário de seus arquivos demonstrativos versionados. A recuperação editorial desses arquivos é possível pelo histórico Git. Dados locais, rascunhos, atividade e submissões não foram apagados.
 
-PostgreSQL, Git, Linux e Docker ficam ocultos da descoberta inicial, porque a prioridade editorial é uma sequência backend curta e publicar lições gradualmente conforme os estudos do autor. Seus manifestos, lições, figuras e testes permanecem; backend e rotas diretas continuam disponíveis. Ocultar não remove conteúdo nem controla acesso ou segurança.
+Cópias dos cinco cursos em `apps/frontend/e2e/fixtures/legacy-courses/` atendem somente testes legítimos existentes. Apenas o supervisor as acrescenta à cópia temporária própria do navegador, sem sobrescrever cursos canônicos ou modificar diretórios externos. Essas fixtures não entram no backend habitual nem na preparação de snapshots reais.
 
-No perfil privado, a lista ordenada `visibleCourseIds` em `apps/frontend/src/product/course-visibility.ts` é a única regra de descoberta. Home e catálogo usam `discoverableCourses` após validar a resposta da API. Um ID ausente na API é omitido; cursos novos não entram automaticamente nesta seleção. Identidade, título, descrição completa, chamada curta opcional (`shortDescription`) e lições vêm dos mesmos manifestos. O Refinamento 08 acrescenta a chamada editorial de forma aditiva à API; não muda a seleção dos cursos nem cria estado draft/published ou CMS.
+A lista ordenada `visibleCourseIds` em `apps/frontend/src/product/course-visibility.ts` controla a descoberta privada; metadados vêm dos manifestos. O identificador autoral reutiliza o SVG JavaScript existente. Adicionar lições a um curso já visível continua exigindo apenas Markdown e manifesto.
 
-Para restaurar a visibilidade, inserir os IDs desejados na lista, na posição editorial escolhida, e atualizar os testes de descoberta. Isso requer rebuild do frontend; conteúdo e rotas não precisam ser recriados. Adicionar uma lição a um curso já visível continua exigindo somente Markdown e manifesto, sem alteração em React/Nest. A decisão pode ser revertida ou ampliada quando o conteúdo estiver pronto; não deve apagar registros de atividade, rascunhos ou submissões dos cursos ocultos. A visibilidade dos cards não filtra o heatmap: atividades de cursos ocultos continuam no total do período.
+No perfil público, API e catálogo seguem exclusivamente a seleção congelada no snapshot. A seleção canônica autoriza explicitamente somente `fundamentos-programacao-javascript/o-que-significa-programar`, no Módulo 00. Trata-se de uma candidata local; não há deploy. Cursos omitidos retornam 404 também por URL direta. [Publicação](../publication.md) e [planejamento editorial](../editorial/fundamentos-programacao-javascript.md).

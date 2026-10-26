@@ -12,12 +12,12 @@ for (const viewport of [
     request,
   }, info) => {
     await page.setViewportSize(viewport);
-    const response = await request.get("/api/content/courses/javascript");
+    const response = await request.get("/api/content/courses/nodejs");
     expect(response.ok()).toBe(true);
     const course = (await response.json()) as Course;
     await page.goto("/courses");
     await page.getByRole("link", { name: course.title, exact: true }).click();
-    await expect(page).toHaveURL("/courses/javascript");
+    await expect(page).toHaveURL("/courses/nodejs");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       course.title,
     );
@@ -55,7 +55,7 @@ for (const viewport of [
       );
       await expect(lessons.nth(index)).toHaveAttribute(
         "href",
-        `/courses/javascript/lessons/${lesson.slug}`,
+        `/courses/nodejs/lessons/${lesson.slug}`,
       );
       await expect(lessons.nth(index).locator("a, button, svg")).toHaveCount(0);
     }
@@ -144,7 +144,7 @@ for (const viewport of [
       await first.evaluate((node) => getComputedStyle(node).outlineStyle),
     ).toBe("solid");
     await page.screenshot({
-      path: info.outputPath(`course-javascript-${viewport.width}.png`),
+      path: info.outputPath(`course-nodejs-${viewport.width}.png`),
       fullPage: true,
     });
     await writeFile(
@@ -153,13 +153,13 @@ for (const viewport of [
     );
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(
-      `/courses/javascript/lessons/${course.lessons[0]!.slug}`,
+      `/courses/nodejs/lessons/${course.lessons[0]!.slug}`,
     );
     await expect(page.locator(".learning-shell .site-header")).toBeVisible();
     await expect(page.locator(".global-sidebar")).toHaveCount(0);
     await page
       .getByRole("link", {
-        name: "Abrir curso JavaScript Essencial",
+        name: "Abrir curso Node.js",
         exact: true,
       })
       .click();

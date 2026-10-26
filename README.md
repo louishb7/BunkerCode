@@ -11,7 +11,7 @@ Requisitos: Node.js 24+ e pnpm 11.
     pnpm install
     pnpm dev
 
-Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar a leitura anônima, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção inicialmente vazia em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
+Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar a leitura anônima, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
 
 ## Escrever uma lição
 
@@ -21,7 +21,7 @@ Abra a lição no site e clique em **Editar lição** para escrever no Studio vi
 
 Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. A API privada descobre a pasta automaticamente; no ambiente público é necessária seleção explícita. Cursos podem declarar módulos opcionais em `modules`, associando cada lição por `moduleId`. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
-No perfil privado, a descoberta inicial mostra JavaScript Essencial, TypeScript, Node.js e NestJS, nesta ordem. PostgreSQL, Git, Linux e Docker permanecem no conteúdo/API e nas rotas diretas, temporariamente ocultos da Home e do catálogo. Os sete cursos introdutórios têm duas lições demonstrativas fundamentadas em documentação. Amplie com suas palavras; referências ficam nas lições. [Política de visibilidade](docs/product/course-visibility.md).
+No perfil privado, Home e catálogo apresentam Fundamentos de Programação com JavaScript, TypeScript, Node.js e NestJS, nesta ordem. O novo curso contém o Módulo 00 — Antes do Código e a Lição 01 — O que significa programar? Os três cursos em preparação permanecem locais. JavaScript Essencial, PostgreSQL, Git, Linux e Docker foram retirados do acervo ativo; suas cópias de teste existem apenas nas fixtures do navegador. A seleção explícita prepara uma candidata local somente com a primeira lição autoral; não há deploy. [Política do catálogo](docs/product/course-visibility.md) e [planejamento editorial](docs/editorial/fundamentos-programacao-javascript.md).
 
 ## Organização
 

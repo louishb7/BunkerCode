@@ -50,7 +50,7 @@ A opção de fonte Markdown usa quebra **visual** de linha (`wrap="soft"`), incl
 
 Salvar, os controles de vista e o estado ficam juntos numa toolbar persistente durante a rolagem da página. Em viewports com altura de até 500 px, ela permanece no fluxo do documento para não ocupar a área curta de edição. O arquivo continua mudando somente por **Salvar alterações**, depois da confirmação física; não há autosave canônico.
 
-O seletor **Lições do curso** navega na ordem do manifesto, identificando curso e lição. **Nova lição** pede título e sugere um slug editável; **Criar lição** acrescenta a entrada ao final do curso e abre o Markdown vazio. Cancelar não grava. Erros preservam os campos e a operação pendente bloqueia envios duplicados. CLI e interface usam a mesma operação de criação. Não há criação de cursos nem operação Git na interface. A edição não usa SQLite.
+O seletor **Lições do curso** navega na ordem do manifesto, identificando curso e lição. **Nova lição** pede título e sugere um slug editável; **Criar lição** acrescenta a entrada ao final do curso e abre o Markdown vazio. Cancelar não grava. Erros preservam os campos e a operação pendente bloqueia envios duplicados. CLI e interface usam a mesma operação de criação. A apresentação de um curso vazio oferece **Criar primeira lição**, com o mesmo diálogo. Não há criação de cursos nem operação Git na interface. A edição não usa SQLite.
 
 ### Rascunho e erros
 
@@ -117,9 +117,9 @@ Um curso pode agrupar lições em módulos sem criar uma segunda lista de liçõ
 
 - Sem `modules`, o curso mantém exatamente o formato antigo e uma timeline plana.
 - Com `modules`, toda lição exige `moduleId` de um módulo declarado.
-- Todo módulo precisa de ao menos uma lição.
+- Em cursos com lições, todo módulo precisa de ao menos uma lição. Um curso inteiramente vazio pode preparar um único módulo inicial, sem arquivo Markdown fictício; a primeira criação pelo Studio recebe seu `moduleId`.
 - As lições de cada módulo devem ser contíguas em `lessons`, na mesma ordem declarada em `modules`; isso elimina ordenação ambígua.
-- `id` de módulo usa a mesma regra de slug (até 80). Título até 160; descrição opcional até 400.
+- `id` de módulo usa a mesma regra de slug (até 80). Título até 160; descrição opcional até 400. `number` é opcional e inteiro entre 0 e 999; controla somente o número editorial exibido (por exemplo, `0` aparece como 00). Ausente, preserva o índice sequencial a partir de 01. Não altera IDs, URLs, ordem ou a numeração das lições.
 - A numeração exibida continua sequencial no curso inteiro; módulos não reiniciam a contagem.
 - A API mantém `lessons` plano para navegação anterior/próxima, índice e último acesso, e expõe `modules` de forma aditiva.
 - `lesson:new` e **Nova lição** acrescentam ao final do curso, portanto ao último módulo quando ele existe. Para inserir em outro módulo ou reordenar grupos, edite o manifesto.
@@ -175,8 +175,12 @@ O aluno escreve em CodeMirror; o texto só é compilado ou executado após coman
 
 Se o enunciado mudar, a solução anterior continua guardada e pode ser consultada em **Histórico do código**, junto ao histórico de submissões, sem um banner permanente. Restaurar código inicial exige confirmação, salva a nova versão pelo mesmo fluxo do rascunho e limpa a análise exibida da versão anterior; submissões e revisões editoriais armazenadas permanecem intactas. Duas abas são protegidas por revisão transacional: uma edição obsoleta abre comparação, sem sobrescrever silenciosamente. Em caso de erro, copie ou baixe antes de fechar/recarregar. Armazenamento local pode ser negado, atingir quota ou ser removido; não é backup. Não há sincronização nem entrega remota. A avaliação local compara stdout ou retornos de função conforme os casos públicos configurados.
 
-Os sete cursos novos são introdutórios demonstrativos, com duas lições por tecnologia e referências consultadas. Não exigem dependências de runtime da tecnologia para leitura. Compilação/Run só se aplicam a exercícios explícitos TypeScript/JavaScript; nenhum exercício foi adicionado automaticamente às novas lições.
+O acervo ativo contém Fundamentos de Programação com JavaScript (Lição 01 autoral integrada no Módulo 00), TypeScript, Node.js e NestJS. Os três últimos permanecem em preparação no ambiente privado. Os cinco cursos demonstrativos removidos do acervo são preservados somente em fixtures legítimas do navegador. [Integração e planejamento editorial](editorial/fundamentos-programacao-javascript.md).
 
 ## Perfil de autoria e publicação
 
-`pnpm dev` seleciona explicitamente o perfil privado `authoring`, preservando Studio, prévia, criação, revisão e gravação. Conteúdo ainda em produção continua acessível localmente. Não exponha esse perfil via proxy público. A leitura anônima usa um build separado e snapshot somente leitura de cursos selecionados, inicialmente nenhum. Veja [perfis e publicação](publication.md); editar a lista visual de cards não publica conteúdo.
+`pnpm dev` seleciona explicitamente o perfil privado `authoring`, preservando Studio, prévia, criação, revisão e gravação. Conteúdo ainda em produção continua acessível localmente. Não exponha esse perfil via proxy público. A leitura anônima usa um build separado e snapshot somente leitura de conteúdo selecionado explicitamente. A candidata atual contém somente a Lição 01 autoral de Fundamentos de Programação com JavaScript. Veja [perfis e publicação](publication.md); editar a lista visual de cards não publica conteúdo.
+
+## Primeira lição de um curso vazio
+
+No perfil privado, abra a apresentação do curso e use **Criar primeira lição**. O diálogo existente pede título/slug, cria o arquivo pelo comando local protegido e abre o Studio. A partir daí, use edição visual, prévia e **Salvar alterações**, confira o Markdown físico e reabra a lição. O botão e o módulo de criação não existem no build público. Não use um arquivo vazio como substituto de conteúdo autoral indisponível.

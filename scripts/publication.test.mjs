@@ -63,11 +63,27 @@ test("publication CLI validates selection bytes, copies only selected payloads a
     );
     assert.equal(lstatSync(snapshot).mode & 0o222, 0);
     assert.notEqual(command(snapshot, selection, source).status, 0);
-    // Default owner selection is still empty; the CLI must not auto-publish fixtures.
-    const empty = join(root, "empty");
-    const defaults = command(empty);
+    // The default snapshot follows the explicit owner selection; fixture courses never leak.
+    const selected = join(root, "selected");
+    const defaults = command(selected);
     assert.equal(defaults.status, 0, defaults.stderr);
-    assert.deepEqual(readdirSync(join(empty, "courses")), []);
+    const owner = JSON.parse(
+      readFileSync(resolve("config/publication.json"), "utf8"),
+    );
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(selected, "publication.json"), "utf8")),
+      owner,
+    );
+    assert.deepEqual(
+      readdirSync(join(selected, "courses")).sort(),
+      owner.courses
+        .map((course) => (typeof course === "string" ? course : course.id))
+        .sort(),
+    );
+    assert.equal(
+      readdirSync(join(selected, "courses")).includes("open"),
+      false,
+    );
   } finally {
     restore(root);
     rmSync(root, { recursive: true });

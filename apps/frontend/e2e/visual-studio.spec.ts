@@ -485,3 +485,73 @@ test("late exercise loading initializes the practice split with its own persiste
     release();
   }
 });
+
+test("editorial text preserves paragraphs and emphasis while keeping HTML inert", async ({
+  page,
+}) => {
+  const note =
+    "First paragraph.\n\nAsk *which rule* and **why**.\n\n<script>window.__noteExecuted=true</script>\n\n<img src=x onerror=alert(1)>Last paragraph.";
+  const quiz = {
+    id: "paragraph-feedback",
+    question: "Which rule?",
+    options: [
+      { id: "a", text: "Investigate" },
+      { id: "b", text: "Guess" },
+    ],
+    correct: "a",
+    feedbackCorrect: "Correct.\n\nKeep **investigating**.",
+    feedbackIncorrect: "Try again.\n\nCheck *the evidence*.",
+    retry: true,
+  };
+  await writeFile(
+    file,
+    "# Autoria visual\n\n```bunker-note\n" +
+      JSON.stringify({ kind: "info", text: note }) +
+      "\n```\n\n```bunker-quiz\n" +
+      JSON.stringify(quiz) +
+      "\n```\n",
+  );
+  await page.goto(url + "/edit");
+  await page.locator(".visual-document .editorial-note").first().click();
+  const input = page.getByRole("textbox", {
+    name: "Texto da nota",
+    exact: true,
+  });
+  await expect(input).toHaveValue(note);
+  const revised = note.replace("First paragraph.", "Revised first paragraph.");
+  await input.fill(revised);
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(
+    page.getByText("Salvo no arquivo.", { exact: true }),
+  ).toBeVisible();
+  expect(await readFile(file, "utf8")).toContain(JSON.stringify(revised));
+  await page.getByRole("link", { name: "Voltar à lição", exact: true }).click();
+  const rendered = page.locator("article .editorial-note");
+  await expect(rendered.locator("p")).toHaveCount(3);
+  await expect(rendered.locator("em")).toHaveText("which rule");
+  await expect(rendered.locator("strong").last()).toHaveText("why");
+  await expect(rendered.locator("script, img")).toHaveCount(0);
+  expect(await page.evaluate(() => "__noteExecuted" in window)).toBe(false);
+  const interaction = page.locator(".inline-quiz");
+  await interaction.getByRole("radio", { name: "Guess", exact: true }).check();
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status").locator("p")).toHaveCount(2);
+  await expect(interaction.getByRole("status").locator("em")).toHaveText(
+    "the evidence",
+  );
+  await interaction.getByRole("button", { name: "Tentar novamente" }).click();
+  await interaction
+    .getByRole("radio", { name: "Investigate", exact: true })
+    .check();
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status").locator("p")).toHaveCount(2);
+  await expect(interaction.getByRole("status").locator("strong")).toHaveText(
+    "investigating",
+  );
+  await page.reload();
+  await expect(rendered.locator("p").first()).toHaveText(
+    "Revised first paragraph.",
+  );
+});

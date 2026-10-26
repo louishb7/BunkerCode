@@ -1,6 +1,6 @@
 # Autoria privada e leitura pública
 
-A Estabilização 05 prepara dois perfis explícitos, sem autenticação. Isto não constitui autorização para um deploy: seleção editorial, hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes.
+O produto mantém dois perfis explícitos, sem autenticação. A candidata local da Lição 01 possui seleção editorial restritiva. Hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes antes de qualquer deploy.
 
 ## Autoria local
 
@@ -12,19 +12,19 @@ O backend direto (`node apps/backend/dist/main.js`) exige `BUNKERCODE_PROFILE=au
 
 ## Seleção e snapshot público
 
-A única seleção editorial para publicação é `config/publication.json`, inicialmente:
+A única seleção editorial para publicação é `config/publication.json`, atualmente:
 
 ```json
-{ "courses": [] }
+{ "courses": [{ "id": "fundamentos-programacao-javascript", "lessons": ["o-que-significa-programar"] }] }
 ```
 
-A seleção canônica continua vazia: nenhuma lição autoral foi identificada e autorizada na Estabilização 07. Não usar as lições demonstrativas como substitutas. Para publicar somente lições revisadas, o proprietário pode escolher explicitamente os slugs:
+A Integração Editorial 01 autoriza somente a primeira lição autoral do novo curso, no Módulo 00. Essa seleção prepara uma candidata local, sem deploy. Para selecionar outros conteúdos revisados, o proprietário altera explicitamente os slugs:
 
 ```json
 { "courses": [{ "id": "curso-autorizado", "lessons": ["licao-autorizada"] }] }
 ```
 
-Os nomes acima são ilustrativos e não correspondem a conteúdo autorizado. Entradas string continuam significando autorização do **curso inteiro**, incluindo todas as lições e exercícios: use-as apenas após revisão integral. Objetos exigem `id` e uma lista `lessons` não vazia, sem duplicatas, curingas, paths ou slugs desconhecidos. A seleção vazia no topo continua sendo o padrão restritivo.
+Os nomes acima são ilustrativos e não correspondem a conteúdo autorizado. Entradas string continuam significando autorização do **curso inteiro**, incluindo todas as lições e exercícios: use-as apenas após revisão integral. Objetos exigem `id` e uma lista `lessons` não vazia, sem duplicatas, curingas, paths ou slugs desconhecidos. A seleção vazia no topo continua válida para suspender toda a publicação.
 
 O snapshot deriva seu manifesto da fonte canônica: mantém metadados do curso, filtra lições na ordem original (independente da ordem da seleção) e elimina módulos que ficaram sem lições. Títulos e descrições do curso e dos módulos mantidos também precisam de revisão editorial. Markdown e exercícios selecionados são copiados sem alteração; anterior/próxima e acesso direto usam somente o manifesto filtrado. O bootstrap recusa manifestos ampliados em desacordo com a seleção congelada. O Studio local continua lendo o manifesto integral; não há cópia editorial mantida manualmente. Uma seleção vazia produz catálogo vazio e nega qualquer ID direto.
 
@@ -82,7 +82,7 @@ O provedor ainda deve definir: TLS/domínio, proxy que encaminha `/api` à API l
 
 ## Validação
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` e `pnpm build:public` verificam os contratos e os dois builds. `pnpm test:browser:public` inicia backend público real, snapshot read-only descartável e preview público nas portas 3014/5186. Somente a fixture seleciona TypeScript e PostgreSQL completos e a lição `pipes` de Linux; a seleção canônica permanece vazia. Verifica leitura direta/reload, acesso privado negado, headers forjados, inexistência de Studio e artefatos privados, persistência local, responsividade e Táticas. `pnpm test:browser` mantém a suíte completa privada nas portas 3012/5184, incluindo criar/editar/pré-visualizar/salvar/reabrir no Studio em fixture. Só o supervisor do navegador cria e limpa suas cópias temporárias; `--list` não cria conteúdo. Saídas de cada rodada usam UUID novo e são preservadas.
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` e `pnpm build:public` verificam os contratos e os dois builds. `pnpm test:browser:public` inicia backend público real, snapshot read-only descartável e preview público nas portas 3014/5186. Somente a fixture seleciona TypeScript e PostgreSQL completos e a lição `pipes` de Linux; a seleção canônica autoriza somente a Lição 01 de Fundamentos de Programação com JavaScript, validada separadamente em snapshot real. Verifica leitura direta/reload, acesso privado negado, headers forjados, inexistência de Studio e artefatos privados, persistência local, responsividade e Táticas. `pnpm test:browser` mantém a suíte completa privada nas portas 3012/5184, incluindo criar/editar/pré-visualizar/salvar/reabrir no Studio em fixture. Só o supervisor do navegador cria e limpa suas cópias temporárias; `--list` não cria conteúdo. Saídas de cada rodada usam UUID novo e são preservadas.
 
 Os testes backend iniciam processos públicos reais, verificam ausência de módulos privados no cache de módulos, catálogo vazio, seleção e negativas de startup (perfil ausente/inválido, diretório ausente/gravável, manifesto inválido, UTF-8 inválido, symlink, arquivo extra). Leitura de conteúdo privado é negada também com GET/HEAD, headers locais forjados e query de perfil; o catálogo público mantém `Cache-Control: no-store`. Comparações SHA-256 demonstram que tentativas negadas não alteram snapshot nem fonte editorial.
 

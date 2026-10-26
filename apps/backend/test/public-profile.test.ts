@@ -426,7 +426,7 @@ test("partial publication projects editorial order and modules and denies omitte
     title: "Open",
     description: "Partial publication",
     modules: [
-      { id: "intro", title: "Intro" },
+      { id: "intro", title: "Intro", number: 0 },
       { id: "drafts", title: "Drafts" },
       { id: "end", title: "End" },
     ],
@@ -463,6 +463,7 @@ test("partial publication projects editorial order and modules and denies omitte
       published.modules.map((module) => module.id),
       ["intro", "end"],
     );
+    assert.equal(published.modules[0]?.number, 0);
     assert.doesNotMatch(JSON.stringify(published), /CONFIDENTIAL|draft/);
     const first = (await (
       await fetch(url + "/content/courses/open/lessons/first")

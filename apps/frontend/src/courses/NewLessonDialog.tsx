@@ -5,6 +5,7 @@ import {
   type LessonEntry,
 } from "@bunkercode/content";
 import { createLesson, type EditableLesson } from "./studio-api";
+import "./studio.css";
 
 export function NewLessonDialog({
   courseId,

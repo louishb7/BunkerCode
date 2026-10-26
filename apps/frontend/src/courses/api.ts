@@ -8,6 +8,7 @@ export interface CourseModule {
   id: string;
   title: string;
   description?: string;
+  number?: number;
 }
 export interface Course {
   id: string;
@@ -72,10 +73,15 @@ function entry(
 function moduleEntry(value: unknown): value is CourseModule {
   return (
     object(value) &&
-    only(value, ["id", "title", "description"]) &&
+    only(value, ["id", "title", "description", "number"]) &&
     isContentSlug(value.id) &&
     isContentTitle(value.title) &&
-    (value.description === undefined || text(value.description, 400))
+    (value.description === undefined || text(value.description, 400)) &&
+    (value.number === undefined ||
+      (typeof value.number === "number" &&
+        Number.isInteger(value.number) &&
+        value.number >= 0 &&
+        value.number <= 999))
   );
 }
 function uniqueLessons(value: LessonEntry[]) {
@@ -95,8 +101,9 @@ function course(value: unknown): value is Course {
     !isContentSlug(value.id) ||
     !isContentTitle(value.title) ||
     !text(value.description, 800) ||
-    !(value.shortDescription === undefined ||
-      text(value.shortDescription, 160)) ||
+    !(
+      value.shortDescription === undefined || text(value.shortDescription, 160)
+    ) ||
     !Array.isArray(value.lessons)
   )
     return false;
@@ -117,6 +124,7 @@ function course(value: unknown): value is Course {
   const modules = value.modules as CourseModule[];
   const moduleIds = new Set(modules.map((module) => module.id));
   if (moduleIds.size !== modules.length) return false;
+  if (value.lessons.length === 0) return modules.length === 1;
   const used = new Set<string>();
   const sequence: string[] = [];
   for (const lesson of lessons) {
@@ -179,7 +187,10 @@ export function parseLesson(value: unknown): Lesson {
       value.previous === null ||
       entry(value.previous, value.course.modules !== undefined)
     ) ||
-    !(value.next === null || entry(value.next, value.course.modules !== undefined))
+    !(
+      value.next === null ||
+      entry(value.next, value.course.modules !== undefined)
+    )
   )
     throw new Error(incompatibleContent);
   const index = value.course.lessons.findIndex(

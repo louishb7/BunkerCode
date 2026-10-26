@@ -1,4 +1,5 @@
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import { lazy, Suspense, useState } from "react";
 import { BookOpen } from "lucide-react";
 import {
   courseSections,
@@ -8,12 +9,21 @@ import {
   parseCourses,
   incompatibleContent,
   type LessonEntry,
+  type CourseModule,
 } from "./api";
 import { Page } from "./Page";
 import { ContentStatus } from "./ContentStatus";
 import { CourseCard } from "../product/CourseCard";
 import { CourseArtwork } from "../product/CourseArtwork";
 import { discoverableCourses } from "../product/course-visibility";
+
+const NewLessonDialog = __BUNKERCODE_AUTHORING__
+  ? lazy(() =>
+      import("./NewLessonDialog").then((module) => ({
+        default: module.NewLessonDialog,
+      })),
+    )
+  : undefined;
 
 function LessonLink({
   courseId,
@@ -33,6 +43,28 @@ function LessonLink({
         <span className="course-lesson-title">{lesson.title}</span>
       </Link>
     </li>
+  );
+}
+
+function ModuleHeading({
+  module,
+  index,
+}: {
+  module: CourseModule;
+  index: number;
+}) {
+  return (
+    <header className="course-module-header">
+      <h3 className="course-module-heading" id={`course-module-${module.id}`}>
+        <span className="course-module-label">
+          Módulo {String(module.number ?? index + 1).padStart(2, "0")}
+        </span>{" "}
+        <span className="course-module-title">{module.title}</span>
+      </h3>
+      {module.description && (
+        <p className="course-module-description">{module.description}</p>
+      )}
+    </header>
   );
 }
 
@@ -59,6 +91,8 @@ export function CoursesPage() {
 }
 export function CoursePage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
   const { data: course, error } = useContent(
     "/" + encodeURIComponent(id),
     parseCourse,
@@ -85,10 +119,23 @@ export function CoursePage() {
         <section aria-labelledby="lessons-title" className="course-lessons">
           <h2 id="lessons-title">Lições</h2>
           {course.lessons.length === 0 ? (
-            <p className="empty-content text-subtle">
-              Este curso ainda não tem lições. Elas aparecerão aqui quando você
-              adicionar conteúdo ao curso.
-            </p>
+            <div className="empty-content">
+              {course.modules?.map((module, index) => (
+                <section
+                  className="course-module"
+                  key={module.id}
+                  aria-labelledby={`course-module-${module.id}`}
+                >
+                  <ModuleHeading module={module} index={index} />
+                </section>
+              ))}
+              <p className="text-subtle">Este curso ainda não tem lições.</p>
+              {NewLessonDialog && (
+                <button type="button" onClick={() => setCreating(true)}>
+                  Criar primeira lição
+                </button>
+              )}
+            </div>
           ) : course.modules ? (
             <div className="course-modules">
               {courseSections(course).map(({ module, lessons }, moduleIndex) =>
@@ -98,24 +145,7 @@ export function CoursePage() {
                     key={module.id}
                     aria-labelledby={`course-module-${module.id}`}
                   >
-                    <header className="course-module-header">
-                      <h3
-                        className="course-module-heading"
-                        id={`course-module-${module.id}`}
-                      >
-                        <span className="course-module-label">
-                          Módulo {String(moduleIndex + 1).padStart(2, "0")}
-                        </span>{" "}
-                        <span className="course-module-title">
-                          {module.title}
-                        </span>
-                      </h3>
-                      {module.description && (
-                        <p className="course-module-description">
-                          {module.description}
-                        </p>
-                      )}
-                    </header>
+                    <ModuleHeading module={module} index={moduleIndex} />
                     <ol
                       className="lesson-list"
                       start={(lessons[0]?.index ?? 0) + 1}
@@ -147,6 +177,17 @@ export function CoursePage() {
           )}
         </section>
       </div>
+      {creating && NewLessonDialog && (
+        <Suspense fallback={<p role="status">Abrindo criação de lição…</p>}>
+          <NewLessonDialog
+            courseId={id}
+            onClose={() => setCreating(false)}
+            onCreated={(lesson) =>
+              navigate(lessonPath(id, lesson.slug) + "/edit")
+            }
+          />
+        </Suspense>
+      )}
     </Page>
   );
 }

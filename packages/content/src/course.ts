@@ -7,6 +7,7 @@ export interface CourseModule {
   id: string;
   title: string;
   description?: string;
+  number?: number;
 }
 export interface Course {
   id: string;
@@ -68,17 +69,28 @@ export function parseCourse(value: unknown, id: string): Course {
       invalidCourse("modules deve ser uma lista ordenada e não vazia.");
     modules = course.modules.map((value): CourseModule => {
       const module = object(value);
-      fields(module, ["id", "title", "description"]);
+      fields(module, ["id", "title", "description", "number"]);
       if (!validSlug(module.id)) invalidCourse("id de módulo inválido.");
       if (moduleIds.has(module.id))
         invalidCourse(`módulo duplicado: ${module.id}.`);
       moduleIds.add(module.id);
+      if (
+        module.number !== undefined &&
+        (typeof module.number !== "number" ||
+          !Number.isInteger(module.number) ||
+          module.number < 0 ||
+          module.number > 999)
+      )
+        invalidCourse(
+          "número editorial de módulo deve ser inteiro entre 0 e 999.",
+        );
       return {
         id: module.id,
         title: text(module.title, 160, "title"),
         ...(module.description === undefined
           ? {}
           : { description: text(module.description, 400, "description") }),
+        ...(module.number === undefined ? {} : { number: module.number }),
       };
     });
   }
@@ -102,7 +114,9 @@ export function parseCourse(value: unknown, id: string): Course {
       moduleId: lesson.moduleId,
     };
   });
-  if (modules) {
+  if (modules && lessons.length === 0 && modules.length !== 1)
+    invalidCourse("curso vazio pode preparar somente o módulo inicial.");
+  if (modules && lessons.length > 0) {
     const used = new Set(lessons.map((lesson) => lesson.moduleId));
     for (const module of modules)
       if (!used.has(module.id))

@@ -39,6 +39,13 @@ const modular = {
   ],
 };
 
+const initialModular = {
+  ...legacy,
+  id: "empty-modular",
+  lessons: [],
+  modules: [{ ...fundamentals, number: 0 }],
+};
+
 function courseId(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return "fixture-course";
@@ -51,6 +58,17 @@ const backend = (value: unknown) => parseBackend(value, courseId(value));
 const frontend = (value: unknown) => parseFrontend(value);
 
 const accepted: { name: string; value: unknown }[] = [
+  {
+    name: "empty course with its initial module numbered zero",
+    value: initialModular,
+  },
+  {
+    name: "explicit editorial module number keeps lesson order",
+    value: {
+      ...modular,
+      modules: [{ ...fundamentals, number: 0 }, application],
+    },
+  },
   { name: "legacy course without modules", value: legacy },
   {
     name: "single module",
@@ -85,6 +103,14 @@ const accepted: { name: string; value: unknown }[] = [
 ];
 
 const rejected: { name: string; value: unknown }[] = [
+  {
+    name: "empty course with multiple unfilled modules",
+    value: { ...initialModular, modules: [fundamentals, application] },
+  },
+  ...[-1, 0.5, 1000, "00", null].map((number) => ({
+    name: `invalid editorial module number ${JSON.stringify(number)}`,
+    value: { ...initialModular, modules: [{ ...fundamentals, number }] },
+  })),
   {
     name: "legacy course with a module reference",
     value: { ...legacy, lessons: [{ ...alpha, moduleId: "fundamentals" }] },
@@ -297,6 +323,7 @@ test("authoring output remains accepted by every manifest parser", async () => {
     for (const [folder, manifest, moduleId] of [
       ["legacy", legacy, undefined],
       ["modular", modular, "application"],
+      ["empty-modular", initialModular, "fundamentals"],
     ] as const) {
       const directory = join(root, folder);
       await mkdir(directory);
@@ -316,6 +343,10 @@ test("authoring output remains accepted by every manifest parser", async () => {
       assert.doesNotThrow(() => canonical(written));
       assert.doesNotThrow(() => backend(written));
       assert.doesNotThrow(() => frontend(written));
+      assert.deepEqual(
+        (written as { modules?: unknown }).modules,
+        "modules" in manifest ? manifest.modules : undefined,
+      );
       const lessons = (written as { lessons: Record<string, string>[] })
         .lessons;
       assert.deepEqual(lessons.at(-1), {
