@@ -71,11 +71,11 @@ test("empty calendar has six calendar months of real days, zero activities, mont
   );
   expect(
     await page
-      .locator(".activity-dashboard")
+      .locator(".home-courses")
       .evaluate((node) => node.getBoundingClientRect().bottom),
   ).toBeLessThan(
     await page
-      .locator("#home-courses")
+      .locator(".activity-dashboard")
       .evaluate((node) => node.getBoundingClientRect().top),
   );
   expect((await records(page, "activity")).length).toBe(0);

@@ -51,6 +51,13 @@
   color: #d4d4d4;
   border-bottom: 1px solid #3a4148;
 }
+.tactic-instruction {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
 .tactic-file > span:last-child {
   margin-left: auto;
   color: #a4a9ad;
@@ -118,6 +125,9 @@
   vertical-align: middle;
 }
 .tactic-step-slot {
+  width: 145px;
+}
+.tactic-slot-empty {
   width: 145px;
 }
 .tactic-slot:disabled {

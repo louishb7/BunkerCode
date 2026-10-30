@@ -65,10 +65,15 @@ export function TacticCode({
   const options = choices(round);
   return (
     <section className="tactic-program" aria-label="Programa JavaScript">
-      <p id={instructionId} className="sr-only">
-        {round.view.identity.kind.startsWith("complete-")
-          ? "Preencha a lacuna escolhendo uma operação e execute."
-          : "Substitua a operação incorreta destacada e execute. A operação inicial ainda não é uma seleção."}
+      <p id={instructionId} className="tactic-instruction">
+        {round.view.identity.kind.startsWith("complete-") ? (
+          "Preencha a lacuna escolhendo uma operação no código e clique em Executar."
+        ) : (
+          <>
+            Operação original: <code>{slot.initial}</code>. Escolha uma operação
+            no código para substituí-la e clique em Executar.
+          </>
+        )}
       </p>
       <div className="tactic-file">
         <span className="tactic-file-dot" aria-hidden="true" />
@@ -97,15 +102,11 @@ export function TacticCode({
                     aria-describedby={instructionId}
                     value={selection === null ? "" : String(selection)}
                     disabled={disabled}
-                    className={
-                      round.family === "assignment"
-                        ? "tactic-slot tactic-step-slot"
-                        : "tactic-slot"
-                    }
+                    className={`tactic-slot${round.family === "assignment" ? " tactic-step-slot" : ""}${selection === null ? " tactic-slot-empty" : ""}`}
                     onChange={(event) => onSelect(Number(event.target.value))}
                   >
                     <option value="" disabled>
-                      {slot.initial}
+                      Selecione…
                     </option>
                     {options.map((option, optionIndex) => (
                       <option key={optionIndex} value={optionIndex}>

@@ -56,7 +56,7 @@ async function visibleCourses(page: Page) {
     );
 }
 
-test("Home starts with a compact empty calendar, an accessible real total, keyboard access and four ordered courses", async ({
+test("Home prioritizes courses before its compact empty calendar with an accessible real total and keyboard access", async ({
   page,
 }) => {
   await page.goto("/");
@@ -102,12 +102,12 @@ test("Home starts with a compact empty calendar, an accessible real total, keybo
   ).toBeLessThan(850);
   expect(
     await page
-      .locator(".activity-dashboard")
-      .evaluate((n) => n.getBoundingClientRect().bottom),
+      .locator(".home-courses")
+      .evaluate((node) => node.getBoundingClientRect().bottom),
   ).toBeLessThan(
     await page
-      .locator("#home-courses")
-      .evaluate((n) => n.getBoundingClientRect().top),
+      .locator(".activity-dashboard")
+      .evaluate((node) => node.getBoundingClientRect().top),
   );
   await expect(page.locator(".heatmap-day[tabindex='0']")).toHaveCount(1);
   const current = page.locator(".heatmap-day[tabindex='0']");
@@ -301,7 +301,7 @@ test("unavailable local activity never masquerades as a zero total", async ({
   await expect(
     page.locator(".activity-dashboard [role='alert']"),
   ).toBeVisible();
-  await expect(page.locator("#activity-title")).toHaveText("Atividade");
+  await expect(page.locator("#activity-title")).toHaveText("Atividade local");
   await expect(page.locator(".heatmap-day")).toHaveCount(0);
   await expect(
     page.getByRole("region", { name: "Calendário dos últimos seis meses" }),

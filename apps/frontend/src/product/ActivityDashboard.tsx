@@ -157,9 +157,11 @@ export function ActivityDashboard() {
         if (!event.currentTarget.contains(event.relatedTarget)) hideDetails();
       }}
     >
-      <h2 id="activity-title" className="sr-only">
-        Atividade
-      </h2>
+      <h2 id="activity-title">Atividade local</h2>
+      <p className="activity-explanation">
+        Acessos a lições, edições de código e envios neste navegador. Não
+        indicam conclusão de lições.
+      </p>
       {error ? (
         <p role="alert" className="text-sm">
           {error} O calendário não confirma dados indisponíveis.

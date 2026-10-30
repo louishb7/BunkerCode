@@ -156,7 +156,18 @@ for (let index = 0; index < 6; index++) {
     const round = createRound(seed, index);
     const { correct, wrong, results } = answers(round);
     const original = round.view.code.trimEnd().split("\n");
-    expect(await displayedLines(page)).toEqual(original);
+    const initialLines = await displayedLines(page);
+    const editableLine =
+      round.family === "assignment"
+        ? 2 + round.view.stepIndex
+        : round.family === "comparison"
+          ? 3
+          : 5;
+    expect(initialLines.filter((_, index) => index !== editableLine)).toEqual(
+      original.filter((_, index) => index !== editableLine),
+    );
+    expect(initialLines[editableLine]).toContain("Selecione…");
+    await expect(page.locator(".tactic-instruction")).toBeVisible();
     await expect(runButton(page)).toBeDisabled();
     await expect(page.locator(".cm-editor")).toHaveCount(0);
     await expect(operation(page)).toHaveCount(1);

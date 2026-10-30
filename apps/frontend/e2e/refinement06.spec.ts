@@ -206,14 +206,7 @@ test("real last access resumes a validated lesson without manufacturing progress
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   const continuation = await page.locator(".continue-study").boundingBox();
   const calendar = await page.locator(".activity-dashboard").boundingBox();
-  expect(continuation!.x + continuation!.width).toBeLessThan(calendar!.x);
-  expect(
-    Math.abs(
-      continuation!.y +
-        continuation!.height / 2 -
-        (calendar!.y + calendar!.height / 2),
-    ),
-  ).toBeLessThan(1);
+  expect(continuation!.y + continuation!.height).toBeLessThan(calendar!.y);
   await page.screenshot({
     path: info.outputPath("home-resume-1440.png"),
     fullPage: true,

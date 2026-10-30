@@ -4,25 +4,55 @@ import { Link } from "react-router";
 import { Page } from "../courses/Page";
 import {
   lessonPath,
-  parseCourse,
+  parseLesson,
   parseCourses,
   useContent,
+  type CourseSummary,
 } from "../courses/api";
 import { recentLesson, type RecentLesson } from "./recent";
 import { CourseCard } from "./CourseCard";
 import { ActivityDashboard } from "./ActivityDashboard";
 import { discoverableCourses } from "./course-visibility";
 
-function ContinueStudy({ recent }: { recent: RecentLesson }) {
+function StartStudy({ course }: { course?: CourseSummary }) {
+  if (!course) return null;
+  return (
+    <section className="continue-study" aria-labelledby="start-title">
+      <h2 id="start-title">Começar a estudar</h2>
+      <Link
+        to={"/courses/" + encodeURIComponent(course.id)}
+        aria-label="Começar a estudar →"
+        aria-describedby="start-course"
+        className="continue-link"
+      >
+        <BookOpen size={22} aria-hidden="true" />
+        <span id="start-course">
+          <strong>{course.title}</strong>
+        </span>
+        <ArrowRight size={20} aria-hidden="true" />
+      </Link>
+    </section>
+  );
+}
+function ContinueStudy({
+  recent,
+  fallback,
+}: {
+  recent: RecentLesson;
+  fallback?: CourseSummary;
+}) {
   const { data } = useContent(
-    "/" + encodeURIComponent(recent.course),
-    parseCourse,
+    "/" +
+      encodeURIComponent(recent.course) +
+      "/lessons/" +
+      encodeURIComponent(recent.slug),
+    parseLesson,
   );
   const lesson =
-    data?.id === recent.course
-      ? data.lessons.find((item) => item.slug === recent.slug)
+    data?.course.id === recent.course && data.slug === recent.slug
+      ? data
       : undefined;
-  if (!lesson || !data) return null;
+  if (!lesson || !data) return <StartStudy course={fallback} />;
   return (
     <section className="continue-study" aria-labelledby="continue-title">
       <h2 id="continue-title">Continuar estudando</h2>
@@ -34,7 +64,7 @@ function ContinueStudy({ recent }: { recent: RecentLesson }) {
       >
         <BookOpen size={22} aria-hidden="true" />
         <span id="continue-lesson">
-          <span className="continue-course">{data.title}</span>
+          <span className="continue-course">{data.course.title}</span>
           <strong>{lesson.title}</strong>
         </span>
         <ArrowRight size={20} aria-hidden="true" />
@@ -46,12 +76,16 @@ export function HomePage() {
   const { data, error } = useContent("", parseCourses);
   const [recent] = useState(recentLesson);
   const courses = data ? discoverableCourses(data) : undefined;
+  const firstCourse = courses?.find((course) => course.lessonCount > 0);
   return (
     <Page title="Início" className="product-page dashboard-page">
       <h1 className="sr-only">Início</h1>
       <div className="home-study-overview">
-        {recent && <ContinueStudy recent={recent} />}
-        <ActivityDashboard />
+        {recent ? (
+          <ContinueStudy recent={recent} fallback={firstCourse} />
+        ) : (
+          <StartStudy course={firstCourse} />
+        )}
       </div>
       <section aria-labelledby="home-courses" className="home-courses">
         <div className="collection-heading">
@@ -79,6 +113,7 @@ export function HomePage() {
           </div>
         )}
       </section>
+      <ActivityDashboard />
     </Page>
   );
 }
