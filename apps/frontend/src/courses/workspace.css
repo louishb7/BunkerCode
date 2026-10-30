@@ -77,6 +77,80 @@
 .workspace-panels {
   display: grid;
 }
+.workspace-tabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  background: var(--color-surface);
+}
+.workspace-tabs .editor-toolbar {
+  flex: 1;
+  min-width: 0;
+}
+.panel-settings {
+  position: relative;
+  flex-shrink: 0;
+  padding-right: 8px;
+  z-index: 5;
+}
+.panel-settings > button {
+  min-height: 32px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.panel-settings-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 8px;
+  width: min(304px, calc(100vw - 24px));
+  max-height: calc(100dvh - 160px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-raised);
+  box-shadow: 0 4px 16px #0006;
+}
+.panel-settings-popover fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.panel-settings-popover fieldset + fieldset {
+  margin-top: 16px;
+}
+.panel-settings-popover legend {
+  font-size: 13px;
+  font-weight: 600;
+}
+.panel-settings-popover p {
+  font-size: 12px;
+  color: var(--color-subtle);
+  margin: 4px 0 8px;
+}
+.panel-preset-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.panel-preset-buttons button {
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+.panel-preset-buttons button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.panel-width-options {
+  display: none;
+}
+@media (min-width: 1000px) {
+  .panel-width-options {
+    display: block;
+  }
+}
 .workspace-editor,
 .workspace-code-slot,
 .workspace-code-slot > div:not([hidden]) {

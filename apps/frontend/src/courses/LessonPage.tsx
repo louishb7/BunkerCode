@@ -184,23 +184,28 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             </ReadingArticle>
           }
           right={
-            exercise ? (
-              <div
-                aria-label="Área de código"
-                className="programming-workspace min-w-0"
-              >
-                <Suspense
-                  fallback={<p role="status">Carregando editor de código…</p>}
-                >
-                  <PracticePanel
-                    key={exercise.id + exercise.revision}
-                    course={id}
-                    lesson={slug}
-                    exercise={exercise}
-                  />
-                </Suspense>
-              </div>
-            ) : undefined
+            exercise
+              ? (widthControls) => (
+                  <div
+                    aria-label="Área de código"
+                    className="programming-workspace min-w-0"
+                  >
+                    <Suspense
+                      fallback={
+                        <p role="status">Carregando editor de código…</p>
+                      }
+                    >
+                      <PracticePanel
+                        widthControls={widthControls}
+                        key={exercise.id + exercise.revision}
+                        course={id}
+                        lesson={slug}
+                        exercise={exercise}
+                      />
+                    </Suspense>
+                  </div>
+                )
+              : undefined
           }
         />
       </Page>

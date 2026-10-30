@@ -142,7 +142,7 @@ export function StudySplit({
   mobileView = "reading",
 }: {
   left: ReactNode;
-  right?: ReactNode;
+  right?: (widthControls: ReactNode) => ReactNode;
   practice?: boolean;
   mobileView?: "reading" | "code";
 }) {
@@ -259,7 +259,30 @@ export function StudySplit({
               drag.current = null;
             }}
           />
-          <div className="study-code">{right}</div>
+          <div className="study-code">
+            {right(
+              <fieldset className="panel-width-options">
+                <legend>Largura</legend>
+                <p>{Math.round(effective)}% para a lição</p>
+                <div className="panel-preset-buttons">
+                  {[
+                    { value: 35, label: "Mais código" },
+                    { value: initial, label: "Padrão" },
+                    { value: 65, label: "Mais leitura" },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      aria-pressed={Math.abs(effective - value) < 0.5}
+                      onClick={() => update(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>,
+            )}
+          </div>
         </>
       )}
       {error && <p role="status">{error}</p>}

@@ -56,7 +56,7 @@ test.beforeAll(async () => {
   ).join("\n\n");
   await writeFile(
     join(root, "lessons/long-lesson/lesson.md"),
-    `# Lição extensa\n\n${paragraphs}\n\nFim da lição extensa.\n`,
+    `# Lição extensa\n\n[Referência de navegação](/courses/typescript)\n\n${paragraphs}\n\n\`\`\`javascript\nconst longLine = "${"x".repeat(400)}";\n\`\`\`\n\nFim da lição extensa.\n`,
   );
   await writeFile(
     join(root, "lessons/last-lesson/lesson.md"),
@@ -72,6 +72,96 @@ test.beforeAll(async () => {
     ),
   );
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+])
+  test(`keyboard reaches and scrolls long reading, code and results at ${viewport.width}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(viewport);
+    await page.goto(fixture);
+    await openCode(page);
+    await code(page).fill(
+      Array.from(
+        { length: 80 },
+        (_, i) => `const error${i}: number = "wrong";`,
+      ).join("\n"),
+    );
+    await page.getByRole("button", { name: "Run", exact: true }).click();
+    await expect(page.locator(".diagnostics li")).toHaveCount(80, {
+      timeout: 30000,
+    });
+    const reading = page.getByRole("button", { name: "Lição", exact: true });
+    if (await reading.isVisible()) {
+      await reading.focus();
+      await page.keyboard.press("Enter");
+    }
+    const stops: string[] = [];
+    async function tabTo(selector: string) {
+      for (let step = 0; step < 40; step++) {
+        await page.keyboard.press("Tab");
+        const result = await page.evaluate((selector) => {
+          const node = document.activeElement;
+          return {
+            match: !!node?.matches(selector),
+            label: `${node?.tagName}:${node?.getAttribute("aria-label") ?? node?.textContent?.slice(0, 45)}`,
+            editor: !!node?.closest(".cm-editor"),
+          };
+        }, selector);
+        stops.push(result.label);
+        if (result.match) return;
+        if (result.editor) await page.keyboard.press("Escape");
+      }
+      throw new Error(
+        `Keyboard target not reached: ${selector}; ${stops.join(" -> ")}`,
+      );
+    }
+    await page
+      .getByRole("link", { name: "BunkerCode — Início", exact: true })
+      .focus();
+    await tabTo(".study-explanation a");
+    const article = page.locator(".study-explanation");
+    await page.keyboard.press("PageDown");
+    await expect
+      .poll(() => article.evaluate((node) => node.scrollTop))
+      .toBeGreaterThan(0);
+    await tabTo(".code-block pre");
+    await page.keyboard.press("ArrowRight");
+    await expect
+      .poll(() =>
+        page.locator(".code-block pre").evaluate((node) => node.scrollLeft),
+      )
+      .toBeGreaterThan(0);
+    if (await reading.isVisible()) {
+      await page.getByRole("button", { name: "Código", exact: true }).focus();
+      await page.keyboard.press("Enter");
+    }
+    await tabTo('.cm-content[contenteditable="true"]');
+    await page.keyboard.press("ControlOrMeta+End");
+    await expect
+      .poll(() =>
+        page
+          .locator(".workspace-code-slot .cm-scroller")
+          .evaluate((node) => node.scrollTop),
+      )
+      .toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await tabTo(".workspace-results summary");
+    await page.keyboard.press("PageDown");
+    await expect
+      .poll(() =>
+        page.locator(".workspace-results").evaluate((node) => node.scrollTop),
+      )
+      .toBeGreaterThan(0);
+    await tabTo(".learning-footer a");
+    console.log("KEYBOARD_SCROLL_STOPS", JSON.stringify({ viewport, stops }));
+    await page.screenshot({
+      path: info.outputPath(`keyboard-scroll-${viewport.width}.png`),
+    });
+    await contained(page);
+  });
 
 for (const [width, height] of [
   [1440, 900],

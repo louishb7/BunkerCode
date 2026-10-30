@@ -58,6 +58,11 @@
 .global-content {
   min-width: 0;
 }
+@media (max-width: 359px) {
+  .global-nav-link {
+    padding-inline: 10px;
+  }
+}
 @media (min-width: 1024px) {
   .global-layout {
     display: grid;

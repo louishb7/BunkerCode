@@ -16,6 +16,7 @@ export function ActivityDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
+  const [consultingDate, setConsultingDate] = useState(false);
   const [details, setDetails] = useState<{
     day: string;
     left: number;
@@ -157,7 +158,32 @@ export function ActivityDashboard() {
         if (!event.currentTarget.contains(event.relatedTarget)) hideDetails();
       }}
     >
-      <h2 id="activity-title">Atividade local</h2>
+      <div className="activity-heading">
+        <h2 id="activity-title">Atividade local</h2>
+        {!loading && !error && (
+          <label className="activity-date-control">
+            Consultar dia
+            <input
+              type="date"
+              aria-label="Consultar dia de atividade"
+              min={calendar.start}
+              max={calendar.end}
+              value={focusDay}
+              onFocus={() => {
+                hideDetails();
+                setSelected(focusDay);
+                setConsultingDate(true);
+              }}
+              onChange={(event) => {
+                if (!calendar.days.includes(event.target.value)) return;
+                setSelected(event.target.value);
+                setConsultingDate(true);
+                hideDetails();
+              }}
+            />
+          </label>
+        )}
+      </div>
       <p className="activity-explanation">
         Acessos a lições, edições de código e envios neste navegador. Não
         indicam conclusão de lições.
@@ -251,7 +277,10 @@ export function ActivityDashboard() {
               )}
             </div>
           </div>
-          <p className="sr-only" aria-live="polite">
+          <p
+            className={consultingDate ? "activity-selected-day" : "sr-only"}
+            aria-live="polite"
+          >
             {selected ? description(focusDay) : ""}
           </p>
           {details && (

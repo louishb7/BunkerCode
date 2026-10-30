@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 const preferenceKey = "bunkercode:practice-height";
 const defaultRatio = 60;
@@ -19,17 +19,45 @@ export function WorkspacePanels({
   editor,
   actions,
   results,
+  widthControls,
 }: {
   tabs: ReactNode;
   editor: ReactNode;
   actions: (divider: ReactNode) => ReactNode;
   results: ReactNode;
+  widthControls: ReactNode;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [ratio, setRatio] = useState(initialRatio);
   const [available, setAvailable] = useState(400);
   const [error, setError] = useState("");
   const [resizing, setResizing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settings = useRef<HTMLDivElement>(null);
+  const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const settingsId = useId();
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !settings.current?.contains(event.target)
+      )
+        setSettingsOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setSettingsOpen(false);
+      settingsTrigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [settingsOpen]);
   const drag = useRef<{
     id: number;
     y: number;
@@ -142,7 +170,58 @@ export function WorkspacePanels({
         gridTemplateRows: `auto minmax(0, ${effective}fr) auto minmax(0, ${100 - effective}fr)`,
       }}
     >
-      <div>{tabs}</div>
+      <div className="workspace-tabs">
+        {tabs}
+        <div
+          className="panel-settings"
+          ref={settings}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget))
+              setSettingsOpen(false);
+          }}
+        >
+          <button
+            ref={settingsTrigger}
+            type="button"
+            aria-label="Ajustar painéis"
+            aria-expanded={settingsOpen}
+            aria-controls={settingsId}
+            onClick={() => setSettingsOpen(!settingsOpen)}
+          >
+            Painéis
+          </button>
+          {settingsOpen && (
+            <div
+              id={settingsId}
+              className="panel-settings-popover"
+              role="group"
+              aria-label="Proporções dos painéis"
+            >
+              {widthControls}
+              <fieldset>
+                <legend>Altura</legend>
+                <p>{Math.round(effective)}% para o código</p>
+                <div className="panel-preset-buttons">
+                  {[
+                    { value: 35, label: "Mais resultados" },
+                    { value: defaultRatio, label: "Padrão" },
+                    { value: 75, label: "Mais código" },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      aria-pressed={Math.abs(effective - value) < 0.5}
+                      onClick={() => save(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          )}
+        </div>
+      </div>
       <div className="workspace-editor">{editor}</div>
       <div>{actions(divider)}</div>
       <div className="workspace-results">

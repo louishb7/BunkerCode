@@ -1,4 +1,125 @@
 import { expect, test } from "@playwright/test";
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+  { width: 360, height: 800 },
+  { width: 320, height: 800 },
+  { width: 720, height: 450 },
+])
+  test(`panel presets preserve the editor and preferences at ${viewport.width}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    if (viewport.width === 720) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setDeviceMetricsOverride", {
+        ...viewport,
+        deviceScaleFactor: 2,
+        mobile: false,
+      });
+      console.log("REFLOW_200", {
+        cssViewport: viewport,
+        deviceScaleFactor: 2,
+        nativeBrowserZoom: false,
+      });
+    }
+    await page.goto("/courses/typescript/lessons/values-and-types");
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    const switcher = page.getByRole("button", { name: "Código", exact: true });
+    if (await switcher.isVisible()) await switcher.click();
+    const editor = page.getByRole("textbox", {
+      name: "Código da solução",
+      exact: true,
+    });
+    await editor.fill("const preservedPreset = 42;");
+    await editor.press("ControlOrMeta+a");
+    const selection = await page.evaluate(() => getSelection()?.toString());
+    await editor.evaluate((node) =>
+      node.setAttribute("data-preserved-preset", "yes"),
+    );
+    await page.screenshot({
+      path: info.outputPath(`panels-before-${viewport.width}.png`),
+    });
+    const trigger = page.getByRole("button", {
+      name: "Ajustar painéis",
+      exact: true,
+    });
+    await trigger.click();
+    const settings = page.getByRole("group", {
+      name: "Proporções dos painéis",
+      exact: true,
+    });
+    await expect(settings).toBeVisible();
+    const height = settings.getByRole("group", { name: "Altura", exact: true });
+    await height
+      .getByRole("button", { name: "Mais resultados", exact: true })
+      .click();
+    await expect(
+      height.getByRole("button", { name: "Mais resultados", exact: true }),
+    ).toBeFocused();
+    const divider = page.getByRole("separator", {
+      name: "Altura do editor e resultados",
+      exact: true,
+    });
+    const expectedRatio = String(
+      Math.max(
+        Number(await divider.getAttribute("aria-valuemin")),
+        Math.min(Number(await divider.getAttribute("aria-valuemax")), 35),
+      ),
+    );
+    await expect(divider).toHaveAttribute("aria-valuenow", expectedRatio);
+    await expect(editor).toHaveAttribute("data-preserved-preset", "yes");
+    await expect(editor).toContainText("preservedPreset");
+    if (viewport.width >= 1000) {
+      await settings
+        .getByRole("group", { name: "Largura", exact: true })
+        .getByRole("button", { name: "Mais leitura", exact: true })
+        .click();
+      await expect(
+        page.getByRole("separator", {
+          name: "Largura do artigo e editor",
+          exact: true,
+        }),
+      ).toHaveAttribute("aria-valuenow", "65");
+    } else
+      await expect(
+        settings.getByRole("group", { name: "Largura", exact: true }),
+      ).not.toBeVisible();
+    await page.screenshot({
+      path: info.outputPath(`panels-presets-${viewport.width}.png`),
+    });
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    await expect(settings).toHaveCount(0);
+    await editor.focus();
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe(
+      selection,
+    );
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(editor).not.toContainText("preservedPreset");
+    await page.keyboard.press(
+      process.platform === "darwin" ? "Meta+Shift+z" : "Control+y",
+    );
+    await expect(editor).toContainText("preservedPreset");
+    await page.reload();
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    if (await switcher.isVisible()) await switcher.click();
+    await expect(editor).toContainText("preservedPreset");
+    await expect(divider).toHaveAttribute("aria-valuenow", expectedRatio);
+    if (viewport.width >= 1000)
+      await expect(
+        page.getByRole("separator", {
+          name: "Largura do artigo e editor",
+          exact: true,
+        }),
+      ).toHaveAttribute("aria-valuenow", "65");
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(viewport.width);
+  });
 for (const width of [390, 1280, 1440, 1920])
   test(`results, independent vertical dimensions and reading theme at ${width}`, async ({
     page,

@@ -6,6 +6,98 @@ import { join } from "node:path";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+  { width: 360, height: 800 },
+  { width: 320, height: 800 },
+  { width: 720, height: 450 },
+])
+  test(`public calendar consultation and panel presets remain local at ${viewport.width}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    if (viewport.width === 720) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setDeviceMetricsOverride", {
+        ...viewport,
+        deviceScaleFactor: 2,
+        mobile: false,
+      });
+    }
+    const mutations: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/") && request.method() !== "GET")
+        mutations.push(request.url());
+    });
+    await page.goto("/");
+    const date = page.getByLabel("Consultar dia de atividade", { exact: true });
+    await expect(date).toBeVisible();
+    await date.focus();
+    await expect(page.locator(".activity-selected-day")).toContainText(
+      "0 atividades em",
+    );
+    await date.fill((await date.getAttribute("min"))!);
+    await expect(page.locator('.heatmap-day[tabindex="0"]')).toHaveAttribute(
+      "data-day",
+      await date.inputValue(),
+    );
+    await page.screenshot({
+      path: info.outputPath(`public-calendar-${viewport.width}.png`),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(viewport.width);
+    await page.goto(lesson);
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    const switcher = page.getByRole("button", { name: "Código", exact: true });
+    if (await switcher.isVisible()) await switcher.click();
+    await page
+      .getByRole("button", { name: "Ajustar painéis", exact: true })
+      .click();
+    const settings = page.getByRole("group", {
+      name: "Proporções dos painéis",
+      exact: true,
+    });
+    await settings
+      .getByRole("group", { name: "Altura", exact: true })
+      .getByRole("button", { name: "Mais código", exact: true })
+      .click();
+    const divider = page.getByRole("separator", {
+      name: "Altura do editor e resultados",
+      exact: true,
+    });
+    const value = await divider.getAttribute("aria-valuenow");
+    if (viewport.width >= 1000)
+      await settings
+        .getByRole("group", { name: "Largura", exact: true })
+        .getByRole("button", { name: "Mais leitura", exact: true })
+        .click();
+    else
+      await expect(
+        settings.getByRole("group", { name: "Largura", exact: true }),
+      ).not.toBeVisible();
+    const popup = (await settings.boundingBox())!;
+    expect(popup.x).toBeGreaterThanOrEqual(0);
+    expect(popup.x + popup.width).toBeLessThanOrEqual(viewport.width);
+    expect(popup.y + popup.height).toBeLessThanOrEqual(viewport.height);
+    await page.screenshot({
+      path: info.outputPath(`public-panels-${viewport.width}.png`),
+    });
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await expect(page.locator(".cm-editor")).toHaveCount(1);
+    if (await switcher.isVisible()) await switcher.click();
+    await expect(divider).toHaveAttribute("aria-valuenow", value!);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(viewport.width);
+    expect(mutations).toEqual([]);
+  });
+
 for (const [width, height] of [
   [1440, 900],
   [1280, 800],

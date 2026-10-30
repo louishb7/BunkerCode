@@ -7,6 +7,70 @@ import { join } from "node:path";
 const course = "stabilization06";
 const base = `/courses/${course}/lessons`;
 
+test("calendar date consultation offers a precise-pointer alternative without changing activity", async ({
+  page,
+}, info) => {
+  await page.goto(`${base}/reading`);
+  await expect(page.locator(".lesson-heading h1")).toBeVisible();
+  await page
+    .getByRole("link", { name: "BunkerCode — Início", exact: true })
+    .click();
+  await expectActivityTotal(page, 1);
+  const current = page.locator('.heatmap-day[tabindex="0"]');
+  console.log("CALENDAR_TARGET", await current.boundingBox());
+  await current.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath("calendar-before-consultation.png"),
+  });
+  const date = page.getByLabel("Consultar dia de atividade", { exact: true });
+  await expect(date).toBeVisible();
+  const box = (await date.boundingBox())!;
+  expect(box.width).toBeGreaterThanOrEqual(100);
+  expect(box.height).toBeGreaterThanOrEqual(32);
+  await date.click();
+  await expect(page.locator(".activity-selected-day")).toContainText(
+    "1 atividade em",
+  );
+  const first = (await page
+    .locator(".heatmap-day")
+    .first()
+    .getAttribute("data-day"))!;
+  await date.fill(first);
+  await expect(page.locator(".activity-selected-day")).toContainText(
+    "0 atividades em",
+  );
+  await expect(current).toHaveAttribute("data-day", first);
+  const calendar = page.getByRole("region", {
+    name: "Calendário dos últimos seis meses",
+    exact: true,
+  });
+  // Native date fields may have several internal segments before the next control.
+  for (let step = 0; step < 10; step++) {
+    await page.keyboard.press("Tab");
+    if (await calendar.evaluate((node) => node === document.activeElement))
+      break;
+  }
+  await expect(calendar).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(current).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".heatmap-day:focus")).not.toHaveAttribute(
+    "data-day",
+    first,
+  );
+  await expect(page.locator('.heatmap-day[tabindex="0"]')).toHaveCount(1);
+  await expectActivityTotal(page, 1);
+  await page.screenshot({
+    path: info.outputPath("calendar-date-consultation.png"),
+  });
+  await page.keyboard.press("Tab");
+  expect(
+    await page
+      .locator(".activity-dashboard")
+      .evaluate((node) => node.contains(document.activeElement)),
+  ).toBe(false);
+});
+
 test("heatmap consultation displays a real visit without recording another activity", async ({
   page,
 }) => {
@@ -256,6 +320,11 @@ for (const [width, height] of [
     await expect(page.getByRole("tooltip")).toHaveText(
       (await focused.getAttribute("aria-label"))! + "Sem atividade registrada.",
     );
+    const bounds = (await page.getByRole("tooltip").boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width!);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(height!);
     await page.screenshot({ path: info.outputPath(`heatmap-${width}.png`) });
     await page.getByRole("heading", { name: "Cursos disponíveis" }).click();
     await expect(page.getByRole("tooltip")).toHaveCount(0);
@@ -289,6 +358,8 @@ for (const width of [390, 360])
       await page.goto("http://127.0.0.1:5184/");
       const day = page.locator(".heatmap-day").first();
       await expect(day).toBeVisible();
+      // Tap scrolls offscreen controls into view; compare targets in one viewport.
+      await day.scrollIntoViewIfNeeded();
       const box = (await day.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(24);
       expect(box.height).toBeGreaterThanOrEqual(24);
@@ -299,6 +370,10 @@ for (const width of [390, 360])
       const tooltip = (await page.getByRole("tooltip").boundingBox())!;
       expect(tooltip.x).toBeGreaterThanOrEqual(0);
       expect(tooltip.x + tooltip.width).toBeLessThanOrEqual(width);
+      expect(tooltip.y).toBeGreaterThanOrEqual(0);
+      expect(tooltip.y + tooltip.height).toBeLessThanOrEqual(
+        width === 390 ? 844 : 800,
+      );
       const neighbor = page.locator(".heatmap-day").nth(1);
       const neighborBox = (await neighbor.boundingBox())!;
       expect(neighborBox.y).toBeGreaterThanOrEqual(box.y + box.height);
@@ -315,11 +390,15 @@ for (const width of [390, 360])
         await page
           .locator(".activity-dashboard")
           .evaluate((node) => node.getBoundingClientRect().height),
-      ).toBeLessThan(230);
+      ).toBeLessThan(320);
+      // The seven 24px touch rows stay unchanged; the header includes date lookup.
+      expect((await page.locator(".heatmap-grid").boundingBox())!.height).toBe(
+        168,
+      );
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBe(width);
-      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.evaluate(() => window.scrollBy(0, -12));
       await expect(page.getByRole("tooltip")).toContainText("0 atividades");
       // Scroll events reposition the fixed detail; capture only its settled geometry.
       await expect
@@ -328,12 +407,17 @@ for (const width of [390, 360])
             .locator(".heatmap-day:focus")
             .boundingBox())!;
           const detail = (await page.getByRole("tooltip").boundingBox())!;
-          return Math.abs(detail.y - cell.y - cell.height);
+          return Math.min(
+            Math.abs(detail.y - cell.y - cell.height),
+            Math.abs(cell.y - detail.y - detail.height),
+          );
         })
         .toBeLessThan(24);
       await page.screenshot({
         path: info.outputPath(`heatmap-touch-${width}.png`),
       });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(page.getByRole("tooltip")).toHaveCount(0);
       await page.getByRole("heading", { name: "Cursos disponíveis" }).tap();
       await expect(page.getByRole("tooltip")).toHaveCount(0);
     } finally {

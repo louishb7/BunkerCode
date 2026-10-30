@@ -36,6 +36,8 @@ README conciso e verdadeiro. Atualizar docs quando mudar comportamento, contrato
 
 ## Validação e entrega
 
+Novos testes E2E devem preferencialmente ampliar os grupos funcionais existentes. Criar outro arquivo somente com razão objetiva de organização, isolamento ou manutenção; não criar automaticamente um arquivo numerado por refinamento. Excluir ou consolidar testes exige demonstrar equivalência integral da cobertura e conferir descoberta e execução nos runners correspondentes.
+
 Preferência persistente do autor: trabalhar diretamente no checkout principal do repositório, atualmente `/home/henrique/Projetos/BunkerCode`, na branch main. Antes de editar, conferir git status e git worktree list; não assumir que o worktree aberto pela ferramenta é o local desejado. Não criar branch/worktree ou isolar mudanças por padrão. Usar isolamento somente por pedido explícito ou risco concreto, como produção ou operação perigosa, explicando o motivo. Preservar mudanças existentes, reconciliar conflitos e deixar alterações locais prontas para o commit manual do autor.
 
 Executar pnpm lint, pnpm typecheck, pnpm test, pnpm build e E2E pertinentes. Testar autoria, renderização segura, ordem/navegação, refresh, salvamento físico, revisão obsoleta, proteções HTTP e ausência de rotas aposentadas. Usar comportamento real barato antes de mocks; não criar testes que apenas reproduzam implementação.
