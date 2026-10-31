@@ -1,3 +1,4 @@
+import { selectReadingTone } from "./reading-theme-checks";
 import { expect, test } from "@playwright/test";
 
 for (const viewport of [
@@ -204,8 +205,8 @@ for (const width of [390, 1280, 1440, 1920])
     ).toBeVisible();
     const reading = page.getByRole("button", { name: "Lição", exact: true });
     if (await reading.isVisible()) await reading.click();
-    await page.getByRole("button", { name: "Aparência da leitura" }).click();
-    await page.getByRole("combobox", { name: "Tonalidade" }).selectOption("1");
+    await page.getByRole("button", { name: "Tema e aparência" }).click();
+    await selectReadingTone(page, 1);
     expect(
       await page
         .locator(".study-explanation")

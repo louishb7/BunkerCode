@@ -10,14 +10,57 @@
   --color-surface: #1a1e22;
   --color-raised: #22272d;
   --color-line: #343b42;
-  --color-ink: #f0ece5;
-  --color-subtle: #b8bbbd;
+  --color-ink: #eef1f4;
+  --color-subtle: #b7c0c8;
   --color-gold: #e8bd68;
+}
+/* Site colors; reader tones and code surfaces own their local palettes. */
+:root {
+  --color-text: #e3e7eb;
+  --status-success: #9dceaa;
+  --status-error: #efaaaa;
+  --status-warning: #e8bc86;
+  --success-border: #7cb48b;
+  --error-border: #dc9595;
+  --primary-hover: #f1cd87;
+}
+:root[data-site-theme="light"] {
+  --color-bunker: #eef1f4;
+  --color-surface: #e5eaf0;
+  --color-raised: #dfe6ed;
+  --color-line: #7b8896;
+  --color-ink: #152331;
+  --color-text: #293542;
+  --color-subtle: #52606e;
+  --color-gold: #765019;
+  --accent: #765019;
+  --control-background: #e5eaf0;
+  --control-border: #7b8896;
+  --panel-background: #e5eaf0;
+  --popover-background: #dfe6ed;
+  --sidebar-background: #e5eaf0;
+  --surface-hover: #dfe6ed;
+  --surface-active: #d5dee7;
+  --status-success: #21603b;
+  --status-error: #9d303b;
+  --status-warning: #765019;
+  --success-border: #327148;
+  --error-border: #ae4650;
+  --success-fill: #3271480d;
+  --error-fill: #ae46500d;
+  --warning-fill: #7650190d;
+  --inline-code-text: #673f1c;
+  --inline-code-background: #e0e6ec;
+  --quote-text: #475767;
+  --quote-background: #dfe6ed;
+  --quote-border: #765019;
+  --primary-hover: #634215;
+  color-scheme: light;
 }
 @layer base {
   :root {
     --accent: #e8bd68;
-    --text-muted: #b8bbbd;
+    --text-muted: var(--color-subtle);
     --control-background: #1b2224;
     --control-border: #4e5655;
     --control-radius: 6px;
@@ -25,8 +68,8 @@
     --reading-heading-gap: 38px;
     --reading-gutter: 28px;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    color: #e8e5de;
-    background: #111417;
+    color: var(--color-text);
+    background: var(--color-bunker);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     color-scheme: dark;
@@ -49,7 +92,7 @@
     border: 1px solid var(--control-border);
     border-radius: var(--control-radius);
     background: var(--control-background);
-    color: #dde3df;
+    color: var(--color-text);
   }
   button:hover:enabled {
     filter: brightness(1.12);
@@ -75,13 +118,13 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #b3b5b4;
+    color: var(--color-subtle);
   }
   h1,
   h2,
   h3 {
     line-height: 1.2;
-    color: #f0ece5;
+    color: var(--color-ink);
   }
   .back-link {
     font-size: 14px;
@@ -89,7 +132,7 @@
     text-decoration: none;
   }
   .muted {
-    color: #a8acab;
+    color: var(--color-subtle);
     font-size: 13px;
   }
   .content-status h1 {
@@ -110,8 +153,8 @@
     top: 12px;
     z-index: 50;
     padding: 12px 16px;
-    background: #242422;
-    border: 1px solid #eaaa70;
+    background: var(--color-raised);
+    border: 1px solid var(--accent);
     border-radius: 6px;
     transform: translateY(-200%);
   }
@@ -137,7 +180,10 @@
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-raised px-4 py-2 text-sm font-medium text-ink no-underline transition-colors hover:border-gold;
   }
   .product-primary {
-    @apply bg-gold text-bunker border-gold hover:bg-[#f1cd87];
+    @apply bg-gold text-bunker border-gold;
+  }
+  .product-primary:hover {
+    background: var(--primary-hover);
   }
   .product-icon {
     @apply size-4 shrink-0;
@@ -156,4 +202,34 @@
 /* Route headings receive programmatic focus for orientation, not an interactive frame. */
 h1[tabindex="-1"]:focus {
   outline: none;
+}
+
+/* Editor text stays Darcula; its search and completion UI follows the site. */
+:root[data-site-theme="light"]
+  .code-editor
+  .cm-editor
+  :is(.cm-panels, .cm-tooltip) {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-line);
+  color-scheme: light;
+}
+:root[data-site-theme="light"]
+  .code-editor
+  .cm-tooltip-autocomplete
+  li[aria-selected="true"] {
+  color: var(--color-ink);
+  background: var(--color-raised);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+:root[data-site-theme="light"] .code-editor .cm-search .cm-textfield {
+  color: var(--color-text);
+  background: var(--color-bunker);
+  border-color: var(--control-border);
+}
+:root[data-site-theme="light"] .code-editor .cm-search button {
+  color: var(--color-text);
+  background: var(--color-raised);
+  border-color: var(--control-border);
 }

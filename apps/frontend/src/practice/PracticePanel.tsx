@@ -561,7 +561,7 @@ export default function PracticePanel({
                       {result.run.stdout || "Sem saída em stdout."}
                     </pre>
                     {result.run.stderr && (
-                      <pre className="result-output text-[#e49e82]">
+                      <pre className="result-output result-error">
                         {result.run.stderr}
                       </pre>
                     )}

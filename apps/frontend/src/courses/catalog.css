@@ -95,7 +95,7 @@
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  border: 1px solid #e8bd6866;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 50%;
   background: var(--color-bunker);
   color: var(--color-gold);
@@ -110,15 +110,15 @@
   line-height: 1.5;
 }
 .course-lesson:hover {
-  border-color: #e8bd6870;
-  background: #1d2227;
+  border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+  background: var(--surface-hover, #1d2227);
 }
 .course-lesson:focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 3px;
 }
 .course-lesson:active {
-  background: #24292e;
+  background: var(--surface-active, #24292e);
 }
 .course-modules {
   display: grid;
@@ -200,7 +200,11 @@
   gap: 16px;
   padding: 16px 20px;
   border-left: 2px solid var(--color-gold);
-  background: linear-gradient(90deg, #e8bd680c, #e8bd6802);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 5%, transparent),
+    color-mix(in srgb, var(--accent) 1%, transparent)
+  );
   color: var(--color-ink);
   text-decoration: none;
 }
@@ -226,7 +230,7 @@
   font-weight: 550;
 }
 .continue-link:hover {
-  background-color: #e8bd6808;
+  background-color: color-mix(in srgb, var(--accent) 3%, transparent);
 }
 .home-courses {
   margin-top: 28px;
@@ -262,13 +266,13 @@
   gap: 20px;
 }
 .course-card {
-  --course-tint: #e8bd68;
+  --course-tint: var(--accent);
   display: flex;
   flex-direction: column;
   gap: 18px;
   padding: 24px;
   min-width: 0;
-  border: 1px solid #ffffff14;
+  border: 1px solid var(--color-line);
   border-radius: 8px;
   background: linear-gradient(
     120deg,
@@ -330,7 +334,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  color: #a7aeb3;
+  color: var(--color-subtle);
   font-size: 11px;
 }
 .course-card-details > span {
@@ -349,8 +353,8 @@
   background: currentColor;
 }
 .course-card:hover {
-  border-color: #e8bd6870;
-  background: #1d2227;
+  border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+  background: var(--surface-hover, #1d2227);
 }
 .course-card:focus-visible,
 .continue-link:focus-visible {
@@ -358,7 +362,7 @@
   outline-offset: 4px;
 }
 .course-card:active {
-  background: #24292e;
+  background: var(--surface-active, #24292e);
 }
 @media (min-width: 1440px) {
   .course-list {

@@ -12,6 +12,22 @@ export const readingViewports = [
   { width: 360, height: 800 },
   { width: 320, height: 800 },
 ];
+export const readingToneLabels = [
+  "BunkerCode",
+  "Azul profundo",
+  "Alto contraste",
+  "Claro suave",
+  "Neutro",
+  "Névoa azul",
+];
+export function readingToneButton(page: Page, tone: number) {
+  return page
+    .getByRole("group", { name: "Tonalidade da leitura", exact: true })
+    .getByRole("button", { name: readingToneLabels[tone]!, exact: true });
+}
+export async function selectReadingTone(page: Page, tone: number) {
+  await readingToneButton(page, tone).click();
+}
 const lesson =
   "/courses/fundamentos-programacao-javascript/lessons/o-que-significa-programar";
 
@@ -92,7 +108,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   const article = page.locator(".study-explanation");
   await expect(article).toHaveClass(/reading-tone-0/);
   const appearance = page.getByRole("button", {
-    name: "Aparência da leitura",
+    name: "Tema e aparência",
     exact: true,
   });
   const backgrounds = new Set<string>();
@@ -101,21 +117,15 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   const original = await article.innerText();
   for (let tone = 0; tone < 6; tone++) {
     await appearance.click();
-    const select = page.getByLabel("Tonalidade", { exact: true });
-    await expect(select.locator("option")).toHaveText([
-      "Padrão BunkerCode",
-      "Azul profundo",
-      "Alto contraste",
-      "Claro suave",
-      "Neutro",
-      "Névoa azul",
-    ]);
-    await select.selectOption(String(tone));
+    await expect(page.locator(".reading-tone-options button")).toHaveText(
+      readingToneLabels,
+    );
+    await selectReadingTone(page, tone);
     await page.getByLabel("Tamanho do texto", { exact: true }).focus();
     await page.keyboard.press("End");
     await expectRenderedContrast(
       page.locator(
-        "#reading-appearance label, #reading-appearance select, #reading-appearance button",
+        "#appearance-panel label, #appearance-panel select, #appearance-panel button:not(:disabled)",
       ),
     );
     await page.keyboard.press("Escape");
@@ -131,9 +141,58 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
       (node) => getComputedStyle(node).backgroundColor,
     );
     backgrounds.add(background);
+    const expectedBackgrounds = [
+      "rgb(25, 30, 35)",
+      "rgb(17, 27, 42)",
+      "rgb(8, 12, 16)",
+      "rgb(238, 241, 244)",
+      "rgb(243, 243, 243)",
+      "rgb(225, 232, 240)",
+    ];
+    const expectedText = [
+      "rgb(227, 231, 235)",
+      "rgb(226, 232, 240)",
+      "rgb(244, 246, 248)",
+      "rgb(41, 53, 66)",
+      "rgb(48, 50, 52)",
+      "rgb(41, 53, 66)",
+    ];
+    expect(background).toBe(expectedBackgrounds[tone]);
+    await expect(article).toHaveCSS("color", expectedText[tone]!);
     await appearance.click();
-    await expect(page.getByLabel("Tonalidade", { exact: true })).toHaveValue(
-      String(tone),
+    const ownPalette = await article.evaluate((node) =>
+      [
+        node,
+        node.querySelector("h1")!,
+        node.querySelector(".eyebrow")!,
+        node.querySelector(".editorial-note")!,
+      ].map((element) => ({
+        color: getComputedStyle(element).color,
+        background: getComputedStyle(element).backgroundColor,
+      })),
+    );
+    await page
+      .getByLabel("Tema do site", { exact: true })
+      .selectOption("light");
+    expect(
+      await article.evaluate((node) =>
+        [
+          node,
+          node.querySelector("h1")!,
+          node.querySelector(".eyebrow")!,
+          node.querySelector(".editorial-note")!,
+        ].map((element) => ({
+          color: getComputedStyle(element).color,
+          background: getComputedStyle(element).backgroundColor,
+        })),
+      ),
+    ).toEqual(ownPalette);
+    await page
+      .getByLabel("Tema do site", { exact: true })
+      .selectOption("bunkercode");
+    await expect(readingToneButton(page, tone)).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
     if (tone === 3 && (width === 1440 || width === 320)) {
       await page.screenshot({
@@ -227,9 +286,9 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
     ).toBeDisabled();
     if (tone === 3) {
       await appearance.click();
-      await page.getByLabel("Tonalidade", { exact: true }).selectOption("4");
+      await selectReadingTone(page, 4);
       await expect(quiz.getByRole("status")).toContainText("Resposta correta");
-      await page.getByLabel("Tonalidade", { exact: true }).selectOption("3");
+      await selectReadingTone(page, 3);
       await page.keyboard.press("Escape");
     }
     samples.push({
@@ -256,7 +315,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   await expect(article).toHaveClass(/reading-tone-5/);
   await appearance.click();
   await page
-    .getByRole("button", { name: "Restaurar padrões", exact: true })
+    .getByRole("button", { name: "Restaurar leitura", exact: true })
     .click();
   await page.reload();
   await expect(article).toHaveClass(/reading-tone-0/);
@@ -267,4 +326,313 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   await page.goto("/");
   await expect(page.locator(".reading-theme")).toHaveCount(0);
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+}
+
+const themeTrigger = (page: Page) =>
+  page.getByRole("button", { name: "Tema e aparência", exact: true });
+async function openAppearance(page: Page) {
+  const trigger = themeTrigger(page);
+  if ((await trigger.getAttribute("aria-expanded")) !== "true")
+    await trigger.click();
+  return page.locator("#appearance-panel");
+}
+export async function checkGlobalAppearance(
+  page: Page,
+  info: TestInfo,
+  authoring: boolean,
+) {
+  const viewport = page.viewportSize()!;
+  await page.goto("/");
+  await expect(page.locator(".course-card").first()).toBeVisible();
+  const routes = [
+    ["home", "/", ".course-card"],
+    ["catalog", "/courses", ".course-card"],
+    ["course", "/courses/typescript", ".course-identity h1"],
+    ["reader", lesson, ".lesson-heading h1"],
+    ["workspace", "/courses/typescript/lessons/values-and-types", ".cm-editor"],
+    ["tactics", "/tactics?seed=42", ".tactics-lab h1"],
+    ...(authoring ? [["studio", lesson + "/edit", ".visual-document"]] : []),
+  ];
+  const samples: unknown[] = [];
+  for (const theme of ["bunkercode", "light"]) {
+    await openAppearance(page);
+    await expect(
+      page.getByLabel("Tema do site", { exact: true }).locator("option"),
+    ).toHaveText(["BunkerCode", "Claro suave"]);
+    await page.evaluate(() => {
+      document.documentElement.dataset.appearanceDocument = "same";
+    });
+    await page.getByLabel("Tema do site", { exact: true }).selectOption(theme);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-appearance-document",
+      "same",
+    );
+    await page.keyboard.press("Escape");
+    const background =
+      theme === "light" ? "rgb(238, 241, 244)" : "rgb(17, 20, 23)";
+    await expect(page.locator("html")).toHaveCSS(
+      "background-color",
+      background,
+    );
+    for (const [name, path, ready] of routes) {
+      await page.goto(path!);
+      await expect(page.locator(ready!).first()).toBeAttached();
+      await expect(page.locator("html")).toHaveCSS(
+        "background-color",
+        background,
+      );
+      await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+        "content",
+        theme === "light" ? "#eef1f4" : "#111417",
+      );
+      await expect(themeTrigger(page)).toHaveCount(1);
+      await expect(
+        page
+          .locator("header, footer")
+          .getByRole("button", { name: "Tema e aparência", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.locator(".reading-settings, #reading-appearance"),
+      ).toHaveCount(0);
+      if (name === "studio") {
+        await expect(
+          page.locator(".studio-code-block .code-language").first(),
+        ).toHaveCSS("color-scheme", theme === "light" ? "light" : "dark");
+      }
+      const trigger = await themeTrigger(page).boundingBox();
+      expect(trigger!.height).toBeGreaterThanOrEqual(44);
+      if (name === "tactics") {
+        for (const item of await page.locator(".tactics-heading > *").all()) {
+          const box = (await item.boundingBox())!;
+          expect(
+            trigger!.x >= box.x + box.width ||
+              trigger!.x + trigger!.width <= box.x ||
+              trigger!.y >= box.y + box.height ||
+              trigger!.y + trigger!.height <= box.y,
+          ).toBe(true);
+        }
+      }
+      const panel = await openAppearance(page);
+      await expect(
+        page.getByRole("group", { name: "Tonalidade da leitura", exact: true }),
+      ).toHaveCount(name === "reader" || name === "workspace" ? 1 : 0);
+      const bounds = await panel.boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
+      await page.keyboard.press("Escape");
+      await expect(themeTrigger(page)).toBeFocused();
+      if (name === "reader" || name === "workspace") {
+        await expect(page.locator(".study-explanation")).toHaveCSS(
+          "background-color",
+          theme === "light" ? "rgb(238, 241, 244)" : "rgb(25, 30, 35)",
+        );
+      }
+      const contrast = await expectRenderedContrast(
+        page.locator(
+          ".appearance-trigger, .global-brand, .global-nav-link, .catalog-heading, .course-card-title, .course-description, .course-full-description, .tactics-lab h1, .tactic-objective, .studio-course-title, .studio-status, .workspace-tabs button:not(:disabled), .result-heading, .footer-course, .footer-position",
+        ),
+      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(viewport.width);
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
+      await page.screenshot({
+        path: info.outputPath(`${theme}-${name}-${viewport.width}.png`),
+      });
+      samples.push({ theme, name, contrast });
+    }
+  }
+  // Actual SPA navigation retains the global choice as well as full reloads.
+  await page.goto("/");
+  await page
+    .getByRole("navigation", { name: "Navegação principal" })
+    .getByRole("link", { name: "Cursos", exact: true })
+    .click();
+  await expect(page.locator("html")).toHaveCSS(
+    "background-color",
+    "rgb(238, 241, 244)",
+  );
+  await page.locator('.course-card[href="/courses/typescript"]').click();
+  await expect(page.locator(".course-identity h1")).toBeVisible();
+  await expect(page.locator("html")).toHaveCSS(
+    "background-color",
+    "rgb(238, 241, 244)",
+  );
+  await info.attach("global-contrast.json", {
+    body: JSON.stringify(samples, null, 2),
+    contentType: "application/json",
+  });
+}
+
+export async function checkThemeHierarchy(
+  page: Page,
+  info: TestInfo,
+  authoring: boolean,
+) {
+  await page.goto(lesson);
+  const article = page.locator(".study-explanation");
+  await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
+  await openAppearance(page);
+  await page.getByLabel("Tamanho do texto", { exact: true }).focus();
+  await page.keyboard.press("End");
+  expect(
+    await page.evaluate(() => localStorage.getItem("bunkercode:reading-tone")),
+  ).toBeNull();
+  const global = page.getByLabel("Tema do site", { exact: true });
+  await global.selectOption("light");
+  await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
+  await selectReadingTone(page, 0);
+  await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
+  await global.selectOption("bunkercode");
+  await global.selectOption("light");
+  expect(
+    await page.evaluate(() => localStorage.getItem("bunkercode:reading-tone")),
+  ).toBe("0");
+  await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
+  await selectReadingTone(page, 1);
+  await page.keyboard.press("Escape");
+  const quiz = article.locator(".inline-quiz");
+  await quiz.getByRole("radio").first().check();
+  await quiz
+    .getByRole("button", { name: "Verificar resposta", exact: true })
+    .click();
+  await openAppearance(page);
+  await global.selectOption("bunkercode");
+  await expect(article).toHaveCSS("background-color", "rgb(17, 27, 42)");
+  await global.selectOption("light");
+  await expect(quiz.getByRole("status")).toContainText("Resposta incorreta");
+  await page.screenshot({
+    path: info.outputPath("independent-reading-preference.png"),
+  });
+  await page
+    .getByRole("button", { name: "Usar tema do site", exact: true })
+    .click();
+  await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
+  await expect(article.locator(":scope > .prose")).toHaveCSS(
+    "font-size",
+    "21px",
+  );
+  await expect(quiz.getByRole("status")).toContainText("Resposta incorreta");
+  await page.reload();
+  await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
+  await expect(article.locator(":scope > .prose")).toHaveCSS(
+    "font-size",
+    "21px",
+  );
+  await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);
+  await openAppearance(page);
+  await expect(
+    page.getByRole("button", { name: "Usar tema do site", exact: true }),
+  ).toBeDisabled();
+  await selectReadingTone(page, 4);
+  await page
+    .getByRole("button", { name: "Restaurar leitura", exact: true })
+    .click();
+  await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
+  await expect(article.locator(":scope > .prose")).toHaveCSS(
+    "font-size",
+    "17px",
+  );
+  await expect(global).toHaveValue("light");
+  await page.keyboard.press("Escape");
+  await page.goto("/courses/typescript/lessons/values-and-types");
+  const codeView = page.getByRole("button", { name: "Código", exact: true });
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  if (page.viewportSize()!.width < 1000) await codeView.click();
+  const editor = page.getByRole("textbox", {
+    name: "Código da solução",
+    exact: true,
+  });
+  await editor.fill("const preservedThemeDraft = 42;");
+  await page.locator(".cm-editor").evaluate((node) => {
+    (node as HTMLElement).dataset.appearanceInstance = "same";
+  });
+  await openAppearance(page);
+  await global.selectOption("bunkercode");
+  await global.selectOption("light");
+  await page.keyboard.press("Escape");
+  await expect(editor).toContainText("preservedThemeDraft");
+  await expect(page.locator(".cm-editor")).toHaveAttribute(
+    "data-appearance-instance",
+    "same",
+  );
+  await expect(page.locator(".cm-editor")).toHaveCSS(
+    "background-color",
+    "rgb(35, 39, 44)",
+  );
+  if ([1440, 320].includes(page.viewportSize()!.width)) {
+    await editor.focus();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("pres");
+    await page.keyboard.press("Control+Space");
+    const completion = page.getByRole("option", {
+      name: /preservedThemeDraft/,
+    });
+    await expect(completion).toBeVisible();
+    await expect(page.locator(".cm-tooltip-autocomplete")).toHaveCSS(
+      "background-color",
+      "rgb(229, 234, 240)",
+    );
+    await expectRenderedContrast(completion);
+    await page.screenshot({
+      path: info.outputPath(
+        `light-editor-completion-${page.viewportSize()!.width}.png`,
+      ),
+    });
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Control+f");
+    const search = page.locator(".cm-search");
+    await expect(search).toBeVisible();
+    await expect(page.locator(".cm-panels")).toHaveCSS(
+      "background-color",
+      "rgb(229, 234, 240)",
+    );
+    await search.locator("input.cm-textfield").first().fill("preserved");
+    await expectRenderedContrast(
+      search.locator("label, button:not(:disabled), input.cm-textfield"),
+    );
+    await page.screenshot({
+      path: info.outputPath(
+        `light-editor-search-${page.viewportSize()!.width}.png`,
+      ),
+    });
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveCount(0);
+  }
+  await page.reload();
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  if (page.viewportSize()!.width < 1000) await codeView.click();
+  await expect(editor).toContainText("preservedThemeDraft");
+  await page.screenshot({
+    path: info.outputPath(
+      `light-workspace-code-${page.viewportSize()!.width}.png`,
+    ),
+  });
+  if (authoring) {
+    await page.goto(lesson + "/edit");
+    const document = page.locator(".visual-document");
+    await expect(document).toBeVisible();
+    await document.locator("p").first().click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" Theme draft.");
+    await document.evaluate((node) => {
+      (node as HTMLElement).dataset.appearanceInstance = "same";
+    });
+    await openAppearance(page);
+    await global.selectOption("bunkercode");
+    await global.selectOption("light");
+    await page.keyboard.press("Escape");
+    await expect(document).toContainText("Theme draft.");
+    await expect(document).toHaveAttribute("data-appearance-instance", "same");
+    await expect(
+      page.getByRole("button", { name: "Salvar alterações", exact: true }),
+    ).toBeEnabled();
+    await page.reload();
+    await expect(document).toContainText("Theme draft.");
+    await expect(page.getByText(/Rascunho recuperado/)).toBeVisible();
+  }
 }

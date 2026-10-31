@@ -2,7 +2,7 @@
   min-height: 100dvh;
 }
 .global-sidebar {
-  background: #15191d;
+  background: var(--sidebar-background, #15191d);
   border-bottom: 1px solid var(--color-line);
   padding: 12px 20px 0;
 }
@@ -40,15 +40,15 @@
 }
 .global-nav-link:hover {
   color: var(--color-ink);
-  background: #ffffff06;
+  background: color-mix(in srgb, var(--color-ink) 3%, transparent);
 }
 .global-nav-link[aria-current="page"] {
   color: var(--color-gold);
   border-color: var(--color-gold);
-  background: #e8bd680a;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 .global-nav-link:active {
-  background: #e8bd6817;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .global-brand:focus-visible,
 .global-nav-link:focus-visible {
@@ -76,7 +76,7 @@
     flex-direction: column;
     padding: 28px 16px 24px;
     border-bottom: 0;
-    border-right: 1px solid #ffffff0c;
+    border-right: 1px solid var(--color-line);
   }
   .global-brand {
     margin-inline: 6px;

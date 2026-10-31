@@ -16,7 +16,9 @@ const manifest = JSON.parse(
 const studio = Object.values(manifest).find(
   (asset) => asset.name === "Studio" && asset.isDynamicEntry,
 )!;
-const reader = manifest["src/courses/LessonPage.tsx"]!;
+const reader = Object.values(manifest).find(
+  (asset) => asset.name === "LessonPage" && asset.isDynamicEntry,
+)!;
 const markdown = Object.values(manifest).find((asset) =>
   /\/Markdown-.*\.js$/.test(asset.file),
 )!;

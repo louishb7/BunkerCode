@@ -225,7 +225,7 @@ for (const viewport of [
     await expect(dialog).not.toBeVisible();
 
     const appearance = page.getByRole("button", {
-      name: "Aparência da leitura",
+      name: "Tema e aparência",
     });
     await appearance.click();
     await page.getByLabel("Tamanho do texto", { exact: true }).focus();
@@ -242,9 +242,7 @@ for (const viewport of [
       "21px",
     );
     await geometry(page);
-    await expect(
-      appearance.getByText("Aparência", { exact: true }),
-    ).toBeVisible();
+    await expect(appearance.getByText("Tema", { exact: true })).toBeVisible();
     // Quiz answers are intentionally in memory; reload starts a fresh attempt.
     await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);
     await radios.last().check();

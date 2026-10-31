@@ -23,7 +23,8 @@ export function Page({
     if (!ready) return;
     const heading = main.current?.querySelector("h1");
     if (heading) heading.tabIndex = -1;
-    (heading ?? main.current)?.focus({ preventScroll: true });
+    if (!document.activeElement?.closest(".appearance-control"))
+      (heading ?? main.current)?.focus({ preventScroll: true });
     const reader =
       main.current?.querySelector<HTMLElement>(".study-explanation");
     const scrollTarget = reader ?? window;

@@ -1,3 +1,4 @@
+import { selectReadingTone } from "./reading-theme-checks";
 import { expectRenderedContrast } from "./reading-theme-checks";
 import { studioView, studioTools } from "./studio-controls";
 import { test, expect } from "@playwright/test";
@@ -178,11 +179,9 @@ for (const width of [390, 1280, 1440, 1920])
     await page.goto(url);
     await expect(page.locator(".study-explanation")).toBeVisible();
     await page
-      .getByRole("button", { name: "Aparência da leitura", exact: true })
+      .getByRole("button", { name: "Tema e aparência", exact: true })
       .click();
-    await page
-      .getByRole("combobox", { name: "Tonalidade", exact: true })
-      .selectOption("2");
+    await selectReadingTone(page, 2);
     await page.getByLabel("Tamanho do texto", { exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
@@ -575,11 +574,9 @@ test("reading themes keep links, quotes and lists legible without changing Studi
   const samples: unknown[] = [];
   for (let tone = 0; tone < 6; tone++) {
     await page
-      .getByRole("button", { name: "Aparência da leitura", exact: true })
+      .getByRole("button", { name: "Tema e aparência", exact: true })
       .click();
-    await page
-      .getByLabel("Tonalidade", { exact: true })
-      .selectOption(String(tone));
+    await selectReadingTone(page, tone);
     await page.keyboard.press("Escape");
     const link = article.getByRole("link", { name: "Referência", exact: true });
     await expect(link).toHaveAttribute("rel", "noopener noreferrer");

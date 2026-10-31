@@ -19,10 +19,10 @@
 .tactics-progress {
   font-size: 14px;
   font-variant-numeric: tabular-nums;
-  color: #d4d4d4;
+  color: var(--color-text);
 }
 .tactics-progress > span {
-  color: #aab0b5;
+  color: var(--color-subtle);
 }
 .tactic-round-heading {
   margin-bottom: 14px;
@@ -31,7 +31,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 500;
-  color: #d4d4d4;
+  color: var(--color-text);
   line-height: 1.5;
 }
 .tactic-program {
@@ -151,15 +151,15 @@
   font-size: 13px;
 }
 .tactic-actions .tactic-primary {
-  background: #e8bd68;
-  color: #191b1c;
-  border-color: #e8bd68;
+  background: var(--accent);
+  color: var(--color-bunker);
+  border-color: var(--accent);
   min-width: 126px;
   font-weight: 600;
 }
 .tactic-actions .tactic-skip {
   margin-right: auto;
-  color: #b8bbbd;
+  color: var(--color-subtle);
   background: transparent;
   border-color: transparent;
 }
@@ -175,16 +175,16 @@
   line-height: 1.5;
 }
 .tactic-execution .success {
-  color: #adcf9d;
+  color: var(--status-success);
 }
 .tactic-execution .retry,
 .investigation-execution > .retry {
-  color: #f2cf8a;
+  color: var(--status-warning);
 }
 .tactic-result-pair,
 .tactic-case-labels {
   margin: 0;
-  color: #b8bbbd;
+  color: var(--color-subtle);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -201,7 +201,7 @@
   padding: 4px 0;
 }
 .tactic-values dt {
-  color: #b8bbbd;
+  color: var(--color-subtle);
 }
 .tactic-values dd {
   margin: 0;
@@ -221,7 +221,7 @@
   font-size: 12px;
 }
 .tactic-trace li > code:last-child {
-  color: #adcf9d;
+  color: var(--status-success);
 }
 .tactic-cases {
   width: auto;
@@ -232,7 +232,7 @@
 }
 .tactic-cases th {
   font-weight: 400;
-  color: #b8bbbd;
+  color: var(--color-subtle);
 }
 .tactic-cases th,
 .tactic-cases td {
@@ -248,7 +248,7 @@
   min-height: 44px;
   align-content: center;
   font-size: 12px;
-  color: #b8bbbd;
+  color: var(--color-subtle);
   cursor: pointer;
 }
 .tactic-case-trace summary > span {
@@ -258,7 +258,7 @@
   margin-top: 14px;
 }
 .tactics-session-info {
-  color: #aab0b5;
+  color: var(--color-subtle);
   font-size: 12px;
 }
 .tactics-session-info p {
@@ -280,16 +280,16 @@
 }
 .tactics-session-info button {
   background: transparent;
-  color: #b8bbbd;
+  color: var(--color-subtle);
 }
 .tactics-milestone {
   margin: 0 0 16px;
-  color: #adcf9d;
+  color: var(--status-success);
   font-size: 12px;
   line-height: 1.5;
 }
 .tactics-lab :focus-visible {
-  outline: 2px solid #e8bd68;
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 @media (max-width: 599px) {
@@ -387,12 +387,12 @@
 }
 .tactic-order-controls button:enabled:hover {
   background: #e8bd6814;
-  color: #f2cf8a;
+  color: var(--status-warning);
 }
 .tactic-dependency {
   margin: 6px 0;
   font-size: 12px;
-  color: #f2cf8a;
+  color: var(--status-warning);
 }
 .tactic-collection-trace {
   margin: 0;
@@ -409,11 +409,11 @@
 .tactic-expected {
   margin: 0 0 10px;
   font-size: 13px;
-  color: #b8bbbd;
+  color: var(--color-subtle);
   overflow-wrap: anywhere;
 }
 .tactic-expected strong {
-  color: #d4d4d4;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -489,7 +489,7 @@ button.investigation-line:enabled:hover {
 }
 .investigation-execution {
   min-width: 0;
-  border-left: 1px solid #3e454d;
+  border-left: 1px solid var(--color-line);
   padding-left: 20px;
 }
 .investigation-execution h3 {
@@ -518,8 +518,8 @@ button.investigation-line:enabled:hover {
 }
 .investigation-state {
   padding: 10px 0;
-  border-top: 1px solid #3e454d;
-  border-bottom: 1px solid #3e454d;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -531,7 +531,7 @@ button.investigation-line:enabled:hover {
 }
 .investigation-selection {
   margin: 12px 0;
-  color: #b8bbbd;
+  color: var(--color-subtle);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -551,26 +551,26 @@ button.investigation-line:enabled:hover {
   margin: 8px 0;
 }
 .investigation-results dt {
-  color: #b8bbbd;
+  color: var(--color-subtle);
 }
 .investigation-results dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
 .investigation-correction-label {
-  color: #b8bbbd;
+  color: var(--color-subtle);
   margin-bottom: 6px;
 }
 .investigation-correction {
   padding: 10px;
-  border: 1px solid #3e454d;
+  border: 1px solid var(--color-line);
   border-radius: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
 }
 .tactic-execution .skipped {
-  color: #b8bbbd;
+  color: var(--color-subtle);
 }
 @media (max-width: 899px) {
   .tactic-investigation {
@@ -596,5 +596,52 @@ button.investigation-line:enabled:hover {
   }
   .tactic-order-source {
     padding: 10px 8px;
+  }
+}
+
+/* Source remains Darcula. Its surrounding caption/instructions follow the site. */
+.tactic-program {
+  color: #d4d4d4;
+  color-scheme: dark;
+}
+.tactic-program :is(.tactic-file, .tactic-instruction) {
+  background: var(--panel-background, #23272c);
+  color: var(--color-text);
+  color-scheme: normal;
+}
+.tactic-file > span:last-child {
+  color: var(--color-subtle);
+}
+.tactic-order-controls button {
+  color: #d4d4d4;
+}
+.tactic-order-controls button:enabled:hover {
+  color: #f2cf8a;
+}
+.tactic-program :focus-visible {
+  outline-color: #e8bd68;
+}
+
+/* Desktop tactics have spare space beside their heading. Share that row with
+   appearance so the investigation and Run action retain their useful height. */
+@media (min-width: 1100px) {
+  .application-route:has(> .tactics-lab) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .application-route:has(> .tactics-lab) > .appearance-bar {
+    grid-column: 2;
+    grid-row: 1;
+    background: transparent;
+    border: 0;
+  }
+  .application-route > .tactics-lab {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+  }
+  .tactics-lab-investigation .tactics-heading {
+    padding-right: 110px;
   }
 }

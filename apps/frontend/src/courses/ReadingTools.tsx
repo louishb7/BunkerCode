@@ -5,26 +5,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Type } from "lucide-react";
 import { createPortal } from "react-dom";
-const readingTones = [
-  "Padrão BunkerCode",
-  "Azul profundo",
-  "Alto contraste",
-  "Claro suave",
-  "Neutro",
-  "Névoa azul",
-];
-function readingTone() {
-  try {
-    const value = Number(localStorage.getItem("bunkercode:reading-tone") ?? 0);
-    return Number.isInteger(value) && value >= 0 && value < readingTones.length
-      ? value
-      : 0;
-  } catch {
-    return 0;
-  }
-}
+import { useAppearance } from "../appearance/Appearance";
 function preference(key: string, fallback: number, min: number, max: number) {
   try {
     const raw = localStorage.getItem(key);
@@ -47,110 +29,13 @@ export function ReadingArticle({
   useEffect(() => {
     setToolbar(document.getElementById("reading-tools"));
   }, []);
-  const [size, setSize] = useState(() =>
-    preference("bunkercode:reading-size", 17, 16, 21),
-  );
-  const [tone, setTone] = useState(readingTone);
-  const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
-  const settings = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function outside(event: PointerEvent) {
-      if (
-        event.target instanceof Node &&
-        !settings.current?.contains(event.target)
-      )
-        setOpen(false);
-    }
-    function escape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    }
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
-  function save(font: number, color: number) {
-    setSize(font);
-    setTone(color);
-    try {
-      localStorage.setItem("bunkercode:reading-size", String(font));
-      localStorage.setItem("bunkercode:reading-tone", String(color));
-      setError("");
-    } catch {
-      setError(
-        "Preferência aplicada nesta página; armazenamento indisponível.",
-      );
-    }
-  }
+  const { size, effectiveTone: tone } = useAppearance();
   return (
     <article
       className={`study-explanation reading-theme reading-tone-${tone}`}
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
-      {toolbar &&
-        createPortal(
-          <>
-            {tools}
-            <div className="reading-settings" ref={settings}>
-              <button
-                ref={trigger}
-                type="button"
-                aria-label="Aparência da leitura"
-                title="Aparência da leitura"
-                aria-expanded={open}
-                aria-controls="reading-appearance"
-                onClick={() => setOpen(!open)}
-              >
-                <Type size={21} aria-hidden="true" />
-                <span>Aparência</span>
-              </button>
-              {open && (
-                <div
-                  id="reading-appearance"
-                  className={`reading-theme reading-tone-${tone}`}
-                  role="group"
-                  aria-label="Preferências de leitura"
-                >
-                  <label>
-                    Tamanho do texto
-                    <input
-                      type="range"
-                      min="16"
-                      max="21"
-                      value={size}
-                      onChange={(e) => save(Number(e.target.value), tone)}
-                    />
-                  </label>
-                  <label>
-                    Tonalidade
-                    <select
-                      aria-label="Tonalidade"
-                      value={tone}
-                      onChange={(e) => save(size, Number(e.target.value))}
-                    >
-                      {readingTones.map((label, value) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button onClick={() => save(17, 0)}>Restaurar padrões</button>
-                  {error && <p role="status">{error}</p>}
-                </div>
-              )}
-            </div>
-          </>,
-          toolbar,
-        )}
+      {toolbar && tools && createPortal(tools, toolbar)}
       {children}
     </article>
   );

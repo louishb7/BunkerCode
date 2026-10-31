@@ -209,7 +209,9 @@ for (const [width, height] of [
       const editor = (await page.locator(".study-code").boundingBox())!;
       expect(editor.x - article.x - article.width).toBe(1);
       expect(editor.y).toBe(article.y);
-      expect(editor.y).toBe((await header.boundingBox())!.height);
+      const appearance = (await page.locator(".appearance-bar").boundingBox())!;
+      expect(appearance.y).toBe((await header.boundingBox())!.height);
+      expect(editor.y).toBe(appearance.y + appearance.height);
       expect(article.y + article.height).toBe((await footer.boundingBox())!.y);
     }
     await page.screenshot({
@@ -377,6 +379,25 @@ test("divider moves both ways, limits expansion and reclamps after viewport resi
     );
   });
   expect(shortHalf).toBeGreaterThan(100);
+  const theme = page.getByRole("button", {
+    name: "Tema e aparência",
+    exact: true,
+  });
+  const themeBox = (await theme.boundingBox())!;
+  const settingsBox = (await page
+    .locator(".panel-settings > button")
+    .boundingBox())!;
+  expect(themeBox.height).toBeGreaterThanOrEqual(44);
+  expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(themeBox.x);
+  await theme.click();
+  const appearanceBox = (await page
+    .locator("#appearance-panel")
+    .boundingBox())!;
+  expect(appearanceBox.y).toBeGreaterThanOrEqual(themeBox.y + themeBox.height);
+  expect(appearanceBox.y + appearanceBox.height).toBeLessThanOrEqual(
+    (await page.locator(".learning-footer").boundingBox())!.y,
+  );
+  await page.keyboard.press("Escape");
   await expect
     .poll(async () =>
       Math.abs((await results.boundingBox())!.height - shortHalf),

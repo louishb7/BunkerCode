@@ -1,3 +1,8 @@
+import {
+  checkGlobalAppearance,
+  checkThemeHierarchy,
+} from "./reading-theme-checks";
+import { selectReadingTone } from "./reading-theme-checks";
 import { checkReadingThemes, readingViewports } from "./reading-theme-checks";
 import { expect, test } from "@playwright/test";
 
@@ -42,11 +47,11 @@ for (const width of [390, 1280, 1440, 1920]) {
         page.getByRole("navigation", { name: "Navegação entre lições" }),
       ).toHaveCount(1);
       const appearance = page.getByRole("button", {
-        name: "Aparência da leitura",
+        name: "Tema e aparência",
         exact: true,
       });
       await appearance.click();
-      await page.getByLabel("Tonalidade", { exact: true }).selectOption("2");
+      await selectReadingTone(page, 2);
       await page.keyboard.press("Escape");
       await expect(appearance).toBeFocused();
       await expect(appearance).toHaveAttribute("aria-expanded", "false");
@@ -130,13 +135,29 @@ test("legacy and invalid reading preferences remain safe without rewriting stora
   page,
 }) => {
   await page.goto(reading);
-  for (const saved of ["0", "1", "2", "invalid", "1.5", "99", "-1"]) {
+  await page.evaluate(() =>
+    localStorage.setItem("bunkercode:site-theme", "light"),
+  );
+  for (const saved of [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "invalid",
+    "1.5",
+    "99",
+    "-1",
+  ]) {
     await page.evaluate(
       (value) => localStorage.setItem("bunkercode:reading-tone", value),
       saved,
     );
     await page.reload();
-    const expected = ["0", "1", "2"].includes(saved) ? saved : "0";
+    const expected = ["0", "1", "2", "3", "4", "5"].includes(saved)
+      ? saved
+      : "3";
     await expect(page.locator(".study-explanation")).toHaveClass(
       new RegExp(`reading-tone-${expected}\\b`),
     );
@@ -168,17 +189,98 @@ test("reading appearance stays usable when local storage is denied", async ({
     /reading-tone-0/,
   );
   await page
-    .getByRole("button", { name: "Aparência da leitura", exact: true })
+    .getByRole("button", { name: "Tema e aparência", exact: true })
     .click();
-  await page.getByLabel("Tonalidade", { exact: true }).selectOption("3");
+  await page.getByLabel("Tema do site", { exact: true }).selectOption("light");
+  await expect(page.locator("html")).toHaveCSS(
+    "background-color",
+    "rgb(238, 241, 244)",
+  );
+  await selectReadingTone(page, 3);
   await expect(page.locator(".study-explanation")).toHaveClass(
     /reading-tone-3/,
   );
   await expect(
-    page.locator("#reading-appearance").getByRole("status"),
+    page.locator("#appearance-panel").getByRole("status"),
+  ).toHaveCount(2);
+  await expect(
+    page.locator("#appearance-panel").getByRole("status").first(),
   ).toContainText("armazenamento indisponível");
   await page.reload();
   await expect(page.locator(".study-explanation")).toHaveClass(
     /reading-tone-0/,
   );
+});
+
+for (const viewport of readingViewports) {
+  test(`global appearance across routes at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    test.setTimeout(90000);
+    await page.setViewportSize(viewport);
+    await checkGlobalAppearance(page, info, true);
+  });
+  test(`global and reading inheritance preserve drafts at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    test.setTimeout(90000);
+    await page.setViewportSize(viewport);
+    await checkThemeHierarchy(page, info, true);
+  });
+}
+
+test("invalid global preferences use the historical default without deleting data", async ({
+  page,
+}) => {
+  await page.goto("/");
+  for (const saved of ["invalid", "0", "LIGHT", ""]) {
+    await page.evaluate(
+      (value) => localStorage.setItem("bunkercode:site-theme", value),
+      saved,
+    );
+    await page.reload();
+    await expect(page.locator("html")).toHaveCSS(
+      "background-color",
+      "rgb(17, 20, 23)",
+    );
+    expect(
+      await page.evaluate(() => localStorage.getItem("bunkercode:site-theme")),
+    ).toBe(saved);
+  }
+});
+
+test("lesson arrival preserves focus inside the appearance panel", async ({
+  page,
+}) => {
+  let release: () => void = () => undefined;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(
+    /\/api\/content\/courses\/typescript\/lessons\/union-types$/,
+    async (route) => {
+      requested = true;
+      await pending;
+      await route.continue();
+    },
+  );
+  await page.goto(reading);
+  await expect.poll(() => requested).toBe(true);
+  const appearance = page.getByRole("button", {
+    name: "Tema e aparência",
+    exact: true,
+  });
+  await appearance.click();
+  await selectReadingTone(page, 1);
+  const choice = page
+    .getByRole("group", { name: "Tonalidade da leitura", exact: true })
+    .getByRole("button", { name: "Azul profundo", exact: true });
+  await expect(choice).toBeFocused();
+  release();
+  await expect(page.locator(".lesson-heading h1")).toHaveText("Union types");
+  await expect(choice).toBeFocused();
+  await expect(appearance).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(appearance).toBeFocused();
 });

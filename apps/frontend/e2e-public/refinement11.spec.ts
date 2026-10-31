@@ -1,4 +1,8 @@
 import {
+  checkGlobalAppearance,
+  checkThemeHierarchy,
+} from "../e2e/reading-theme-checks";
+import {
   checkReadingThemes,
   readingViewports,
 } from "../e2e/reading-theme-checks";
@@ -132,5 +136,22 @@ for (const viewport of readingViewports) {
     await page.setViewportSize(viewport);
     await checkReadingThemes(page, info);
     expect(mutations).toEqual([]);
+  });
+}
+
+for (const viewport of readingViewports) {
+  test(`global appearance across routes at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    test.setTimeout(90000);
+    await page.setViewportSize(viewport);
+    await checkGlobalAppearance(page, info, false);
+  });
+  test(`global and reading inheritance preserve drafts at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    test.setTimeout(90000);
+    await page.setViewportSize(viewport);
+    await checkThemeHierarchy(page, info, false);
   });
 }
