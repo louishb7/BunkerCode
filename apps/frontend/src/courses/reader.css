@@ -278,8 +278,11 @@ html:has(.lesson-index[open]) {
   cursor: pointer;
   min-width: 44px;
   min-height: 44px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: 6px;
   color: var(--accent);
 }
@@ -581,4 +584,50 @@ html:has(.lesson-index[open]) {
 .lesson-heading .eyebrow {
   text-transform: none;
   letter-spacing: 0.6px;
+}
+
+/* Keep the shared reader/Studio quiz comfortable on narrow screens. */
+@media (max-width: 599px) {
+  .inline-quiz {
+    padding: 12px;
+    margin-block: 28px;
+  }
+  .quiz-options {
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .quiz-option {
+    gap: 8px;
+    padding: 10px;
+    min-height: 44px;
+  }
+  .quiz-feedback {
+    margin-top: 16px;
+    padding: 12px;
+  }
+  .prose .quiz-result {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .prose .quiz-feedback-text > p {
+    margin-block: 12px;
+  }
+  .prose .quiz-feedback-text > p:first-child {
+    margin-top: 0;
+  }
+  .prose .quiz-feedback-text > p:last-child {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 480px) {
+  .learning-shell .site-header-content {
+    gap: 8px;
+  }
+  .reading-settings > button {
+    flex-direction: column;
+    gap: 0;
+    font-size: 11px;
+    line-height: 14px;
+    padding-inline: 4px;
+  }
 }

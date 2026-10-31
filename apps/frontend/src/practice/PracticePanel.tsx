@@ -679,7 +679,7 @@ export default function PracticePanel({
             )}
             {draft.activityError && (
               <p role="status" className="px-4 text-xs">
-                Edição não registrada no calendário: {draft.activityError}
+                Edição não registrada na atividade local: {draft.activityError}
               </p>
             )}
             {draft.conflict && (

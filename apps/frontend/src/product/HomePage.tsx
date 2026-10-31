@@ -11,7 +11,6 @@ import {
 } from "../courses/api";
 import { recentLesson, type RecentLesson } from "./recent";
 import { CourseCard } from "./CourseCard";
-import { ActivityDashboard } from "./ActivityDashboard";
 import { discoverableCourses } from "./course-visibility";
 
 function StartStudy({ course }: { course?: CourseSummary }) {
@@ -113,7 +112,6 @@ export function HomePage() {
           </div>
         )}
       </section>
-      <ActivityDashboard />
     </Page>
   );
 }

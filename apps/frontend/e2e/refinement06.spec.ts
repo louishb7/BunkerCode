@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
+import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 test.use({ timezoneId: "America/Recife" });
@@ -16,7 +16,7 @@ for (const viewport of [
     await page.clock.setFixedTime(new Date("2026-10-21T12:00:00-03:00"));
     await page.goto("/");
     await expect(page.locator(".course-card")).toHaveCount(4);
-    await expectSixMonthCalendar(page);
+    await expectHomeWithoutActivity(page);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Início");
     await expect(page.locator(".site-header")).toHaveCount(0);
     const nav = page.getByRole("navigation", {
@@ -32,7 +32,7 @@ for (const viewport of [
     await expect(
       nav.getByRole("link", { name: "Início", exact: true }),
     ).toHaveAttribute("aria-current", "page");
-    await expectActivityTotal(page, 0);
+    await expectStoredActivity(page, 0);
     await expect(page.locator("h1")).toHaveClass("sr-only");
     await expect(
       page.locator(
@@ -122,62 +122,6 @@ for (const viewport of [
   });
 }
 
-for (const [now, first, count, timezoneId] of [
-  ["2026-10-21T12:00:00-03:00", "2026-04-21", 184, "America/Recife"],
-  ["2026-08-01T12:00:00-03:00", "2026-02-01", 182, "America/Recife"],
-  ["2026-10-31T12:00:00-03:00", "2026-04-30", 185, "America/Recife"],
-  ["2026-08-31T12:00:00-03:00", "2026-02-28", 185, "America/Recife"],
-  ["2024-08-31T12:00:00-03:00", "2024-02-29", 185, "America/Recife"],
-  ["2026-01-02T12:00:00-03:00", "2025-07-02", 185, "America/Recife"],
-  ["2026-11-02T12:00:00-05:00", "2026-05-02", 185, "America/New_York"],
-] as const) {
-  test.describe(`calendar boundary ${now}`, () => {
-    test.use({ timezoneId });
-    test("includes both limits, clamps month ends and has no future activity", async ({
-      page,
-    }) => {
-      await page.clock.setFixedTime(new Date(now));
-      await page.goto("/");
-      await expect(page.locator(".heatmap-day")).toHaveCount(count);
-      await expect(page.locator(".heatmap-day").first()).toHaveAttribute(
-        "data-day",
-        first,
-      );
-      await expect(page.locator(".heatmap-day").last()).toHaveAttribute(
-        "data-day",
-        now.slice(0, 10),
-      );
-      await expectSixMonthCalendar(page);
-      const labels = await page
-        .locator(".heatmap-months span")
-        .evaluateAll((nodes) =>
-          nodes.map((node) => {
-            const { left, right } = node.getBoundingClientRect();
-            return { left, right };
-          }),
-        );
-      expect(labels).toHaveLength(7);
-      for (let index = 1; index < labels.length; index++)
-        expect(labels[index - 1]!.right).toBeLessThanOrEqual(
-          labels[index]!.left,
-        );
-      await expect(page.locator(".heatmap-day.heat-0")).toHaveCount(count);
-      await expect(page.locator(".heatmap-day[tabindex='0']")).toHaveCount(1);
-      await page.locator(".heatmap-day[tabindex='0']").focus();
-      await page.keyboard.press("ArrowRight");
-      await expect(page.locator(".heatmap-day:focus")).toHaveAttribute(
-        "data-day",
-        now.slice(0, 10),
-      );
-      await page.keyboard.press("ArrowLeft");
-      await expect(page.locator(".heatmap-day:focus")).not.toHaveAttribute(
-        "data-day",
-        now.slice(0, 10),
-      );
-    });
-  });
-}
-
 test("real last access resumes a validated lesson without manufacturing progress; reader and Studio keep their shells", async ({
   page,
 }, info) => {
@@ -198,15 +142,15 @@ test("real last access resumes a validated lesson without manufacturing progress
   await expect(resume).toHaveAttribute("href", lesson);
   await expect(resume).toContainText("TypeScript");
   await expect(resume).toContainText("Valores e tipos");
-  await expectActivityTotal(page, 1);
+  await expectStoredActivity(page, 1);
   await expect(page.locator(".course-last-visit")).toHaveCount(1);
   await expect(
     page.getByRole("link", { name: "TypeScript", exact: true }),
   ).toContainText("Último acesso");
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   const continuation = await page.locator(".continue-study").boundingBox();
-  const calendar = await page.locator(".activity-dashboard").boundingBox();
-  expect(continuation!.y + continuation!.height).toBeLessThan(calendar!.y);
+  const courses = await page.locator(".home-courses").boundingBox();
+  expect(continuation!.y + continuation!.height).toBeLessThan(courses!.y);
   await page.screenshot({
     path: info.outputPath("home-resume-1440.png"),
     fullPage: true,

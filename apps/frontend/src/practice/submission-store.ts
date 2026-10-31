@@ -1,5 +1,5 @@
 import { localDatabase } from "../product/local-database";
-import { activityChanged, activityRecord } from "../product/activity-store";
+import { activityRecord } from "../product/activity-store";
 import { draftScope, MAX_DRAFT_BYTES } from "./draft-store";
 export interface Submission {
   schema: 1;
@@ -45,7 +45,6 @@ export async function submitSolution(
     );
     tx.oncomplete = () => {
       db.close();
-      activityChanged();
       resolve(value);
     };
     tx.onabort = tx.onerror = () => {

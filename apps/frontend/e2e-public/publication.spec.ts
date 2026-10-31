@@ -1,3 +1,4 @@
+import { expectHomeWithoutActivity } from "../e2e/home-state";
 import { expect, test } from "@playwright/test";
 import { choices, createRound, executeRound } from "../src/tactics/session";
 import { readFile, readdir } from "node:fs/promises";
@@ -14,7 +15,7 @@ for (const viewport of [
   { width: 320, height: 800 },
   { width: 720, height: 450 },
 ])
-  test(`public calendar consultation and panel presets remain local at ${viewport.width}`, async ({
+  test(`public Home omits activity and panel presets remain local at ${viewport.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(viewport);
@@ -33,19 +34,9 @@ for (const viewport of [
         mutations.push(request.url());
     });
     await page.goto("/");
-    const date = page.getByLabel("Consultar dia de atividade", { exact: true });
-    await expect(date).toBeVisible();
-    await date.focus();
-    await expect(page.locator(".activity-selected-day")).toContainText(
-      "0 atividades em",
-    );
-    await date.fill((await date.getAttribute("min"))!);
-    await expect(page.locator('.heatmap-day[tabindex="0"]')).toHaveAttribute(
-      "data-day",
-      await date.inputValue(),
-    );
+    await expectHomeWithoutActivity(page);
     await page.screenshot({
-      path: info.outputPath(`public-calendar-${viewport.width}.png`),
+      path: info.outputPath(`public-home-${viewport.width}.png`),
       fullPage: true,
     });
     expect(

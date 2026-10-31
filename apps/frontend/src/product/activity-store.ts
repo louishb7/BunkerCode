@@ -29,14 +29,6 @@ export function activityRecord(
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 }
-export function activityChanged() {
-  window.dispatchEvent(new Event("bunkercode:activity"));
-  if (typeof BroadcastChannel !== "undefined") {
-    const channel = new BroadcastChannel("bunkercode-activity");
-    channel.postMessage("changed");
-    channel.close();
-  }
-}
 export async function recordActivity(kind: "visit" | "edit", scope: string) {
   const db = await localDatabase();
   const record = activityRecord(kind, scope);
@@ -49,7 +41,6 @@ export async function recordActivity(kind: "visit" | "edit", scope: string) {
     };
     tx.oncomplete = () => {
       db.close();
-      activityChanged();
       resolve();
     };
     tx.onabort = tx.onerror = () => {
@@ -57,63 +48,4 @@ export async function recordActivity(kind: "visit" | "edit", scope: string) {
       reject(tx.error ?? new Error("Atividade não pôde ser registrada."));
     };
   });
-}
-function valid(value: unknown): value is Activity {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<Activity>;
-  return (
-    item.schema === 1 &&
-    typeof item.key === "string" &&
-    typeof item.scope === "string" &&
-    typeof item.day === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(item.day) &&
-    (item.kind === "visit" || item.kind === "edit" || item.kind === "submit") &&
-    typeof item.at === "number" &&
-    Number.isFinite(item.at) &&
-    typeof item.timezone === "string"
-  );
-}
-export async function readActivity(): Promise<Activity[]> {
-  const db = await localDatabase();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("activity");
-    const request = tx.objectStore("activity").getAll();
-    tx.oncomplete = () => {
-      db.close();
-      const records: unknown[] = request.result;
-      if (!records.every(valid))
-        reject(
-          new Error(
-            "Há atividade local incompatível. Os registros foram preservados.",
-          ),
-        );
-      else resolve(records);
-    };
-    tx.onabort = tx.onerror = () => {
-      db.close();
-      reject(tx.error ?? new Error("Não foi possível ler atividade local."));
-    };
-  });
-}
-export function calendarDays(now = new Date()) {
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  // Calendar months, clamped to the target month's final day (e.g. Aug 31 → Feb 28).
-  const start = new Date(end.getFullYear(), end.getMonth() - 6, 1);
-  const lastDay = new Date(
-    start.getFullYear(),
-    start.getMonth() + 1,
-    0,
-  ).getDate();
-  start.setDate(Math.min(end.getDate(), lastDay));
-  const first = new Date(start);
-  first.setDate(first.getDate() - first.getDay());
-  const days: (string | null)[] = [];
-  for (
-    const date = new Date(first);
-    date <= end;
-    date.setDate(date.getDate() + 1)
-  )
-    days.push(date < start ? null : localDay(date));
-  while (days.length % 7) days.push(null);
-  return { days, start: localDay(start), end: localDay(end) };
 }

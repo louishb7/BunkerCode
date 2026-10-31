@@ -449,3 +449,48 @@
     padding-inline: 16px;
   }
 }
+
+/* Touch controls grow only in the existing mobile workspace. Wrapping is reserved
+   for longer pending/cancel labels; normal Run/Submit still fit at 320px. */
+@media (max-width: 999px) {
+  .mobile-workspace-switch button,
+  .editor-files button,
+  .panel-settings > button,
+  .panel-preset-buttons button {
+    min-height: 44px;
+  }
+  .mobile-workspace-switch,
+  .panel-preset-buttons {
+    gap: 8px;
+  }
+  .panel-preset-buttons button {
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .practice-panel .editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .practice-panel .code-primary-actions,
+  .practice-panel .code-utilities {
+    gap: 8px;
+  }
+  .practice-panel .editor-actions button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .practice-panel .code-primary-actions button > svg {
+    display: none;
+  }
+  .practice-panel .code-utilities {
+    margin-left: auto;
+  }
+  .practice-panel .code-utilities button {
+    width: 44px;
+    height: 44px;
+  }
+  .practice-panel .editor-actions > .workspace-height-divider {
+    flex: 1;
+    height: 44px;
+  }
+}

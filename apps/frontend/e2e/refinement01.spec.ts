@@ -1,4 +1,4 @@
-import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
+import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
 import { expect as baseExpect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -50,35 +50,24 @@ async function records(page: Page, store: string) {
     store,
   );
 }
-test("empty calendar has six calendar months of real days, zero activities, months and contextual courses", async ({
+test("first access offers courses without an activity calendar or database side effects", async ({
   page,
 }) => {
-  await page.clock.setFixedTime(new Date("2026-01-02T12:00:00-03:00"));
   await page.goto("/");
-  await expectSixMonthCalendar(page);
-  await expectActivityTotal(page, 0);
+  await expectHomeWithoutActivity(page);
+  await expect(
+    page.getByRole("link", { name: /Começar a estudar/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Explorar cursos/ }),
+  ).toBeVisible();
   await expect(
     page.getByText("Retome de onde parou", { exact: true }),
   ).toHaveCount(0);
   await expect(page.getByText("Aprender fazendo", { exact: true })).toHaveCount(
     0,
   );
-  await expect(
-    page.getByRole("link", { name: /Explorar cursos/ }),
-  ).toBeVisible();
-  expect(await page.locator(".heatmap-months span").allTextContents()).toEqual(
-    expect.arrayContaining(["Jan", "Jul"]),
-  );
-  expect(
-    await page
-      .locator(".home-courses")
-      .evaluate((node) => node.getBoundingClientRect().bottom),
-  ).toBeLessThan(
-    await page
-      .locator(".activity-dashboard")
-      .evaluate((node) => node.getBoundingClientRect().top),
-  );
-  expect((await records(page, "activity")).length).toBe(0);
+  expect(await page.evaluate(() => indexedDB.databases())).toEqual([]);
 });
 test("real accesses deduplicate reloads and simultaneous tabs, persist, and change at local midnight", async ({
   page,
@@ -113,7 +102,7 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     }),
   ]);
   await page.goto("/");
-  await expectActivityTotal(page, 1);
+  await expectStoredActivity(page, 1);
   await expect(
     page.getByRole("link", { name: /Continuar estudando/ }),
   ).toHaveAttribute("href", lesson);
@@ -124,30 +113,7 @@ test("real accesses deduplicate reloads and simultaneous tabs, persist, and chan
     .poll(async () => (await records(page, "activity")).length)
     .toBe(2);
   await page.goto("/");
-  await expectActivityTotal(page, 2);
-});
-test("calendar crosses year and DST without duplicate or missing days", async ({
-  page,
-}) => {
-  await page.clock.setFixedTime(new Date("2025-02-28T12:00:00Z"));
-  await page.goto("/");
-  await expectSixMonthCalendar(page);
-  await expect(page.locator('.heatmap-day[data-day="2024-08-28"]')).toHaveCount(
-    1,
-  );
-  await expect(page.locator('.heatmap-day[data-day="2025-02-28"]')).toHaveCount(
-    1,
-  );
-  const days = await page
-    .locator(".heatmap-day")
-    .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-day")));
-  expect(new Set(days).size).toBe(185);
-  await page.locator(".heatmap-day[tabindex='0']").focus();
-  await page.keyboard.press("ArrowLeft");
-  await expect(page.locator(".heatmap-day:focus")).toHaveAttribute(
-    "data-day",
-    "2025-02-21",
-  );
+  await expectStoredActivity(page, 2);
 });
 test("edits and submissions produce distinct genuine activity, with historical output and drafts independent", async ({
   page,
@@ -187,9 +153,9 @@ test("edits and submissions produce distinct genuine activity, with historical o
     .poll(async () => (await records(page, "submissions")).length)
     .toBe(2);
   await page.goto("/");
-  await expectActivityTotal(page, 4);
+  await expectStoredActivity(page, 4);
   expect((await records(page, "activity")).length).toBe(4);
-  await expect(page.locator(".heat-4[data-day]")).toHaveCount(1);
+  await expectHomeWithoutActivity(page);
 });
 test("schema-one drafts upgrade intact and submitted versions survive a new editorial revision", async ({
   page,
@@ -326,7 +292,7 @@ test("formatter applies actual Prettier output, undo and syntax-error recovery w
   const requests: string[] = [];
   page.on("request", (r) => requests.push(r.url()));
   await page.goto("/");
-  await expectSixMonthCalendar(page);
+  await expectHomeWithoutActivity(page);
   expect(
     requests.some((url) =>
       /compiler.worker|formatter.worker|code-editor-core/.test(url),
@@ -519,7 +485,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
   }, info) => {
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/");
-    await expectSixMonthCalendar(page);
+    await expectHomeWithoutActivity(page);
     await page.screenshot({
       path: info.outputPath(`home-empty-${width}.png`),
       fullPage: true,
@@ -560,7 +526,7 @@ for (const width of [390, 768, 1024, 1280, 1440, 1920])
     ] as const) {
       await page.goto(url);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      if (name === "home-activity") await expectActivityTotal(page, 3);
+      if (name === "home-activity") await expectStoredActivity(page, 3);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -613,7 +579,7 @@ test("program output is rendered as text and module imports receive real diagnos
     "Cannot find module 'node:fs'",
   );
 });
-test.describe("local timezone calendar", () => {
+test.describe("local timezone activity", () => {
   test.use({ timezoneId: "America/New_York" });
   test("DST repeated hour does not duplicate visits and next local day stays distinct", async ({
     page,
@@ -633,8 +599,8 @@ test.describe("local timezone calendar", () => {
       .poll(async () => (await records(page, "activity")).length)
       .toBe(2);
     await page.goto("/");
-    await expectSixMonthCalendar(page);
-    await expectActivityTotal(page, 2);
+    await expectHomeWithoutActivity(page);
+    await expectStoredActivity(page, 2);
     expect(await records(page, "activity")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

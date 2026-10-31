@@ -278,7 +278,7 @@ test("formatting rejects a stale result even when undo returns to the original t
   });
 });
 
-for (const width of [390, 1280, 1440, 1920]) {
+for (const width of [320, 360, 390, 1280, 1440, 1920]) {
   test(`both actions have distinct icons and live below the editor at ${width}px`, async ({
     page,
   }, info) => {
@@ -314,6 +314,66 @@ for (const width of [390, 1280, 1440, 1920]) {
       path: info.outputPath(`workspace-actions-${width}.png`),
       fullPage: true,
     });
+    if (width < 1000) {
+      const controls = page.locator(
+        ".editor-actions button, .editor-files button, .panel-settings > button, .mobile-workspace-switch button",
+      );
+      for (const control of await controls.all()) {
+        const box = (await control.boundingBox())!;
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.width).toBeGreaterThanOrEqual(44);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+      }
+      const buttons = await actions.locator("button").evaluateAll((nodes) =>
+        nodes.map((n) => {
+          const b = n.getBoundingClientRect();
+          return { left: b.left, right: b.right, top: b.top, bottom: b.bottom };
+        }),
+      );
+      for (let i = 0; i < buttons.length; i++)
+        for (const b of buttons.slice(i + 1)) {
+          const a = buttons[i]!;
+          expect(
+            a.right <= b.left ||
+              b.right <= a.left ||
+              a.bottom <= b.top ||
+              b.bottom <= a.top,
+          ).toBe(true);
+        }
+      await replace(page, 'const mobile = "preserved";');
+      await expect
+        .poll(() => savedCodes(page))
+        .toContain('const mobile = "preserved";');
+      await page.keyboard.press("ControlOrMeta+End");
+      for (let i = 0; i < 10; i++) await page.keyboard.press("Shift+ArrowLeft");
+      const selection = await page.evaluate(() => getSelection()?.toString());
+      const instance = await page.locator(".cm-editor").elementHandle();
+      await page.getByRole("button", { name: "Lição", exact: true }).click();
+      await page.getByRole("button", { name: "Código", exact: true }).click();
+      expect(
+        await instance!.evaluate(
+          (n) => n === document.querySelector(".cm-editor"),
+        ),
+      ).toBe(true);
+      await solution(page).focus();
+      expect(await page.evaluate(() => getSelection()?.toString())).toBe(
+        selection,
+      );
+      await page.setViewportSize({ width, height: 450 });
+      await expect(solution(page)).toBeVisible();
+      await expect(actions).toBeInViewport();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(width);
+      await page.screenshot({
+        path: info.outputPath(`workspace-short-${width}.png`),
+      });
+      await page.setViewportSize({ width, height: 960 });
+      await page.reload();
+      await page.getByRole("button", { name: "Código", exact: true }).click();
+      await expect(solution(page)).toHaveText('const mobile = "preserved";');
+    }
     await restore.click();
     await page.screenshot({
       path: info.outputPath(`restore-confirmation-${width}.png`),

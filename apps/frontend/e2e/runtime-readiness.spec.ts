@@ -42,6 +42,9 @@ const editor = (page: Page) =>
   page.getByRole("textbox", { name: "Código da solução", exact: true });
 async function open(page: Page, path = lesson) {
   await page.goto(path);
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  const switcher = page.getByRole("button", { name: "Código", exact: true });
+  if (await switcher.isVisible()) await switcher.click();
   await expect(editor(page)).toBeVisible();
   await editor(page).fill(source);
 }
@@ -302,8 +305,9 @@ test("readiness timeout is distinct from unavailability and ignores its late res
 
 test("cancelling a pending check permits a fresh Submit and ignores the old unavailable response", async ({
   page,
-}) => {
+}, info) => {
   test.setTimeout(60000);
+  await page.setViewportSize({ width: 320, height: 800 });
   const runs = countRuns(page);
   const held = await holdFirstRuntime(page, {
     available: false,
@@ -314,6 +318,22 @@ test("cancelling a pending check permits a fresh Submit and ignores the old unav
     await held.arrived.promise;
     await submit(page).click();
     await expect(results(page)).toContainText(waiting, { timeout: 30000 });
+    await expect(
+      page.getByRole("button", { name: "Registrando…", exact: true }),
+    ).toBeVisible();
+    const controls = page.locator(".editor-actions button");
+    for (const control of await controls.all()) {
+      const box = (await control.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(320);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(320);
+    await page.screenshot({
+      path: info.outputPath("workspace-pending-320.png"),
+    });
     await page
       .getByRole("button", { name: "Cancelar operação", exact: true })
       .click();

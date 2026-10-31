@@ -97,7 +97,9 @@ for (const viewport of [
     if (viewport.width >= 1280) {
       const rows = viewport.width >= 1440 ? 1 : 2;
       expect(new Set(metrics.map((card) => card.top)).size).toBe(rows);
-      expect(new Set(metrics.map((card) => card.metadataBottom)).size).toBe(rows);
+      expect(new Set(metrics.map((card) => card.metadataBottom)).size).toBe(
+        rows,
+      );
     }
     expect(
       await page.evaluate(
@@ -145,7 +147,7 @@ test("Home uses the same editorial summaries and course details retain all full 
   await expect(page.locator(".course-card h3")).toHaveText(
     courses.map((course) => course.title),
   );
-  await expect(page.locator(".heatmap-day").last()).toBeVisible();
+  await expect(page.locator(".activity-dashboard")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("home-1440.png"),
     fullPage: true,

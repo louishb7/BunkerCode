@@ -1,3 +1,4 @@
+import { expectHomeWithoutActivity } from "./home-state";
 import { expect, test, type Page } from "@playwright/test";
 import { choices, createRound, executeRound } from "../src/tactics/session";
 
@@ -29,7 +30,7 @@ for (const viewport of [
   }, info) => {
     await page.setViewportSize(viewport);
     await page.goto("/");
-    await expect(page.locator(".heatmap-day").first()).toBeAttached();
+    await expectHomeWithoutActivity(page);
     await page.screenshot({
       path: info.outputPath("home-empty.png"),
       fullPage: true,
@@ -37,19 +38,6 @@ for (const viewport of [
     const start = page.getByRole("link", { name: /Começar a estudar/ });
     await expect(start).toBeInViewport();
     await expect(start).toHaveAttribute("href", `/courses/${course}`);
-    await expect(page.locator(".heatmap-day:not(.heat-0)")).toHaveCount(0);
-    await expect(
-      page.getByText(/Não indicam conclusão de lições/),
-    ).toBeVisible();
-    expect(
-      await page
-        .locator(".home-courses")
-        .evaluate((node) => node.getBoundingClientRect().bottom),
-    ).toBeLessThan(
-      await page
-        .locator(".activity-dashboard")
-        .evaluate((node) => node.getBoundingClientRect().top),
-    );
     await noPageOverflow(page, viewport.width);
     await start.click();
     await expect(

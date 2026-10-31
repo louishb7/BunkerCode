@@ -94,6 +94,7 @@ export function ReadingArticle({
                 onClick={() => setOpen(!open)}
               >
                 <Type size={21} aria-hidden="true" />
+                <span>Aparência</span>
               </button>
               {open && (
                 <div

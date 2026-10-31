@@ -1,4 +1,4 @@
-import { expectSixMonthCalendar, expectActivityTotal } from "./calendar-period";
+import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
 import { expect, test, type Page } from "@playwright/test";
 
 const titles = [
@@ -18,32 +18,37 @@ const lesson = "/courses/typescript/lessons/values-and-types";
 test.use({ timezoneId: "America/Recife" });
 
 async function localRecords(page: Page) {
-  return page.evaluate(
-    () =>
-      new Promise<Record<string, unknown[]>>((resolve, reject) => {
-        const open = indexedDB.open("bunkercode-practice", 2);
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const db = open.result;
-          const tx = db.transaction(["activity", "drafts", "submissions"]);
-          const result: Record<string, unknown[]> = {};
-          for (const name of ["activity", "drafts", "submissions"]) {
-            const read = tx.objectStore(name).getAll();
-            read.onsuccess = () => {
-              result[name] = read.result;
-            };
-          }
-          tx.oncomplete = () => {
-            db.close();
-            resolve(result);
+  return page.evaluate(async () => {
+    if (
+      !(await indexedDB.databases()).some(
+        (db) => db.name === "bunkercode-practice",
+      )
+    )
+      return { activity: [], drafts: [], submissions: [] };
+    return new Promise<Record<string, unknown[]>>((resolve, reject) => {
+      const open = indexedDB.open("bunkercode-practice", 2);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction(["activity", "drafts", "submissions"]);
+        const result: Record<string, unknown[]> = {};
+        for (const name of ["activity", "drafts", "submissions"]) {
+          const read = tx.objectStore(name).getAll();
+          read.onsuccess = () => {
+            result[name] = read.result;
           };
-          tx.onabort = () => {
-            db.close();
-            reject(tx.error);
-          };
+        }
+        tx.oncomplete = () => {
+          db.close();
+          resolve(result);
         };
-      }),
-  );
+        tx.onabort = () => {
+          db.close();
+          reject(tx.error);
+        };
+      };
+    });
+  });
 }
 
 async function visibleCourses(page: Page) {
@@ -56,18 +61,16 @@ async function visibleCourses(page: Page) {
     );
 }
 
-test("Home prioritizes courses before its compact empty calendar with an accessible real total and keyboard access", async ({
+test("Home prioritizes study and courses without a calendar or replacement metrics", async ({
   page,
 }) => {
   await page.goto("/");
-  await expectActivityTotal(page, 0);
+  await expectHomeWithoutActivity(page);
   await visibleCourses(page);
-  await expectSixMonthCalendar(page);
-  await expect(page.locator(".heatmap-day.heat-0")).toHaveCount(
-    await page.locator(".heatmap-day").count(),
-  );
   await expect(
-    page.locator(".activity-stats, .activity-dashboard dl"),
+    page.locator(
+      ".activity-stats, .activity-dashboard dl, .global-page-heading",
+    ),
   ).toHaveCount(0);
   for (const text of [
     "BunkerCode · seu espaço de estudo",
@@ -80,57 +83,38 @@ test("Home prioritizes courses before its compact empty calendar with an accessi
     "Soluções enviadas",
   ])
     await expect(page.getByText(text, { exact: true })).toHaveCount(0);
-  const geometry = await page
-    .locator(".heatmap-day")
-    .first()
-    .evaluate((node) => {
-      const { width, height } = node.getBoundingClientRect();
-      return { width, height };
-    });
-  expect(geometry.width).toBeGreaterThanOrEqual(10);
-  expect(geometry.width).toBeLessThanOrEqual(12);
-  expect(geometry.width).toBe(geometry.height);
-  expect(
-    await page
-      .locator(".activity-dashboard")
-      .evaluate((n) => n.getBoundingClientRect().height),
-  ).toBeLessThan(230);
-  expect(
-    await page
-      .locator(".heatmap-grid")
-      .evaluate((n) => n.getBoundingClientRect().width),
-  ).toBeLessThan(850);
-  expect(
-    await page
-      .locator(".home-courses")
-      .evaluate((node) => node.getBoundingClientRect().bottom),
-  ).toBeLessThan(
-    await page
-      .locator(".activity-dashboard")
-      .evaluate((node) => node.getBoundingClientRect().top),
-  );
-  await expect(page.locator(".heatmap-day[tabindex='0']")).toHaveCount(1);
-  const current = page.locator(".heatmap-day[tabindex='0']");
-  await expect(current).toHaveAttribute("title", /0 atividades/);
-  await current.focus();
-  await page.keyboard.press("ArrowLeft");
-  await expect(page.locator(".heatmap-day:focus")).toHaveAttribute(
-    "aria-label",
-    /0 atividades/,
-  );
-  await expect(page.locator(".heatmap-day[tabindex='0']")).toHaveCount(1);
+  await expect(
+    page.getByRole("link", { name: /Começar a estudar/ }),
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Explorar cursos →" }),
   ).toBeVisible();
   expect((await localRecords(page)).activity).toEqual([]);
 });
 
-test("the accessible calendar sums only represented events across New Year, with five levels and unchanged historical records", async ({
+test("Home preserves historical local records of all ages without displaying activity", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-01-02T12:00:00-03:00"));
   await page.goto("/");
-  await expectActivityTotal(page, 0);
+  await expectStoredActivity(page, 0);
+  // Initialize the real stores through a genuine lesson visit, then append historical fixtures.
+  await page.goto(lesson);
+  await expect(page.locator(".cm-editor")).toHaveCount(1);
+  await expectStoredActivity(page, 1);
+  const editor = page.getByRole("textbox", {
+    name: "Código da solução",
+    exact: true,
+  });
+  await editor.fill("const historicalDraft = 1;");
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(page.getByText(/Solução registrada em/)).toBeVisible({
+    timeout: 30000,
+  });
+  await editor.fill("const currentDraft = 2;");
+  await expect
+    .poll(async () => (await localRecords(page)).drafts)
+    .toEqual([expect.objectContaining({ code: "const currentDraft = 2;" })]);
   // Explicit persisted-data fixtures, not generated activity in the product.
   await page.evaluate(
     () =>
@@ -180,55 +164,16 @@ test("the accessible calendar sums only represented events across New Year, with
       }),
   );
   const before = await localRecords(page);
+  expect(before.activity).toHaveLength(22);
+  expect(before.submissions).toHaveLength(1);
+  await page.goto("/");
+  await expectHomeWithoutActivity(page);
   await page.reload();
-  await expectActivityTotal(page, 16);
-  await expectSixMonthCalendar(page);
-  await expect(page.locator('.heatmap-day[data-day="2025-07-02"]')).toHaveCount(
-    1,
-  );
-  await expect(
-    page.locator(
-      '.heatmap-day[data-day="2025-07-01"], .heatmap-day[data-day="2025-01-02"], .heatmap-day[data-day="2026-01-03"]',
-    ),
-  ).toHaveCount(0);
-  await expect(
-    page.locator('.heatmap-day[data-day="2026-01-01"]'),
-  ).toHaveAttribute("title", /4 atividades/);
-  const represented = await page
-    .locator(".heatmap-day")
-    .evaluateAll((nodes) =>
-      nodes.reduce(
-        (sum, node) =>
-          sum +
-          Number(
-            node.getAttribute("aria-label")?.match(/^(\d+) atividade/)?.[1] ??
-              0,
-          ),
-        0,
-      ),
-    );
-  expect(represented).toBe(16);
-  const colors = await Promise.all(
-    [0, 1, 2, 3, 4].map((level) =>
-      page
-        .locator(`.heatmap-day.heat-${level}`)
-        .first()
-        .evaluate((node) => getComputedStyle(node).backgroundColor),
-    ),
-  );
-  expect(new Set(colors).size).toBe(5);
-  for (const value of colors.slice(1)) {
-    const [red, green, blue] = value.match(/\d+/g)!.map(Number);
-    expect(green!).toBeGreaterThan(red!);
-    expect(green!).toBeGreaterThan(blue!);
-  }
-  expect(await page.locator(".heatmap-months span").allTextContents()).toEqual(
-    expect.arrayContaining(["Dez", "Jan"]),
-  );
+  await expectHomeWithoutActivity(page);
   expect(await localRecords(page)).toEqual(before);
   await page.goto("/courses");
   await page.goto("/");
-  await expectActivityTotal(page, 16);
+  await expectHomeWithoutActivity(page);
   expect(await localRecords(page)).toEqual(before);
 });
 
@@ -289,7 +234,7 @@ test("one editorial selection controls both pages while hidden courses remain av
   ).toBeVisible();
 });
 
-test("unavailable local activity never masquerades as a zero total", async ({
+test("Home works without opening unavailable local activity storage", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -298,14 +243,8 @@ test("unavailable local activity never masquerades as a zero total", async ({
     };
   });
   await page.goto("/");
-  await expect(
-    page.locator(".activity-dashboard [role='alert']"),
-  ).toBeVisible();
-  await expect(page.locator("#activity-title")).toHaveText("Atividade local");
-  await expect(page.locator(".heatmap-day")).toHaveCount(0);
-  await expect(
-    page.getByRole("region", { name: "Calendário dos últimos seis meses" }),
-  ).toHaveCount(0);
+  await expectHomeWithoutActivity(page);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await visibleCourses(page);
 });
 
@@ -314,7 +253,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     await page.setViewportSize({ width, height: 960 });
     await page.goto("/");
     await visibleCourses(page);
-    await expectActivityTotal(page, 0);
+    await expectStoredActivity(page, 0);
     await page.screenshot({
       path: info.outputPath(`after-home-empty-${width}.png`),
       fullPage: true,
@@ -344,7 +283,7 @@ for (const width of [390, 768, 1280, 1440, 1920])
     });
     await page.goto("/");
     await visibleCourses(page);
-    await expectActivityTotal(page, 3);
+    await expectStoredActivity(page, 3);
     await expect(
       page.getByRole("link", { name: "Continuar estudando →" }),
     ).toHaveAttribute("href", lesson);

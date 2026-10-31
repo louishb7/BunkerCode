@@ -193,10 +193,15 @@ for (const [width, height] of [
     ).toBeDisabled();
     expect(
       (await page.locator(".editor-toolbar").boundingBox())!.height,
-    ).toBeLessThanOrEqual(34);
+    ).toBeLessThanOrEqual(width! < 1000 ? 45 : 34);
     expect(
       (await page.locator(".editor-actions").boundingBox())!.height,
-    ).toBeLessThanOrEqual(38);
+    ).toBeLessThanOrEqual(width! < 1000 ? 52 : 38);
+    if (width! < 1000)
+      for (const button of await page
+        .locator(".editor-actions button, .editor-toolbar button")
+        .all())
+        expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect((await footer.boundingBox())!.height).toBeGreaterThanOrEqual(56);
     expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(60);
     if (width! >= 1000) {

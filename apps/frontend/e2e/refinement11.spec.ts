@@ -66,6 +66,7 @@ for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
   { width: 360, height: 800 },
+  { width: 320, height: 800 },
 ]) {
   test(`real lesson, note, keyboard quiz and navigation at ${viewport.width}x${viewport.height}`, async ({
     page,
@@ -160,6 +161,10 @@ for (const viewport of [
     await expect(quiz.locator(".quiz-feedback-text")).toContainText(
       "Já temos algumas hipóteses para investigar.",
     );
+    if (viewport.width < 600) {
+      const text = await quiz.locator(".quiz-feedback-text").boundingBox();
+      expect(text!.width).toBeGreaterThanOrEqual(viewport.width * 0.65);
+    }
     await quiz.locator(".quiz-feedback").scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath(`quiz-correct-${viewport.width}.png`),
@@ -188,6 +193,10 @@ for (const viewport of [
         .evaluate((node) => getComputedStyle(node).borderColor),
     );
     await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(4);
+    if (viewport.width < 600) {
+      const text = await quiz.locator(".quiz-feedback-text").boundingBox();
+      expect(text!.width).toBeGreaterThanOrEqual(viewport.width * 0.65);
+    }
     await quiz.locator(".quiz-feedback").scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath(`quiz-incorrect-${viewport.width}.png`),
@@ -233,6 +242,27 @@ for (const viewport of [
       "21px",
     );
     await geometry(page);
+    await expect(
+      appearance.getByText("Aparência", { exact: true }),
+    ).toBeVisible();
+    // Quiz answers are intentionally in memory; reload starts a fresh attempt.
+    await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);
+    await radios.last().check();
+    await quiz.getByRole("button", { name: "Verificar resposta" }).click();
+    await expect(quiz.getByRole("status")).toContainText("Resposta correta");
+    await quiz.locator(".quiz-feedback").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`quiz-large-font-${viewport.width}.png`),
+    });
+    await notes.last().scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`note-large-font-${viewport.width}.png`),
+    });
+    await page.locator(".code-block").first().scrollIntoViewIfNeeded();
+    await geometry(page);
+    await page.screenshot({
+      path: info.outputPath(`code-large-font-${viewport.width}.png`),
+    });
     await footer.getByRole("link", { name: /Abrir curso/ }).click();
     await expect(page).toHaveURL(`/courses/${course}`);
     expect(await readFile(file, "utf8")).toBe(original);
@@ -316,8 +346,28 @@ test("Studio previews the real editorial blocks and physically saves a separate 
   await preview.getByRole("radio").last().check();
   await preview.getByRole("button", { name: "Verificar resposta" }).click();
   await expect(preview.getByRole("status")).toContainText("Resposta correta");
-  await preview.locator(".quiz-feedback").scrollIntoViewIfNeeded();
-  await page.screenshot({ path: info.outputPath("studio-preview.png") });
+  for (const width of [390, 360, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const correct of [false, true]) {
+      await preview.getByRole("button", { name: "Tentar novamente" }).click();
+      await preview
+        .getByRole("radio")
+        .nth(correct ? 2 : 0)
+        .check();
+      await preview.getByRole("button", { name: "Verificar resposta" }).click();
+      await expect(preview.getByRole("status")).toContainText(
+        correct ? "Resposta correta" : "Resposta incorreta",
+      );
+      expect(
+        await preview.evaluate((node) => node.scrollWidth <= node.clientWidth),
+      ).toBe(true);
+      await preview.locator(".quiz-feedback").scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: info.outputPath(`studio-quiz-${width}-${correct}.png`),
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 960 });
   await studioView(page, "Editar fonte Markdown");
   await page
     .getByRole("textbox", { name: "Markdown completo", exact: true })
