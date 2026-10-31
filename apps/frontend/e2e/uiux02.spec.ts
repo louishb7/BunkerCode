@@ -1,3 +1,4 @@
+import { checkReadingThemes, readingViewports } from "./reading-theme-checks";
 import { expect, test } from "@playwright/test";
 
 const practice = "/courses/typescript/lessons/values-and-types";
@@ -115,3 +116,69 @@ for (const width of [390, 1280, 1440, 1920]) {
     }
   });
 }
+
+for (const viewport of readingViewports) {
+  test(`six reading themes, contrast and persistence at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(viewport);
+    await checkReadingThemes(page, info);
+  });
+}
+
+test("legacy and invalid reading preferences remain safe without rewriting storage", async ({
+  page,
+}) => {
+  await page.goto(reading);
+  for (const saved of ["0", "1", "2", "invalid", "1.5", "99", "-1"]) {
+    await page.evaluate(
+      (value) => localStorage.setItem("bunkercode:reading-tone", value),
+      saved,
+    );
+    await page.reload();
+    const expected = ["0", "1", "2"].includes(saved) ? saved : "0";
+    await expect(page.locator(".study-explanation")).toHaveClass(
+      new RegExp(`reading-tone-${expected}\\b`),
+    );
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("bunkercode:reading-tone"),
+      ),
+    ).toBe(saved);
+  }
+});
+
+test("reading appearance stays usable when local storage is denied", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Storage.prototype, "getItem", {
+      value() {
+        throw new Error("Storage denied");
+      },
+    });
+    Object.defineProperty(Storage.prototype, "setItem", {
+      value() {
+        throw new Error("Storage denied");
+      },
+    });
+  });
+  await page.goto(reading);
+  await expect(page.locator(".study-explanation")).toHaveClass(
+    /reading-tone-0/,
+  );
+  await page
+    .getByRole("button", { name: "Aparência da leitura", exact: true })
+    .click();
+  await page.getByLabel("Tonalidade", { exact: true }).selectOption("3");
+  await expect(page.locator(".study-explanation")).toHaveClass(
+    /reading-tone-3/,
+  );
+  await expect(
+    page.locator("#reading-appearance").getByRole("status"),
+  ).toContainText("armazenamento indisponível");
+  await page.reload();
+  await expect(page.locator(".study-explanation")).toHaveClass(
+    /reading-tone-0/,
+  );
+});

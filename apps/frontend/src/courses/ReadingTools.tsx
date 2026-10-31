@@ -7,6 +7,24 @@ import {
 } from "react";
 import { Type } from "lucide-react";
 import { createPortal } from "react-dom";
+const readingTones = [
+  "Padrão BunkerCode",
+  "Azul profundo",
+  "Alto contraste",
+  "Claro suave",
+  "Neutro",
+  "Névoa azul",
+];
+function readingTone() {
+  try {
+    const value = Number(localStorage.getItem("bunkercode:reading-tone") ?? 0);
+    return Number.isInteger(value) && value >= 0 && value < readingTones.length
+      ? value
+      : 0;
+  } catch {
+    return 0;
+  }
+}
 function preference(key: string, fallback: number, min: number, max: number) {
   try {
     const raw = localStorage.getItem(key);
@@ -32,9 +50,7 @@ export function ReadingArticle({
   const [size, setSize] = useState(() =>
     preference("bunkercode:reading-size", 17, 16, 21),
   );
-  const [tone, setTone] = useState(() =>
-    preference("bunkercode:reading-tone", 0, 0, 2),
-  );
+  const [tone, setTone] = useState(readingTone);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const settings = useRef<HTMLDivElement>(null);
@@ -76,7 +92,7 @@ export function ReadingArticle({
   }
   return (
     <article
-      className={`study-explanation reading-tone-${tone}`}
+      className={`study-explanation reading-theme reading-tone-${tone}`}
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
       {toolbar &&
@@ -99,6 +115,7 @@ export function ReadingArticle({
               {open && (
                 <div
                   id="reading-appearance"
+                  className={`reading-theme reading-tone-${tone}`}
                   role="group"
                   aria-label="Preferências de leitura"
                 >
@@ -119,9 +136,11 @@ export function ReadingArticle({
                       value={tone}
                       onChange={(e) => save(size, Number(e.target.value))}
                     >
-                      <option value="0">Padrão BunkerCode</option>
-                      <option value="1">Azul profundo</option>
-                      <option value="2">Alto contraste</option>
+                      {readingTones.map((label, value) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <button onClick={() => save(17, 0)}>Restaurar padrões</button>

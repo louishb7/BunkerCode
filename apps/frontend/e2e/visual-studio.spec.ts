@@ -1,3 +1,4 @@
+import { expectRenderedContrast } from "./reading-theme-checks";
 import { studioView, studioTools } from "./studio-controls";
 import { test, expect } from "@playwright/test";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
@@ -559,4 +560,52 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
   await expect(rendered.locator("p").first()).toHaveText(
     "Revised first paragraph.",
   );
+});
+
+test("reading themes keep links, quotes and lists legible without changing Studio preview", async ({
+  page,
+}, info) => {
+  await writeFile(
+    file,
+    source +
+      "\n[Referência](https://example.com) com `inline`.\n\n> Uma citação.\n\n- Uma lista.\n",
+  );
+  await page.goto(url);
+  const article = page.locator(".study-explanation");
+  const samples: unknown[] = [];
+  for (let tone = 0; tone < 6; tone++) {
+    await page
+      .getByRole("button", { name: "Aparência da leitura", exact: true })
+      .click();
+    await page
+      .getByLabel("Tonalidade", { exact: true })
+      .selectOption(String(tone));
+    await page.keyboard.press("Escape");
+    const link = article.getByRole("link", { name: "Referência", exact: true });
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await link.focus();
+    const text = await expectRenderedContrast(
+      article.locator("a, blockquote, li, :not(pre) > code"),
+    );
+    const focus = await expectRenderedContrast(link, {
+      foreground: "outlineColor",
+      minimum: 3,
+    });
+    await link.hover();
+    await expect(link).toHaveCSS("text-decoration-thickness", "2px");
+    samples.push({ tone, text, focus });
+  }
+  await info.attach("rendered-links-contrast.json", {
+    body: JSON.stringify(samples, null, 2),
+    contentType: "application/json",
+  });
+  await page.getByRole("link", { name: "Editar lição", exact: true }).click();
+  await studioView(page, "Prévia");
+  await expect(page.locator(".studio-preview")).toBeVisible();
+  await expect(page.locator(".reading-theme")).toHaveCount(0);
+  await expect(page.locator(".studio-preview a")).toHaveCSS(
+    "color",
+    "rgb(232, 189, 104)",
+  );
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
 });

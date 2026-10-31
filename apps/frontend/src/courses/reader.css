@@ -292,9 +292,9 @@ html:has(.lesson-index[open]) {
   top: 44px;
   width: 240px;
   padding: 18px;
-  border: 1px solid #45453c;
+  border: 1px solid var(--color-line);
   border-radius: 8px;
-  background: #202429;
+  background: var(--reading-background);
   box-shadow: 0 8px 30px #0006;
 }
 .reading-settings label {
@@ -540,36 +540,178 @@ html:has(.lesson-index[open]) {
   overflow: hidden;
 }
 
-.reading-tone-0 {
-  background: #191e23;
+/* These colors belong only to the article and its portaled appearance panel.
+   Studio, the learning shell and the Darcula code blocks keep their own colors. */
+.reading-theme {
+  --reading-background: #191e23;
+  --reading-text: #e8e5de;
+  --reading-heading: #f0ece5;
+  --reading-muted: #b8bbbd;
+  --reading-inline-text: #e5c29b;
+  --reading-inline-background: #22272b;
+  --reading-quote: #c3c5bd;
+  --reading-quote-background: #1b1d1c;
+  --reading-success: #9dceaa;
+  --reading-success-border: #7cb48b;
+  --reading-error: #efaaaa;
+  --reading-error-border: #dc9595;
+  --reading-selection: #b8d2ee;
+  --accent: #e8bd68;
+  --color-surface: #1a1e22;
+  --color-raised: #22272d;
+  --color-line: #68737d;
+  --color-subtle: var(--reading-muted);
+  --text-muted: var(--reading-muted);
+  --control-background: var(--color-surface);
+  --control-border: var(--color-line);
+  color-scheme: dark;
+  color: var(--reading-text);
+  background: var(--reading-background);
 }
 .reading-tone-1 {
-  background: #111b2a;
+  --reading-background: #111b2a;
+  --reading-text: #e2e8f0;
+  --reading-heading: #f0f4fa;
+  --reading-muted: #bdc9d9;
+  --reading-quote: #bdc9d9;
+  --reading-quote-background: #152236;
+  --reading-inline-background: #152236;
+  --color-surface: #152236;
+  --color-raised: #1c2c44;
+  --color-line: #596d88;
+  --accent: #eac17b;
 }
 .reading-tone-2 {
-  background: #080c10;
+  --reading-background: #080c10;
+  --reading-text: #f4f6f8;
+  --reading-heading: #ffffff;
+  --reading-muted: #d5dce5;
+  --reading-quote: #d5dce5;
+  --reading-quote-background: #141b23;
+  --color-surface: #141b23;
+  --color-raised: #202b37;
+  --color-line: #8493a3;
+  --accent: #eac17b;
 }
-.reading-tone-1 > .prose {
-  color: #e2e8f0;
+.reading-tone-3,
+.reading-tone-4,
+.reading-tone-5 {
+  --reading-text: #293542;
+  --reading-heading: #152331;
+  --reading-muted: #52606e;
+  --reading-inline-text: #673f1c;
+  --reading-inline-background: #e0e6ec;
+  --reading-quote: #475767;
+  --reading-quote-background: var(--color-raised);
+  --reading-success: #21603b;
+  --reading-success-border: #327148;
+  --reading-error: #9d303b;
+  --reading-error-border: #ae4650;
+  --reading-selection: #b9d0e8;
+  --accent: #765019;
+  color-scheme: light;
 }
-.reading-tone-2 > .prose {
-  color: #f4f6f8;
+.reading-tone-3 {
+  --reading-background: #eef1f4;
+  --color-surface: #e5eaf0;
+  --color-raised: #dfe6ed;
+  --color-line: #7b8896;
 }
-.reading-tone-1 > .prose :is(h1, h2, h3, h4) {
-  color: #f0f4fa;
+.reading-tone-4 {
+  --reading-background: #f3f3f3;
+  --reading-text: #303234;
+  --reading-heading: #202224;
+  --reading-muted: #595d61;
+  --reading-inline-background: #e5e5e5;
+  --reading-quote: #50565b;
+  --color-surface: #eaeaea;
+  --color-raised: #e1e3e5;
+  --color-line: #85898d;
 }
-.reading-tone-2 > .prose :is(h1, h2, h3, h4) {
-  color: #fff;
+.reading-tone-5 {
+  --reading-background: #e1e8f0;
+  --reading-inline-background: #d2dce7;
+  --color-surface: #d5dfea;
+  --color-raised: #cbd7e4;
+  --color-line: #718196;
 }
-.reading-tone-1 > .prose :is(blockquote, figcaption) {
-  color: #bdc9d9;
+.reading-theme :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--reading-heading);
 }
-.reading-tone-2 > .prose :is(blockquote, figcaption) {
-  color: #d5dce5;
+.reading-theme :is(.eyebrow, figcaption) {
+  color: var(--reading-muted);
 }
-.reading-tone-1 > .prose a,
-.reading-tone-2 > .prose a {
-  color: #eac17b;
+.reading-theme .prose blockquote {
+  color: var(--reading-quote);
+  background: var(--reading-quote-background);
+  border-color: var(--accent);
+}
+.reading-theme .prose :not(pre) > code {
+  color: var(--reading-inline-text);
+  background: var(--reading-inline-background);
+  border-color: var(--color-line);
+}
+.reading-theme .prose hr {
+  border-color: var(--color-line);
+}
+.reading-theme .prose a {
+  color: var(--accent);
+}
+.reading-theme .prose a:hover {
+  text-decoration-thickness: 2px;
+}
+.reading-theme ::selection {
+  color: #152331;
+  background: var(--reading-selection);
+}
+.reading-theme .code-block {
+  color-scheme: dark;
+}
+.reading-theme .quiz-option[data-result="correct"],
+.reading-theme .quiz-feedback[data-result="correct"] {
+  border-color: var(--reading-success-border);
+  background: color-mix(in srgb, var(--reading-success-border) 5%, transparent);
+}
+.reading-theme .quiz-option[data-result="incorrect"],
+.reading-theme .quiz-feedback[data-result="incorrect"] {
+  border-color: var(--reading-error-border);
+  background: color-mix(in srgb, var(--reading-error-border) 5%, transparent);
+}
+.reading-theme [data-result="correct"] > svg,
+.reading-theme .quiz-feedback[data-result="correct"] .quiz-result {
+  color: var(--reading-success);
+}
+.reading-theme [data-result="incorrect"] > svg,
+.reading-theme .quiz-feedback[data-result="incorrect"] .quiz-result {
+  color: var(--reading-error);
+}
+.reading-theme .quiz-option:has(input:not(:disabled)):hover {
+  border-color: var(--accent);
+}
+.reading-theme button {
+  color: var(--accent);
+  background: var(--control-background);
+  border-color: var(--control-border);
+}
+.reading-theme button:hover:enabled {
+  filter: none;
+  background: var(--color-raised);
+}
+.reading-theme button:active:enabled {
+  border-color: var(--accent);
+}
+.reading-settings select {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  color: var(--reading-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 6px;
+}
+.reading-settings input {
+  accent-color: var(--accent);
 }
 
 .header-reading-tools {

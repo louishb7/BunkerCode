@@ -1,3 +1,7 @@
+import {
+  checkReadingThemes,
+  readingViewports,
+} from "../e2e/reading-theme-checks";
 import { expect, test } from "@playwright/test";
 
 for (const viewport of [
@@ -112,6 +116,21 @@ for (const viewport of [
     await expect(page.locator(".lesson-heading h1")).toHaveText(
       "Valores e tipos",
     );
+    expect(mutations).toEqual([]);
+  });
+}
+
+for (const viewport of readingViewports) {
+  test(`public six reading themes and persistent appearance at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }, info) => {
+    const mutations: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/") && request.method() !== "GET")
+        mutations.push(request.url());
+    });
+    await page.setViewportSize(viewport);
+    await checkReadingThemes(page, info);
     expect(mutations).toEqual([]);
   });
 }
