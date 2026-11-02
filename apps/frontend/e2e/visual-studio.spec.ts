@@ -1,3 +1,4 @@
+import { expandReadingSettings } from "./reading-theme-checks";
 import { selectReadingTone } from "./reading-theme-checks";
 import { expectRenderedContrast } from "./reading-theme-checks";
 import { studioView, studioTools } from "./studio-controls";
@@ -182,6 +183,7 @@ for (const width of [390, 1280, 1440, 1920])
       .getByRole("button", { name: "Tema e aparência", exact: true })
       .click();
     await selectReadingTone(page, 2);
+    await expandReadingSettings(page);
     await page.getByLabel("Tamanho do texto", { exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");

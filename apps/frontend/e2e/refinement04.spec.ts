@@ -193,7 +193,7 @@ for (const [width, height] of [
     ).toBeDisabled();
     expect(
       (await page.locator(".editor-toolbar").boundingBox())!.height,
-    ).toBeLessThanOrEqual(width! < 1000 ? 45 : 34);
+    ).toBeLessThanOrEqual(45);
     expect(
       (await page.locator(".editor-actions").boundingBox())!.height,
     ).toBeLessThanOrEqual(width! < 1000 ? 52 : 38);
@@ -209,9 +209,8 @@ for (const [width, height] of [
       const editor = (await page.locator(".study-code").boundingBox())!;
       expect(editor.x - article.x - article.width).toBe(1);
       expect(editor.y).toBe(article.y);
-      const appearance = (await page.locator(".appearance-bar").boundingBox())!;
-      expect(appearance.y).toBe((await header.boundingBox())!.height);
-      expect(editor.y).toBe(appearance.y + appearance.height);
+      await expect(page.locator(".appearance-bar")).toHaveCount(0);
+      expect(editor.y).toBe((await header.boundingBox())!.height);
       expect(article.y + article.height).toBe((await footer.boundingBox())!.y);
     }
     await page.screenshot({
@@ -390,6 +389,7 @@ test("divider moves both ways, limits expansion and reclamps after viewport resi
   expect(themeBox.height).toBeGreaterThanOrEqual(44);
   expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(themeBox.x);
   await theme.click();
+  await page.locator(".reading-customization summary").click();
   const appearanceBox = (await page
     .locator("#appearance-panel")
     .boundingBox())!;

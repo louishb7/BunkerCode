@@ -505,9 +505,9 @@ html:has(.lesson-index[open]) {
    use site colors; Darcula code blocks retain their own palette. */
 .reading-theme {
   --reading-background: #191e23;
-  --reading-text: #e3e7eb;
-  --reading-heading: #eef1f4;
-  --reading-muted: #b7c0c8;
+  --reading-text: #e9edf1;
+  --reading-heading: #f2f4f6;
+  --reading-muted: #c2cad2;
   --reading-inline-text: #e5c29b;
   --reading-inline-background: #22272b;
   --reading-quote: #c1c7ce;
@@ -711,5 +711,23 @@ html:has(.lesson-index[open]) {
 @media (max-width: 480px) {
   .learning-shell .site-header-content {
     gap: 8px;
+  }
+}
+
+/* Equal line boxes align the wordmark and navigation without a taller header. */
+.site-header-content > a,
+.site-header-content .header-home {
+  line-height: 1;
+}
+.site-header-content {
+  column-gap: 24px;
+}
+.site-header-content .header-home {
+  color: var(--color-subtle);
+}
+@media (max-width: 480px) {
+  .site-header-content,
+  .learning-shell .site-header-content {
+    column-gap: 16px;
   }
 }

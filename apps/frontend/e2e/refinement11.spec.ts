@@ -1,3 +1,4 @@
+import { expandReadingSettings } from "./reading-theme-checks";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -228,6 +229,7 @@ for (const viewport of [
       name: "Tema e aparência",
     });
     await appearance.click();
+    await expandReadingSettings(page);
     await page.getByLabel("Tamanho do texto", { exact: true }).focus();
     await page.keyboard.press("End");
     await page.keyboard.press("Escape");

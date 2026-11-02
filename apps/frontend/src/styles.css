@@ -10,13 +10,13 @@
   --color-surface: #1a1e22;
   --color-raised: #22272d;
   --color-line: #343b42;
-  --color-ink: #eef1f4;
-  --color-subtle: #b7c0c8;
+  --color-ink: #f2f4f6;
+  --color-subtle: #c2cad2;
   --color-gold: #e8bd68;
 }
 /* Site colors; reader tones and code surfaces own their local palettes. */
 :root {
-  --color-text: #e3e7eb;
+  --color-text: #e9edf1;
   --status-success: #9dceaa;
   --status-error: #efaaaa;
   --status-warning: #e8bc86;
@@ -25,21 +25,21 @@
   --primary-hover: #f1cd87;
 }
 :root[data-site-theme="light"] {
-  --color-bunker: #eef1f4;
-  --color-surface: #e5eaf0;
-  --color-raised: #dfe6ed;
+  --color-bunker: #e5ebf0;
+  --color-surface: #eef0f3;
+  --color-raised: #d5dfe7;
   --color-line: #7b8896;
-  --color-ink: #152331;
-  --color-text: #293542;
-  --color-subtle: #52606e;
-  --color-gold: #765019;
-  --accent: #765019;
-  --control-background: #e5eaf0;
+  --color-ink: #253444;
+  --color-text: #344454;
+  --color-subtle: #526477;
+  --color-gold: #405d76;
+  --accent: #405d76;
+  --control-background: #eef0f3;
   --control-border: #7b8896;
-  --panel-background: #e5eaf0;
-  --popover-background: #dfe6ed;
-  --sidebar-background: #e5eaf0;
-  --surface-hover: #dfe6ed;
+  --panel-background: #eef0f3;
+  --popover-background: #d5dfe7;
+  --sidebar-background: #eef0f3;
+  --surface-hover: #d5dfe7;
   --surface-active: #d5dee7;
   --status-success: #21603b;
   --status-error: #9d303b;
@@ -49,12 +49,12 @@
   --success-fill: #3271480d;
   --error-fill: #ae46500d;
   --warning-fill: #7650190d;
-  --inline-code-text: #673f1c;
+  --inline-code-text: #38536b;
   --inline-code-background: #e0e6ec;
   --quote-text: #475767;
-  --quote-background: #dfe6ed;
-  --quote-border: #765019;
-  --primary-hover: #634215;
+  --quote-background: #d5dfe7;
+  --quote-border: #405d76;
+  --primary-hover: #334f68;
   color-scheme: light;
 }
 @layer base {
@@ -232,4 +232,13 @@ h1[tabindex="-1"]:focus {
   color: var(--color-text);
   background: var(--color-raised);
   border-color: var(--control-border);
+}
+
+:is(.brand-wordmark, .global-brand) .text-gold {
+  color: #8c631d;
+}
+:root[data-site-theme="bunkercode"]
+  :is(.brand-wordmark, .global-brand)
+  .text-gold {
+  color: #e8bd68;
 }

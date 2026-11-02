@@ -621,27 +621,3 @@ button.investigation-line:enabled:hover {
 .tactic-program :focus-visible {
   outline-color: #e8bd68;
 }
-
-/* Desktop tactics have spare space beside their heading. Share that row with
-   appearance so the investigation and Run action retain their useful height. */
-@media (min-width: 1100px) {
-  .application-route:has(> .tactics-lab) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-  }
-  .application-route:has(> .tactics-lab) > .appearance-bar {
-    grid-column: 2;
-    grid-row: 1;
-    background: transparent;
-    border: 0;
-  }
-  .application-route > .tactics-lab {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    width: 100%;
-  }
-  .tactics-lab-investigation .tactics-heading {
-    padding-right: 110px;
-  }
-}

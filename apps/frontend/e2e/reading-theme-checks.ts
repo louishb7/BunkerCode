@@ -25,7 +25,25 @@ export function readingToneButton(page: Page, tone: number) {
     .getByRole("group", { name: "Tonalidade da leitura", exact: true })
     .getByRole("button", { name: readingToneLabels[tone]!, exact: true });
 }
+export async function expandReadingSettings(page: Page) {
+  const details = page.locator(".reading-customization");
+  if (
+    (await details.count()) &&
+    (await details.getAttribute("open")) === null
+  )
+    await details.locator("summary").click();
+}
+export async function selectSiteTheme(page: Page, theme: string) {
+  await page
+    .getByRole("group", { name: "Tema do site", exact: true })
+    .getByRole("button", {
+      name: theme === "light" ? "Light" : "Dark",
+      exact: true,
+    })
+    .click();
+}
 export async function selectReadingTone(page: Page, tone: number) {
+  await expandReadingSettings(page);
   await readingToneButton(page, tone).click();
 }
 const lesson =
@@ -116,7 +134,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   const width = page.viewportSize()!.width;
   const original = await article.innerText();
   for (let tone = 0; tone < 6; tone++) {
-    await appearance.click();
+    await openAppearance(page);
     await expect(page.locator(".reading-tone-options button")).toHaveText(
       readingToneLabels,
     );
@@ -150,7 +168,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
       "rgb(225, 232, 240)",
     ];
     const expectedText = [
-      "rgb(227, 231, 235)",
+      "rgb(233, 237, 241)",
       "rgb(226, 232, 240)",
       "rgb(244, 246, 248)",
       "rgb(41, 53, 66)",
@@ -159,7 +177,8 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
     ];
     expect(background).toBe(expectedBackgrounds[tone]);
     await expect(article).toHaveCSS("color", expectedText[tone]!);
-    await appearance.click();
+    await expectRenderedContrast(appearance);
+    await openAppearance(page);
     const ownPalette = await article.evaluate((node) =>
       [
         node,
@@ -171,9 +190,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
         background: getComputedStyle(element).backgroundColor,
       })),
     );
-    await page
-      .getByLabel("Tema do site", { exact: true })
-      .selectOption("light");
+    await selectSiteTheme(page, "light");
     expect(
       await article.evaluate((node) =>
         [
@@ -187,9 +204,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
         })),
       ),
     ).toEqual(ownPalette);
-    await page
-      .getByLabel("Tema do site", { exact: true })
-      .selectOption("bunkercode");
+    await selectSiteTheme(page, "bunkercode");
     await expect(readingToneButton(page, tone)).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -285,7 +300,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
       page.getByRole("button", { name: "Próxima lição", exact: true }),
     ).toBeDisabled();
     if (tone === 3) {
-      await appearance.click();
+      await openAppearance(page);
       await selectReadingTone(page, 4);
       await expect(quiz.getByRole("status")).toContainText("Resposta correta");
       await selectReadingTone(page, 3);
@@ -313,7 +328,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await expect(page.locator(".lesson-heading h1")).toHaveText("Union types");
   await expect(article).toHaveClass(/reading-tone-5/);
-  await appearance.click();
+  await openAppearance(page);
   await page
     .getByRole("button", { name: "Restaurar leitura", exact: true })
     .click();
@@ -334,6 +349,7 @@ async function openAppearance(page: Page) {
   const trigger = themeTrigger(page);
   if ((await trigger.getAttribute("aria-expanded")) !== "true")
     await trigger.click();
+  await expandReadingSettings(page);
   return page.locator("#appearance-panel");
 }
 export async function checkGlobalAppearance(
@@ -357,19 +373,21 @@ export async function checkGlobalAppearance(
   for (const theme of ["bunkercode", "light"]) {
     await openAppearance(page);
     await expect(
-      page.getByLabel("Tema do site", { exact: true }).locator("option"),
-    ).toHaveText(["BunkerCode", "Claro suave"]);
+      page
+        .getByRole("group", { name: "Tema do site", exact: true })
+        .getByRole("button"),
+    ).toHaveText(["Dark", "Light"]);
     await page.evaluate(() => {
       document.documentElement.dataset.appearanceDocument = "same";
     });
-    await page.getByLabel("Tema do site", { exact: true }).selectOption(theme);
+    await selectSiteTheme(page, theme);
     await expect(page.locator("html")).toHaveAttribute(
       "data-appearance-document",
       "same",
     );
     await page.keyboard.press("Escape");
     const background =
-      theme === "light" ? "rgb(238, 241, 244)" : "rgb(17, 20, 23)";
+      theme === "light" ? "rgb(229, 235, 240)" : "rgb(17, 20, 23)";
     await expect(page.locator("html")).toHaveCSS(
       "background-color",
       background,
@@ -383,9 +401,57 @@ export async function checkGlobalAppearance(
       );
       await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
         "content",
-        theme === "light" ? "#eef1f4" : "#111417",
+        theme === "light" ? "#e5ebf0" : "#111417",
       );
       await expect(themeTrigger(page)).toHaveCount(1);
+      await expect(page.locator(".appearance-bar")).toHaveCount(0);
+      const collisions = await themeTrigger(page).evaluate((button) => {
+        const target = button.getBoundingClientRect();
+        return Array.from(
+          document.querySelectorAll(
+            ".lesson-heading h1, .studio-topbar button, .studio-topbar select, .workspace-tabs button, .mobile-workspace-switch button, .catalog-heading, .tactics-heading h1",
+          ),
+        )
+          .filter((node) => {
+            // Headings may reserve empty padding for Tema; measure visible text.
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const r = node.matches("h1, .catalog-heading")
+              ? range.getBoundingClientRect()
+              : node.getBoundingClientRect();
+            return (
+              r.width &&
+              r.height &&
+              target.left < r.right &&
+              target.right > r.left &&
+              target.top < r.bottom &&
+              target.bottom > r.top
+            );
+          })
+          .map((node) => node.textContent);
+      });
+      expect(collisions).toEqual([]);
+      if (name === "reader" || name === "workspace") {
+        const brand = (await page
+          .locator(".site-header-content > a")
+          .boundingBox())!;
+        const home = (await page.locator(".header-home").boundingBox())!;
+        expect(
+          Math.abs(brand.y + brand.height / 2 - home.y - home.height / 2),
+        ).toBeLessThanOrEqual(1);
+        await themeTrigger(page).click();
+        await expect(
+          page.locator(".reading-customization"),
+        ).not.toHaveAttribute("open", "");
+        await expect(
+          page.getByRole("group", {
+            name: "Tonalidade da leitura",
+            exact: true,
+          }),
+        ).not.toBeVisible();
+        await page.keyboard.press("Escape");
+      }
+
       await expect(
         page
           .locator("header, footer")
@@ -453,13 +519,13 @@ export async function checkGlobalAppearance(
     .click();
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(238, 241, 244)",
+    "rgb(229, 235, 240)",
   );
   await page.locator('.course-card[href="/courses/typescript"]').click();
   await expect(page.locator(".course-identity h1")).toBeVisible();
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(238, 241, 244)",
+    "rgb(229, 235, 240)",
   );
   await info.attach("global-contrast.json", {
     body: JSON.stringify(samples, null, 2),
@@ -481,13 +547,13 @@ export async function checkThemeHierarchy(
   expect(
     await page.evaluate(() => localStorage.getItem("bunkercode:reading-tone")),
   ).toBeNull();
-  const global = page.getByLabel("Tema do site", { exact: true });
-  await global.selectOption("light");
+  const global = page.getByRole("group", { name: "Tema do site", exact: true });
+  await selectSiteTheme(page, "light");
   await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
   await selectReadingTone(page, 0);
   await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
-  await global.selectOption("bunkercode");
-  await global.selectOption("light");
+  await selectSiteTheme(page, "bunkercode");
+  await selectSiteTheme(page, "light");
   expect(
     await page.evaluate(() => localStorage.getItem("bunkercode:reading-tone")),
   ).toBe("0");
@@ -500,9 +566,9 @@ export async function checkThemeHierarchy(
     .getByRole("button", { name: "Verificar resposta", exact: true })
     .click();
   await openAppearance(page);
-  await global.selectOption("bunkercode");
+  await selectSiteTheme(page, "bunkercode");
   await expect(article).toHaveCSS("background-color", "rgb(17, 27, 42)");
-  await global.selectOption("light");
+  await selectSiteTheme(page, "light");
   await expect(quiz.getByRole("status")).toContainText("Resposta incorreta");
   await page.screenshot({
     path: info.outputPath("independent-reading-preference.png"),
@@ -536,7 +602,9 @@ export async function checkThemeHierarchy(
     "font-size",
     "17px",
   );
-  await expect(global).toHaveValue("light");
+  await expect(
+    global.getByRole("button", { name: "Light", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
   await page.goto("/courses/typescript/lessons/values-and-types");
   const codeView = page.getByRole("button", { name: "Código", exact: true });
@@ -551,8 +619,8 @@ export async function checkThemeHierarchy(
     (node as HTMLElement).dataset.appearanceInstance = "same";
   });
   await openAppearance(page);
-  await global.selectOption("bunkercode");
-  await global.selectOption("light");
+  await selectSiteTheme(page, "bunkercode");
+  await selectSiteTheme(page, "light");
   await page.keyboard.press("Escape");
   await expect(editor).toContainText("preservedThemeDraft");
   await expect(page.locator(".cm-editor")).toHaveAttribute(
@@ -575,7 +643,7 @@ export async function checkThemeHierarchy(
     await expect(completion).toBeVisible();
     await expect(page.locator(".cm-tooltip-autocomplete")).toHaveCSS(
       "background-color",
-      "rgb(229, 234, 240)",
+      "rgb(238, 240, 243)",
     );
     await expectRenderedContrast(completion);
     await page.screenshot({
@@ -589,7 +657,7 @@ export async function checkThemeHierarchy(
     await expect(search).toBeVisible();
     await expect(page.locator(".cm-panels")).toHaveCSS(
       "background-color",
-      "rgb(229, 234, 240)",
+      "rgb(238, 240, 243)",
     );
     await search.locator("input.cm-textfield").first().fill("preserved");
     await expectRenderedContrast(
@@ -623,8 +691,8 @@ export async function checkThemeHierarchy(
       (node as HTMLElement).dataset.appearanceInstance = "same";
     });
     await openAppearance(page);
-    await global.selectOption("bunkercode");
-    await global.selectOption("light");
+    await selectSiteTheme(page, "bunkercode");
+    await selectSiteTheme(page, "light");
     await page.keyboard.press("Escape");
     await expect(document).toContainText("Theme draft.");
     await expect(document).toHaveAttribute("data-appearance-instance", "same");

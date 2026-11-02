@@ -34,7 +34,7 @@ Os dois exemplos iniciais do curso TypeScript estão identificados como demonstr
 
 Abra http://127.0.0.1:5173, selecione TypeScript e a lição. A API fica em 127.0.0.1:3001.
 
-**Tema**, abaixo da navegação, alterna BunkerCode/Claro suave em todo o site, inclusive no Studio. Dentro da lição, o mesmo painel oferece seis tonalidades e tamanho de texto. Uma escolha local permanece independente do site; **Usar tema do site** volta à herança sem alterar o tamanho. **Restaurar leitura** também restaura 17px, preservando o tema global. As preferências ficam no navegador e não modificam Markdown.
+**Tema**, à direita do conteúdo, alterna Dark/Light em todo o site, inclusive no Studio. Dentro da lição, **Ajustar leitura** expande as seis tonalidades e o tamanho de texto. Uma escolha local permanece independente do site; **Usar tema do site** volta à herança sem alterar o tamanho. **Restaurar leitura** também restaura 17px, preservando o tema global. As preferências ficam no navegador e não modificam Markdown.
 
 Se você editou no VS Code, salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto aparecem após refresh. Cursos novos ficam disponíveis pela API e rota direta; a seleção da Home/catálogo segue a [política editorial de visibilidade](product/course-visibility.md). No Studio, a prévia usa o rascunho; somente o botão de salvamento escreve no disco.
 

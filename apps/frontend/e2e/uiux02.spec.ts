@@ -1,3 +1,4 @@
+import { selectSiteTheme } from "./reading-theme-checks";
 import {
   checkGlobalAppearance,
   checkThemeHierarchy,
@@ -191,10 +192,10 @@ test("reading appearance stays usable when local storage is denied", async ({
   await page
     .getByRole("button", { name: "Tema e aparência", exact: true })
     .click();
-  await page.getByLabel("Tema do site", { exact: true }).selectOption("light");
+  await selectSiteTheme(page, "light");
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(238, 241, 244)",
+    "rgb(229, 235, 240)",
   );
   await selectReadingTone(page, 3);
   await expect(page.locator(".study-explanation")).toHaveClass(
