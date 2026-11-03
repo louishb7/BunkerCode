@@ -37,7 +37,7 @@ for (const width of [390, 1280, 1440, 1920]) {
           .locator(".workspace-navigation")
           .getByRole("button", { name: "Lições", exact: true }),
       ).toBeVisible();
-      await expect(page.locator(".footer-course")).toHaveAttribute(
+      await expect(page.locator(".lesson-nav-course")).toHaveAttribute(
         "href",
         "/courses/typescript",
       );
@@ -48,7 +48,7 @@ for (const width of [390, 1280, 1440, 1920]) {
         page.getByRole("navigation", { name: "Navegação entre lições" }),
       ).toHaveCount(1);
       const appearance = page.getByRole("button", {
-        name: "Tema e aparência",
+        name: "Ajustar leitura",
         exact: true,
       });
       await appearance.click();
@@ -92,7 +92,7 @@ for (const width of [390, 1280, 1440, 1920]) {
         await page.keyboard.press("Home");
         expect((await panel.boundingBox())!.width).toBeGreaterThanOrEqual(359);
         await page.keyboard.press("Enter");
-        await expect(divider).toHaveAttribute("aria-valuenow", "46");
+        await expect(divider).toHaveAttribute("aria-valuenow", "55");
       } else {
         await expect(divider).not.toBeVisible();
         if (!programming) {
@@ -190,7 +190,7 @@ test("reading appearance stays usable when local storage is denied", async ({
     /reading-tone-0/,
   );
   await page
-    .getByRole("button", { name: "Tema e aparência", exact: true })
+    .getByRole("button", { name: "Ajustar leitura", exact: true })
     .click();
   await selectSiteTheme(page, "light");
   await expect(page.locator("html")).toHaveCSS(
@@ -202,10 +202,14 @@ test("reading appearance stays usable when local storage is denied", async ({
     /reading-tone-3/,
   );
   await expect(
-    page.locator("#appearance-panel").getByRole("status"),
-  ).toHaveCount(2);
+    page.locator("#reading-appearance-panel").getByRole("status"),
+  ).toHaveCount(1);
   await expect(
-    page.locator("#appearance-panel").getByRole("status").first(),
+    page.locator("#reading-appearance-panel").getByRole("status").first(),
+  ).toContainText("armazenamento indisponível");
+  await page.getByRole("button", { name: "Tema do site", exact: true }).click();
+  await expect(
+    page.locator("#site-appearance-panel").getByRole("status"),
   ).toContainText("armazenamento indisponível");
   await page.reload();
   await expect(page.locator(".study-explanation")).toHaveClass(
@@ -269,14 +273,14 @@ test("lesson arrival preserves focus inside the appearance panel", async ({
   await page.goto(reading);
   await expect.poll(() => requested).toBe(true);
   const appearance = page.getByRole("button", {
-    name: "Tema e aparência",
+    name: "Tema do site",
     exact: true,
   });
   await appearance.click();
-  await selectReadingTone(page, 1);
+  await page.getByRole("button", { name: "Light", exact: true }).click();
   const choice = page
-    .getByRole("group", { name: "Tonalidade da leitura", exact: true })
-    .getByRole("button", { name: "Azul profundo", exact: true });
+    .getByRole("group", { name: "Tema do site", exact: true })
+    .getByRole("button", { name: "Light", exact: true });
   await expect(choice).toBeFocused();
   release();
   await expect(page.locator(".lesson-heading h1")).toHaveText("Union types");

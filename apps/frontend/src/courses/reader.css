@@ -501,8 +501,8 @@ html:has(.lesson-index[open]) {
   overflow: hidden;
 }
 
-/* These colors belong to the lesson article. The appearance control and Studio
-   use site colors; Darcula code blocks retain their own palette. */
+/* These colors belong to the lesson article and its reading controls. Studio
+   uses site colors; Darcula code blocks retain their own palette. */
 .reading-theme {
   --reading-background: #191e23;
   --reading-text: #e9edf1;

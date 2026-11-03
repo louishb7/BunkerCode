@@ -26,21 +26,21 @@
 }
 :root[data-site-theme="light"] {
   --color-bunker: #e5ebf0;
-  --color-surface: #eef0f3;
-  --color-raised: #d5dfe7;
+  --color-surface: #edf0f2;
+  --color-raised: #dce2e7;
   --color-line: #7b8896;
-  --color-ink: #253444;
-  --color-text: #344454;
-  --color-subtle: #526477;
-  --color-gold: #405d76;
-  --accent: #405d76;
-  --control-background: #eef0f3;
+  --color-ink: #282e34;
+  --color-text: #343a40;
+  --color-subtle: #4f575f;
+  --color-gold: #374f63;
+  --accent: #374f63;
+  --control-background: #edf0f2;
   --control-border: #7b8896;
-  --panel-background: #eef0f3;
-  --popover-background: #d5dfe7;
-  --sidebar-background: #eef0f3;
-  --surface-hover: #d5dfe7;
-  --surface-active: #d5dee7;
+  --panel-background: #edf0f2;
+  --popover-background: #dce2e7;
+  --sidebar-background: #e5ebf0;
+  --surface-hover: #dce2e7;
+  --surface-active: #d7dfe5;
   --status-success: #21603b;
   --status-error: #9d303b;
   --status-warning: #765019;
@@ -52,8 +52,8 @@
   --inline-code-text: #38536b;
   --inline-code-background: #e0e6ec;
   --quote-text: #475767;
-  --quote-background: #d5dfe7;
-  --quote-border: #405d76;
+  --quote-background: #dce2e7;
+  --quote-border: #374f63;
   --primary-hover: #334f68;
   color-scheme: light;
 }
@@ -241,4 +241,10 @@ h1[tabindex="-1"]:focus {
   :is(.brand-wordmark, .global-brand)
   .text-gold {
   color: #e8bd68;
+}
+
+:root[data-site-theme="light"] input::placeholder,
+:root[data-site-theme="light"] textarea::placeholder {
+  color: #596169;
+  opacity: 1;
 }

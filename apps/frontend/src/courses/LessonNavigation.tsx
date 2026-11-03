@@ -8,10 +8,10 @@ export function LessonNavigation({ lesson }: { lesson: Lesson }) {
     lesson.course.lessons.findIndex((entry) => entry.slug === lesson.slug) + 1;
   const total = lesson.course.lessons.length;
   return (
-    <footer className="learning-footer">
+    <div className="lesson-navigation-bar">
       <nav className="workspace-navigation" aria-label="Navegação entre lições">
         <Link
-          className="footer-course"
+          className="lesson-nav-course"
           aria-label={`Abrir curso ${lesson.course.title}`}
           to={"/courses/" + encodeURIComponent(lesson.course.id)}
           title={lesson.course.title}
@@ -20,9 +20,9 @@ export function LessonNavigation({ lesson }: { lesson: Lesson }) {
           <span>Curso</span>
         </Link>
         <LessonIndex course={lesson.course} />
-        <div className="footer-neighbors">
+        <div className="lesson-nav-neighbors">
           <span
-            className="footer-position"
+            className="lesson-nav-position"
             aria-label={`Lição ${position} de ${total}`}
           >
             {String(position).padStart(2, "0")}/{String(total).padStart(2, "0")}
@@ -63,6 +63,6 @@ export function LessonNavigation({ lesson }: { lesson: Lesson }) {
           })}
         </div>
       </nav>
-    </footer>
+    </div>
   );
 }

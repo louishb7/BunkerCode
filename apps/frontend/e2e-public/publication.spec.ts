@@ -15,7 +15,7 @@ for (const viewport of [
   { width: 320, height: 800 },
   { width: 720, height: 450 },
 ])
-  test(`public Home omits activity and panel presets remain local at ${viewport.width}`, async ({
+  test(`public Home omits activity and manual panel sizes remain local at ${viewport.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(viewport);
@@ -46,43 +46,36 @@ for (const viewport of [
     await expect(page.locator(".cm-editor")).toHaveCount(1);
     const switcher = page.getByRole("button", { name: "Código", exact: true });
     if (await switcher.isVisible()) await switcher.click();
-    await page
-      .getByRole("button", { name: "Ajustar painéis", exact: true })
-      .click();
-    const settings = page.getByRole("group", {
-      name: "Proporções dos painéis",
-      exact: true,
-    });
-    await settings
-      .getByRole("group", { name: "Altura", exact: true })
-      .getByRole("button", { name: "Mais código", exact: true })
-      .click();
+    await expect(
+      page.getByRole("button", { name: "Ajustar painéis", exact: true }),
+    ).toHaveCount(0);
     const divider = page.getByRole("separator", {
       name: "Altura do editor e resultados",
       exact: true,
     });
+    await divider.focus();
+    await page.keyboard.press("ArrowDown");
     const value = await divider.getAttribute("aria-valuenow");
-    if (viewport.width >= 1000)
-      await settings
-        .getByRole("group", { name: "Largura", exact: true })
-        .getByRole("button", { name: "Mais leitura", exact: true })
-        .click();
-    else
-      await expect(
-        settings.getByRole("group", { name: "Largura", exact: true }),
-      ).not.toBeVisible();
-    const popup = (await settings.boundingBox())!;
-    expect(popup.x).toBeGreaterThanOrEqual(0);
-    expect(popup.x + popup.width).toBeLessThanOrEqual(viewport.width);
-    expect(popup.y + popup.height).toBeLessThanOrEqual(viewport.height);
+    const horizontal = page.getByRole("separator", {
+      name: "Largura do artigo e editor",
+      exact: true,
+    });
+    if (viewport.width >= 1000) {
+      await expect(horizontal).toHaveAttribute("aria-valuenow", "55");
+      await horizontal.focus();
+      for (let step = 0; step < 5; step++)
+        await page.keyboard.press("ArrowRight");
+      await expect(horizontal).toHaveAttribute("aria-valuenow", "65");
+    } else await expect(horizontal).not.toBeVisible();
     await page.screenshot({
       path: info.outputPath(`public-panels-${viewport.width}.png`),
     });
-    await page.keyboard.press("Escape");
     await page.reload();
     await expect(page.locator(".cm-editor")).toHaveCount(1);
     if (await switcher.isVisible()) await switcher.click();
     await expect(divider).toHaveAttribute("aria-valuenow", value!);
+    if (viewport.width >= 1000)
+      await expect(horizontal).toHaveAttribute("aria-valuenow", "65");
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(viewport.width);

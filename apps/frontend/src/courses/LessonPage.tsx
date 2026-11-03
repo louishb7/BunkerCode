@@ -99,6 +99,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   );
   return (
     <div className={`reader-layout ${exercise ? "practice-layout" : ""}`}>
+      <LessonNavigation lesson={lesson} />
       <Page
         title={`${lesson.title} · ${lesson.course.title}`}
         className={`lesson-reader ${exercise ? "practice-workspace" : ""}`}
@@ -184,32 +185,26 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             </ReadingArticle>
           }
           right={
-            exercise
-              ? (widthControls) => (
-                  <div
-                    aria-label="Área de código"
-                    className="programming-workspace min-w-0"
-                  >
-                    <Suspense
-                      fallback={
-                        <p role="status">Carregando editor de código…</p>
-                      }
-                    >
-                      <PracticePanel
-                        widthControls={widthControls}
-                        key={exercise.id + exercise.revision}
-                        course={id}
-                        lesson={slug}
-                        exercise={exercise}
-                      />
-                    </Suspense>
-                  </div>
-                )
-              : undefined
+            exercise ? (
+              <div
+                aria-label="Área de código"
+                className="programming-workspace min-w-0"
+              >
+                <Suspense
+                  fallback={<p role="status">Carregando editor de código…</p>}
+                >
+                  <PracticePanel
+                    key={exercise.id + exercise.revision}
+                    course={id}
+                    lesson={slug}
+                    exercise={exercise}
+                  />
+                </Suspense>
+              </div>
+            ) : undefined
           }
         />
       </Page>
-      <LessonNavigation lesson={lesson} />
     </div>
   );
 }

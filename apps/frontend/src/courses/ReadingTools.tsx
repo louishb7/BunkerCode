@@ -6,13 +6,13 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { useAppearance } from "../appearance/Appearance";
+import { AppearanceControl, useAppearance } from "../appearance/Appearance";
 function preference(key: string, fallback: number, min: number, max: number) {
   try {
     const raw = localStorage.getItem(key);
     const value = raw === null ? fallback : Number(raw);
-    return Number.isFinite(value)
-      ? Math.max(min, Math.min(max, value))
+    return raw?.trim() && Number.isFinite(value) && value > min && value < max
+      ? value
       : fallback;
   } catch {
     return fallback;
@@ -36,6 +36,7 @@ export function ReadingArticle({
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
       {toolbar && tools && createPortal(tools, toolbar)}
+      <AppearanceControl reading />
       {children}
     </article>
   );
@@ -47,12 +48,12 @@ export function StudySplit({
   mobileView = "reading",
 }: {
   left: ReactNode;
-  right?: (widthControls: ReactNode) => ReactNode;
+  right?: ReactNode;
   practice?: boolean;
   mobileView?: "reading" | "code";
 }) {
   const key = "bunkercode:practice-width";
-  const initial = 46;
+  const initial = 55;
   const container = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
   const [available, setAvailable] = useState(0);
@@ -110,6 +111,8 @@ export function StudySplit({
             aria-valuemin={Math.round(min)}
             aria-valuemax={Math.round(max)}
             aria-valuenow={Math.round(effective)}
+            aria-valuetext={`${Math.round(effective)}% para a leitura`}
+            title="Arraste ou use ← e →. Enter restaura 55%."
             tabIndex={0}
             className="study-divider"
             onDoubleClick={() => update(initial)}
@@ -164,30 +167,7 @@ export function StudySplit({
               drag.current = null;
             }}
           />
-          <div className="study-code">
-            {right(
-              <fieldset className="panel-width-options">
-                <legend>Largura</legend>
-                <p>{Math.round(effective)}% para a lição</p>
-                <div className="panel-preset-buttons">
-                  {[
-                    { value: 35, label: "Mais código" },
-                    { value: initial, label: "Padrão" },
-                    { value: 65, label: "Mais leitura" },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      aria-pressed={Math.abs(effective - value) < 0.5}
-                      onClick={() => update(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>,
-            )}
-          </div>
+          <div className="study-code">{right}</div>
         </>
       )}
       {error && <p role="status">{error}</p>}

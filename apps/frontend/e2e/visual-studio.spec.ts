@@ -180,7 +180,7 @@ for (const width of [390, 1280, 1440, 1920])
     await page.goto(url);
     await expect(page.locator(".study-explanation")).toBeVisible();
     await page
-      .getByRole("button", { name: "Tema e aparência", exact: true })
+      .getByRole("button", { name: "Ajustar leitura", exact: true })
       .click();
     await selectReadingTone(page, 2);
     await expandReadingSettings(page);
@@ -482,12 +482,12 @@ test("late exercise loading initializes the practice split with its own persiste
     const divider = page.getByRole("separator", {
       name: "Largura do artigo e editor",
     });
-    await expect(divider).toHaveAttribute("aria-valuenow", "46");
+    await expect(divider).toHaveAttribute("aria-valuenow", "55");
     await divider.focus();
     await page.keyboard.press("ArrowRight");
-    await expect(divider).toHaveAttribute("aria-valuenow", "48");
+    await expect(divider).toHaveAttribute("aria-valuenow", "57");
     await page.reload();
-    await expect(divider).toHaveAttribute("aria-valuenow", "48");
+    await expect(divider).toHaveAttribute("aria-valuenow", "57");
   } finally {
     release();
   }
@@ -576,7 +576,7 @@ test("reading themes keep links, quotes and lists legible without changing Studi
   const samples: unknown[] = [];
   for (let tone = 0; tone < 6; tone++) {
     await page
-      .getByRole("button", { name: "Tema e aparência", exact: true })
+      .getByRole("button", { name: "Ajustar leitura", exact: true })
       .click();
     await selectReadingTone(page, tone);
     await page.keyboard.press("Escape");

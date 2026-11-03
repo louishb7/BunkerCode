@@ -6,7 +6,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Check, Moon, Sun, RotateCcw, Undo2 } from "lucide-react";
+import {
+  Check,
+  Moon,
+  Sun,
+  RotateCcw,
+  Undo2,
+  SlidersHorizontal,
+} from "lucide-react";
 import "./appearance.css";
 
 export const readingTones = [
@@ -170,7 +177,7 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
   return (
     <>
       <div
-        className="appearance-control"
+        className={`appearance-control ${reading ? "reading-appearance" : "site-appearance"}`}
         ref={settings}
         onBlur={(event) => {
           if (
@@ -184,105 +191,109 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
           ref={trigger}
           type="button"
           className="appearance-trigger"
-          aria-label="Tema e aparência"
+          aria-label={reading ? "Ajustar leitura" : "Tema do site"}
           aria-expanded={open}
-          aria-controls="appearance-panel"
+          aria-controls={
+            reading ? "reading-appearance-panel" : "site-appearance-panel"
+          }
           onClick={() => setOpen(!open)}
         >
-          {appearance.site === "light" ? (
+          {reading ? (
+            <SlidersHorizontal size={18} aria-hidden="true" />
+          ) : appearance.site === "light" ? (
             <Sun size={18} aria-hidden="true" />
           ) : (
             <Moon size={18} aria-hidden="true" />
           )}
-          <span>Tema</span>
+          <span>{reading ? "Ajustar leitura" : "Tema"}</span>
         </button>
         {open && (
           <div
-            id="appearance-panel"
+            id={reading ? "reading-appearance-panel" : "site-appearance-panel"}
+            className="appearance-panel"
             role="group"
-            aria-label="Preferências de aparência"
+            aria-label={reading ? "Preferências de leitura" : "Tema global"}
           >
-            <div
-              className="site-theme-options"
-              role="group"
-              aria-label="Tema do site"
-            >
-              {(["bunkercode", "light"] as const).map((theme) => (
-                <button
-                  key={theme}
-                  type="button"
-                  aria-pressed={appearance.site === theme}
-                  onClick={() => appearance.setSite(theme)}
-                >
-                  {theme === "light" ? (
-                    <Sun size={17} aria-hidden="true" />
-                  ) : (
-                    <Moon size={17} aria-hidden="true" />
-                  )}
-                  <span>{theme === "light" ? "Light" : "Dark"}</span>
-                  {appearance.site === theme && (
-                    <Check size={16} aria-hidden="true" />
-                  )}
-                </button>
-              ))}
-            </div>
-            {appearance.siteError && (
+            {!reading && (
+              <div
+                className="site-theme-options"
+                role="group"
+                aria-label="Tema do site"
+              >
+                {(["bunkercode", "light"] as const).map((theme) => (
+                  <button
+                    key={theme}
+                    type="button"
+                    aria-pressed={appearance.site === theme}
+                    onClick={() => appearance.setSite(theme)}
+                  >
+                    {theme === "light" ? (
+                      <Sun size={17} aria-hidden="true" />
+                    ) : (
+                      <Moon size={17} aria-hidden="true" />
+                    )}
+                    <span>{theme === "light" ? "Light" : "Dark"}</span>
+                    {appearance.site === theme && (
+                      <Check size={16} aria-hidden="true" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!reading && appearance.siteError && (
               <p role="status">Tema do site: {appearance.siteError}</p>
             )}
             {reading && (
-              <details className="reading-customization">
-                <summary>Ajustar leitura</summary>
-                <fieldset>
-                  <legend>Tonalidade da leitura</legend>
-                  <div className="reading-tone-options">
-                    {readingTones.map((label, value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={appearance.effectiveTone === value}
-                        onClick={() => appearance.setTone(value)}
-                      >
-                        {appearance.effectiveTone === value && (
-                          <Check size={14} aria-hidden="true" />
-                        )}
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className="reading-inherit"
-                    type="button"
-                    disabled={appearance.tone === null}
-                    onClick={() => appearance.setTone(null)}
-                  >
-                    <Undo2 size={14} aria-hidden="true" /> Usar tema do site
-                  </button>
-                  <label>
-                    Tamanho do texto
-                    <input
-                      type="range"
-                      min="16"
-                      max="21"
-                      value={appearance.size}
-                      onChange={(event) =>
-                        appearance.setSize(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <button
-                    className="reading-reset"
-                    type="button"
-                    aria-label="Restaurar leitura"
-                    title="Restaurar leitura"
-                    onClick={appearance.resetReading}
-                  >
-                    <RotateCcw size={16} aria-hidden="true" />
-                  </button>
-                  {appearance.readingError && (
-                    <p role="status">Leitura: {appearance.readingError}</p>
-                  )}
-                </fieldset>
-              </details>
+              <fieldset>
+                <legend>Tonalidade da leitura</legend>
+                <div className="reading-tone-options">
+                  {readingTones.map((label, value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={appearance.effectiveTone === value}
+                      onClick={() => appearance.setTone(value)}
+                    >
+                      {appearance.effectiveTone === value && (
+                        <Check size={14} aria-hidden="true" />
+                      )}
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="reading-inherit"
+                  type="button"
+                  disabled={appearance.tone === null}
+                  onClick={() => appearance.setTone(null)}
+                >
+                  <Undo2 size={14} aria-hidden="true" /> Usar tema do site
+                </button>
+                <label>
+                  Tamanho do texto
+                  <input
+                    type="range"
+                    min="16"
+                    max="21"
+                    value={appearance.size}
+                    onChange={(event) =>
+                      appearance.setSize(Number(event.target.value))
+                    }
+                  />
+                </label>
+                <button
+                  className="reading-reset"
+                  type="button"
+                  aria-label="Restaurar leitura"
+                  title="Restaurar leitura"
+                  onClick={appearance.resetReading}
+                >
+                  <RotateCcw size={16} aria-hidden="true" />
+                </button>
+                {appearance.readingError && (
+                  <p role="status">Leitura: {appearance.readingError}</p>
+                )}
+              </fieldset>
             )}
           </div>
         )}

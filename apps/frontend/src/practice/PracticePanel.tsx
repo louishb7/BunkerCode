@@ -1,5 +1,5 @@
 import { capabilities } from "../capabilities";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   History,
   Copy,
@@ -35,12 +35,10 @@ export default function PracticePanel({
   course,
   lesson,
   exercise,
-  widthControls,
 }: {
   course: string;
   lesson: string;
   exercise: Exercise;
-  widthControls: ReactNode;
 }) {
   const draft = useDraft(course, lesson, exercise);
   const [notice, setNotice] = useState("");
@@ -306,7 +304,6 @@ export default function PracticePanel({
       className="practice-panel bg-surface"
     >
       <WorkspacePanels
-        widthControls={widthControls}
         tabs={
           <>
             <header className="editor-toolbar">

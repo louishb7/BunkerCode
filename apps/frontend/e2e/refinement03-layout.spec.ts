@@ -21,7 +21,9 @@ for (const width of [390, 1280, 1440, 1920])
     await expect(
       header.getByRole("button", { name: "Lições", exact: true }),
     ).toHaveCount(0);
-    const navigation = page.locator(".learning-footer .workspace-navigation");
+    const navigation = page.locator(
+      ".lesson-navigation-bar .workspace-navigation",
+    );
     await expect(navigation).toBeVisible();
     await expect(
       navigation.getByRole("button", { name: "Lição anterior", exact: true }),
@@ -56,7 +58,7 @@ for (const width of [390, 1280, 1440, 1920])
       await expect(divider).toHaveAttribute("aria-valuenow", saved!);
       await divider.focus();
       await page.keyboard.press("Enter");
-      await expect(divider).toHaveAttribute("aria-valuenow", "46");
+      await expect(divider).toHaveAttribute("aria-valuenow", "55");
     } else await expect(divider).not.toBeVisible();
     expect(
       await page.evaluate(
@@ -78,3 +80,34 @@ for (const width of [390, 1280, 1440, 1920])
       fullPage: true,
     });
   });
+
+test("workspace width defaults safely and preserves valid stored proportions", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/courses/typescript/lessons/values-and-types");
+  const divider = page.getByRole("separator", {
+    name: "Largura do artigo e editor",
+    exact: true,
+  });
+  for (const saved of [null, "", "invalid", "-1", "101", "0", "100", "65"]) {
+    await page.evaluate((value) => {
+      if (value === null) localStorage.removeItem("bunkercode:practice-width");
+      else localStorage.setItem("bunkercode:practice-width", value);
+    }, saved);
+    await page.reload();
+    const expected = saved === "65" ? 65 : 55;
+    await expect(divider).toHaveAttribute("aria-valuenow", String(expected));
+    const reading = (await page.locator(".study-explanation").boundingBox())!;
+    const code = (await page.locator(".study-code").boundingBox())!;
+    expect(reading.width / (reading.width + code.width)).toBeCloseTo(
+      expected / 100,
+      3,
+    );
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("bunkercode:practice-width"),
+      ),
+    ).toBe(saved);
+  }
+});

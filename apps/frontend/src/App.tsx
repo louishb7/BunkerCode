@@ -1,4 +1,3 @@
-import { AppearanceControl } from "./appearance/Appearance";
 import { GlobalLayout } from "./product/GlobalLayout";
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
@@ -114,7 +113,6 @@ function ApplicationShell() {
   if (globalNavigation)
     return (
       <GlobalLayout>
-        <AppearanceControl reading={false} />
         <AppRoutes />
       </GlobalLayout>
     );
@@ -126,7 +124,6 @@ function ApplicationShell() {
     >
       <SiteHeader />
       <div className="application-route">
-        <AppearanceControl key={pathname} reading={learning} />
         <AppRoutes />
       </div>
     </div>

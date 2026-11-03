@@ -28,8 +28,11 @@ async function contained(page: Page) {
       scroll: 0,
     }),
   );
-  const footer = (await page.locator(".learning-footer").boundingBox())!;
-  expect(footer.y + footer.height).toBe((await page.viewportSize())!.height);
+  const footer = (await page.locator(".lesson-navigation-bar").boundingBox())!;
+  expect(footer.y).toBe(
+    (await page.locator(".site-header").boundingBox())!.height,
+  );
+  await expect(page.locator("footer.learning-footer")).toHaveCount(0);
 }
 
 test.beforeAll(async () => {
@@ -155,7 +158,7 @@ for (const viewport of [
         page.locator(".workspace-results").evaluate((node) => node.scrollTop),
       )
       .toBeGreaterThan(0);
-    await tabTo(".learning-footer a");
+    await tabTo(".lesson-navigation-bar a");
     console.log("KEYBOARD_SCROLL_STOPS", JSON.stringify({ viewport, stops }));
     await page.screenshot({
       path: info.outputPath(`keyboard-scroll-${viewport.width}.png`),
@@ -169,7 +172,7 @@ for (const [width, height] of [
   [1280, 720],
   [390, 844],
 ]) {
-  test(`viewport shell, compact controls and footer navigation at ${width}x${height}`, async ({
+  test(`viewport shell, compact controls and top navigation at ${width}x${height}`, async ({
     page,
   }, info) => {
     await page.setViewportSize({ width: width!, height: height! });
@@ -184,7 +187,7 @@ for (const [width, height] of [
     await expect(
       header.getByRole("link", { name: "Início", exact: true }),
     ).toBeVisible();
-    const footer = page.locator(".learning-footer");
+    const footer = page.locator(".lesson-navigation-bar");
     await expect(
       footer.getByRole("link", { name: "Abrir curso TypeScript", exact: true }),
     ).toBeVisible();
@@ -202,16 +205,18 @@ for (const [width, height] of [
         .locator(".editor-actions button, .editor-toolbar button")
         .all())
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect((await footer.boundingBox())!.height).toBeGreaterThanOrEqual(56);
-    expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(60);
+    expect((await footer.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(50);
     if (width! >= 1000) {
       const article = (await page.locator(".study-explanation").boundingBox())!;
       const editor = (await page.locator(".study-code").boundingBox())!;
       expect(editor.x - article.x - article.width).toBe(1);
       expect(editor.y).toBe(article.y);
       await expect(page.locator(".appearance-bar")).toHaveCount(0);
-      expect(editor.y).toBe((await header.boundingBox())!.height);
-      expect(article.y + article.height).toBe((await footer.boundingBox())!.y);
+      expect(editor.y).toBe(
+        (await footer.boundingBox())!.y + (await footer.boundingBox())!.height,
+      );
+      expect(article.y + article.height).toBe(height);
     }
     await page.screenshot({
       path: info.outputPath(`workspace-${width}x${height}.png`),
@@ -379,23 +384,21 @@ test("divider moves both ways, limits expansion and reclamps after viewport resi
   });
   expect(shortHalf).toBeGreaterThan(100);
   const theme = page.getByRole("button", {
-    name: "Tema e aparência",
+    name: "Ajustar leitura",
     exact: true,
   });
   const themeBox = (await theme.boundingBox())!;
-  const settingsBox = (await page
-    .locator(".panel-settings > button")
-    .boundingBox())!;
   expect(themeBox.height).toBeGreaterThanOrEqual(44);
-  expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(themeBox.x);
+  expect(themeBox.x + themeBox.width).toBeLessThan(
+    (await page.locator(".study-code").boundingBox())!.x,
+  );
   await theme.click();
-  await page.locator(".reading-customization summary").click();
   const appearanceBox = (await page
-    .locator("#appearance-panel")
+    .locator("#reading-appearance-panel")
     .boundingBox())!;
   expect(appearanceBox.y).toBeGreaterThanOrEqual(themeBox.y + themeBox.height);
   expect(appearanceBox.y + appearanceBox.height).toBeLessThanOrEqual(
-    (await page.locator(".learning-footer").boundingBox())!.y,
+    (await page.viewportSize())!.height,
   );
   await page.keyboard.press("Escape");
   await expect

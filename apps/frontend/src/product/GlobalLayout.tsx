@@ -1,3 +1,4 @@
+import { AppearanceControl } from "../appearance/Appearance";
 import type { ReactNode } from "react";
 import { BookOpen, House, ScanSearch } from "lucide-react";
 import { Link, NavLink } from "react-router";
@@ -33,6 +34,7 @@ export function GlobalLayout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
+        <AppearanceControl reading={false} />
       </aside>
       <div className="global-content">{children}</div>
     </div>

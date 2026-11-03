@@ -385,3 +385,8 @@
     gap: 16px;
   }
 }
+
+/* Course identity belongs to the logo; Light cards share one neutral surface. */
+:root[data-site-theme="light"] .course-card {
+  background: var(--color-surface);
+}

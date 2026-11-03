@@ -44,7 +44,7 @@ async function geometry(page: Page) {
       prose: bounds(".study-explanation > .prose"),
       article: bounds(".study-explanation"),
       header: bounds(".site-header"),
-      footer: bounds(".learning-footer"),
+      footer: bounds(".lesson-navigation-bar"),
       home: bounds(".header-home"),
       tools: bounds(".header-reading-tools"),
       articleOverflow: article.scrollWidth > article.clientWidth,
@@ -54,10 +54,11 @@ async function geometry(page: Page) {
   expect(result.articleOverflow).toBe(false);
   expect(result.heading.x).toBeCloseTo(result.prose.x, 1);
   expect(result.heading.width).toBeCloseTo(result.prose.width, 1);
-  expect(result.article.bottom).toBeLessThanOrEqual(result.footer.y);
+  expect(result.article.y).toBeGreaterThanOrEqual(result.footer.bottom);
+  expect(result.article.bottom).toBe(result.viewport.height);
   expect(result.header.y).toBe(0);
-  expect(result.footer.bottom).toBe(result.viewport.height);
-  expect(result.footer.height).toBe(59); // 58px navigation + top border.
+  expect(result.footer.y).toBe(result.header.bottom);
+  expect(result.footer.height).toBe(49); // 48px navigation + bottom border.
   expect(result.home.right).toBeLessThan(result.tools.x);
   return result;
 }
@@ -204,8 +205,8 @@ for (const viewport of [
     });
     await geometry(page);
 
-    const footer = page.locator(".learning-footer");
-    await expect(footer.locator(".footer-position")).toHaveText("01/01");
+    const footer = page.locator(".lesson-navigation-bar");
+    await expect(footer.locator(".lesson-nav-position")).toHaveText("01/01");
     for (const name of ["Lição anterior", "Próxima lição"])
       await expect(
         footer.getByRole("button", { name, exact: true }),
@@ -226,7 +227,7 @@ for (const viewport of [
     await expect(dialog).not.toBeVisible();
 
     const appearance = page.getByRole("button", {
-      name: "Tema e aparência",
+      name: "Ajustar leitura",
     });
     await appearance.click();
     await expandReadingSettings(page);
@@ -244,7 +245,9 @@ for (const viewport of [
       "21px",
     );
     await geometry(page);
-    await expect(appearance.getByText("Tema", { exact: true })).toBeVisible();
+    await expect(
+      appearance.getByText("Ajustar leitura", { exact: true }),
+    ).toBeVisible();
     // Quiz answers are intentionally in memory; reload starts a fresh attempt.
     await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);
     await radios.last().check();
@@ -268,7 +271,7 @@ for (const viewport of [
     expect(await readFile(file, "utf8")).toBe(original);
   });
 
-  test(`private workspace keeps its editor and footer at ${viewport.width}x${viewport.height}`, async ({
+  test(`private workspace keeps its editor and top navigation at ${viewport.width}x${viewport.height}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(viewport);
@@ -296,8 +299,9 @@ for (const viewport of [
     });
     await expect(editor).toBeVisible();
     const frame = await page.locator(".study-code").boundingBox();
-    const footer = await page.locator(".learning-footer").boundingBox();
-    expect(frame!.y + frame!.height).toBeLessThanOrEqual(footer!.y);
+    const footer = await page.locator(".lesson-navigation-bar").boundingBox();
+    expect(frame!.y).toBeGreaterThanOrEqual(footer!.y + footer!.height);
+    expect(frame!.y + frame!.height).toBe(viewport.height);
     await page.screenshot({
       path: info.outputPath(`workspace-${viewport.width}.png`),
     });

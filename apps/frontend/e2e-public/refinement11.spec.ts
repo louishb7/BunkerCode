@@ -36,7 +36,7 @@ for (const viewport of [
     await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
       2,
     );
-    await expect(page.locator(".footer-position")).toHaveText("01/01");
+    await expect(page.locator(".lesson-nav-position")).toHaveText("01/01");
     await expect(
       page.getByRole("button", { name: "Próxima lição", exact: true }),
     ).toBeDisabled();
@@ -87,24 +87,27 @@ for (const viewport of [
     await expect(
       page.getByRole("link", { name: "Editar lição", exact: true }),
     ).toHaveCount(0);
-    await expect(page.locator(".learning-footer")).toBeInViewport();
+    await expect(page.locator(".lesson-navigation-bar")).toBeInViewport();
     const measure = await page.evaluate(() => {
       const panel = document
         .querySelector(".study-code")!
         .getBoundingClientRect();
       const footer = document
-        .querySelector(".learning-footer")!
+        .querySelector(".lesson-navigation-bar")!
         .getBoundingClientRect();
       return {
         width: document.documentElement.scrollWidth,
         height: document.documentElement.scrollHeight,
         panelBottom: panel.bottom,
+        panelTop: panel.top,
+        navigationBottom: footer.bottom,
         footerTop: footer.top,
       };
     });
     expect(measure.width).toBe(viewport.width);
     expect(measure.height).toBe(viewport.height);
-    expect(measure.panelBottom).toBeLessThanOrEqual(measure.footerTop);
+    expect(measure.panelBottom).toBe(viewport.height);
+    expect(measure.panelTop).toBeGreaterThanOrEqual(measure.navigationBottom);
     await page.screenshot({
       path: info.outputPath(`public-editor-${viewport.width}.png`),
     });

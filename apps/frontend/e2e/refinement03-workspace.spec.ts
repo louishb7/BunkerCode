@@ -9,7 +9,7 @@ for (const viewport of [
   { width: 320, height: 800 },
   { width: 720, height: 450 },
 ])
-  test(`panel presets preserve the editor and preferences at ${viewport.width}`, async ({
+  test(`manual separators preserve the editor and preferences at ${viewport.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(viewport);
@@ -44,57 +44,38 @@ for (const viewport of [
     await page.screenshot({
       path: info.outputPath(`panels-before-${viewport.width}.png`),
     });
-    const trigger = page.getByRole("button", {
-      name: "Ajustar painéis",
-      exact: true,
-    });
-    await trigger.click();
-    const settings = page.getByRole("group", {
-      name: "Proporções dos painéis",
-      exact: true,
-    });
-    await expect(settings).toBeVisible();
-    const height = settings.getByRole("group", { name: "Altura", exact: true });
-    await height
-      .getByRole("button", { name: "Mais resultados", exact: true })
-      .click();
     await expect(
-      height.getByRole("button", { name: "Mais resultados", exact: true }),
-    ).toBeFocused();
+      page.getByRole("button", { name: "Ajustar painéis", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.locator(".panel-settings-popover")).toHaveCount(0);
     const divider = page.getByRole("separator", {
       name: "Altura do editor e resultados",
       exact: true,
     });
-    const expectedRatio = String(
-      Math.max(
-        Number(await divider.getAttribute("aria-valuemin")),
-        Math.min(Number(await divider.getAttribute("aria-valuemax")), 35),
-      ),
+    await divider.focus();
+    await page.keyboard.press("Home");
+    const expectedRatio = await divider.getAttribute("aria-valuenow");
+    await expect(divider).toHaveAttribute(
+      "aria-valuenow",
+      (await divider.getAttribute("aria-valuemin"))!,
     );
-    await expect(divider).toHaveAttribute("aria-valuenow", expectedRatio);
+    await expect(divider).toBeFocused();
     await expect(editor).toHaveAttribute("data-preserved-preset", "yes");
     await expect(editor).toContainText("preservedPreset");
-    if (viewport.width >= 1000) {
-      await settings
-        .getByRole("group", { name: "Largura", exact: true })
-        .getByRole("button", { name: "Mais leitura", exact: true })
-        .click();
-      await expect(
-        page.getByRole("separator", {
-          name: "Largura do artigo e editor",
-          exact: true,
-        }),
-      ).toHaveAttribute("aria-valuenow", "65");
-    } else
-      await expect(
-        settings.getByRole("group", { name: "Largura", exact: true }),
-      ).not.toBeVisible();
-    await page.screenshot({
-      path: info.outputPath(`panels-presets-${viewport.width}.png`),
+    const horizontal = page.getByRole("separator", {
+      name: "Largura do artigo e editor",
+      exact: true,
     });
-    await page.keyboard.press("Escape");
-    await expect(trigger).toBeFocused();
-    await expect(settings).toHaveCount(0);
+    if (viewport.width >= 1000) {
+      await expect(horizontal).toHaveAttribute("aria-valuenow", "55");
+      await horizontal.focus();
+      for (let step = 0; step < 5; step++)
+        await page.keyboard.press("ArrowRight");
+      await expect(horizontal).toHaveAttribute("aria-valuenow", "65");
+    } else await expect(horizontal).not.toBeVisible();
+    await page.screenshot({
+      path: info.outputPath(`panels-resized-${viewport.width}.png`),
+    });
     await editor.focus();
     expect(await page.evaluate(() => getSelection()?.toString())).toBe(
       selection,
@@ -109,7 +90,7 @@ for (const viewport of [
     await expect(page.locator(".cm-editor")).toHaveCount(1);
     if (await switcher.isVisible()) await switcher.click();
     await expect(editor).toContainText("preservedPreset");
-    await expect(divider).toHaveAttribute("aria-valuenow", expectedRatio);
+    await expect(divider).toHaveAttribute("aria-valuenow", expectedRatio!);
     if (viewport.width >= 1000)
       await expect(
         page.getByRole("separator", {
@@ -205,7 +186,7 @@ for (const width of [390, 1280, 1440, 1920])
     ).toBeVisible();
     const reading = page.getByRole("button", { name: "Lição", exact: true });
     if (await reading.isVisible()) await reading.click();
-    await page.getByRole("button", { name: "Tema e aparência" }).click();
+    await page.getByRole("button", { name: "Ajustar leitura" }).click();
     await selectReadingTone(page, 1);
     expect(
       await page
