@@ -52,6 +52,8 @@ for (const viewport of [
   { width: 1440, height: 900 },
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
+  { width: 360, height: 800 },
+  { width: 320, height: 800 },
 ]) {
   test(`course modules keep the approved timeline at ${viewport.width}x${viewport.height}`, async ({
     page,
@@ -69,9 +71,9 @@ for (const viewport of [
     await expect(headings).toHaveCount(2);
     await expect(headings.nth(0)).toHaveText("Módulo 01 Fundamentos");
     await expect(headings.nth(1)).toHaveText("Módulo 02 Aplicação");
-    await expect(
-      page.locator(".course-module-description").first(),
-    ).toHaveText(modules[0]!.description!);
+    await expect(page.locator(".course-module-description").first()).toHaveText(
+      modules[0]!.description!,
+    );
     await expect(page.locator(".course-module-description")).toHaveCount(1);
     await expect(page.getByText("Módulo único")).toHaveCount(0);
     await expect(page.getByText("Módulo padrão")).toHaveCount(0);
@@ -98,7 +100,9 @@ for (const viewport of [
       };
       const connector = (selector: string) =>
         getComputedStyle(document.querySelector(selector)!, "::after");
-      const lists = [...document.querySelectorAll(".course-module .lesson-list")];
+      const lists = [
+        ...document.querySelectorAll(".course-module .lesson-list"),
+      ];
       return {
         introduction: bounds(".course-introduction"),
         heading: bounds(".course-module-heading"),
@@ -113,7 +117,8 @@ for (const viewport of [
         firstConnector: {
           content: connector(".course-module .lesson-list > li:first-child")
             .content,
-          width: connector(".course-module .lesson-list > li:first-child").width,
+          width: connector(".course-module .lesson-list > li:first-child")
+            .width,
         },
         lastConnector: [
           ...document.querySelectorAll(
@@ -153,6 +158,60 @@ for (const viewport of [
         path: info.outputPath("reader-modules-1440.png"),
         fullPage: true,
       });
+    const modulePicker = page.getByRole("button", {
+      name: "Módulos",
+      exact: true,
+    });
+    await expect(modulePicker).toHaveAccessibleDescription(
+      "Módulo 01 · Fundamentos",
+    );
+    await modulePicker.click();
+    const moduleMenu = page.getByRole("navigation", {
+      name: "Módulos do curso",
+      exact: true,
+    });
+    const moduleChoices = moduleMenu.locator("[data-lesson-choice]");
+    await expect(moduleChoices).toHaveCount(2);
+    await expect(moduleChoices.first()).toBeFocused();
+    await expect(moduleChoices.first()).toHaveAttribute("aria-current", "true");
+    await page.screenshot({
+      path: info.outputPath(`module-selector-${viewport.width}.png`),
+    });
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(`/courses/${courseId}/lessons/terceira`);
+    await expect(modulePicker).toHaveAccessibleDescription(
+      "Módulo 02 · Aplicação",
+    );
+    await expect(page.locator(".lesson-nav-position")).toHaveText("03/04");
+    await page.getByRole("button", { name: "Lições", exact: true }).click();
+    const lessonMenu = page.getByRole("navigation", {
+      name: "Lições do curso",
+      exact: true,
+    });
+    await expect(lessonMenu.locator("[data-lesson-choice]")).toHaveCount(2);
+    await expect(
+      lessonMenu.locator("[data-lesson-choice]").first(),
+    ).toHaveAttribute("href", `/courses/${courseId}/lessons/terceira`);
+    await lessonMenu.getByRole("link", { name: /Quarta lição/ }).click();
+    await page.reload();
+    await expect(page.locator(".lesson-heading h1")).toHaveText("Quarta lição");
+    await expect(modulePicker).toHaveAccessibleDescription(
+      "Módulo 02 · Aplicação",
+    );
+    await page
+      .getByRole("link", { name: "Lição anterior", exact: true })
+      .click();
+    await page
+      .getByRole("link", { name: "Lição anterior", exact: true })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Segunda lição",
+    );
+    await expect(modulePicker).toHaveAccessibleDescription(
+      "Módulo 01 · Fundamentos",
+    );
+    await page.goto(`/courses/${courseId}/lessons/primeira`);
     for (const [index, lesson] of lessons.entries()) {
       if (index === 0) continue;
       await page.getByRole("link", { name: "Próxima lição" }).click();
@@ -164,6 +223,7 @@ for (const viewport of [
     await expect(
       page.getByRole("button", { name: "Próxima lição" }),
     ).toBeDisabled();
+    await page.getByRole("button", { name: "Lições", exact: true }).click();
     await page
       .getByRole("link", { name: `Abrir curso ${courseTitle}`, exact: true })
       .click();

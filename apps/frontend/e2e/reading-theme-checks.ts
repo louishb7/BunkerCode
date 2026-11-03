@@ -416,6 +416,29 @@ export async function checkGlobalAppearance(
         exact: true,
       });
       await expect(global).toHaveCount(1);
+      if (name === "reader" || name === "workspace") {
+        await expect(page.locator(".header-global-nav a")).toHaveText([
+          "Início",
+          "Cursos",
+          "Táticas",
+        ]);
+        await expect(page.locator(".lesson-nav-course")).toHaveCount(0);
+        const bar = (await page
+          .locator(".lesson-navigation-bar")
+          .boundingBox())!;
+        expect(bar.height).toBe(viewport.width < 600 ? 45 : 41);
+        for (const button of await page
+          .locator(".lesson-nav-neighbors > *:not(span)")
+          .all()) {
+          const box = (await button.boundingBox())!;
+          expect(box.height).toBeGreaterThanOrEqual(
+            viewport.width < 600 ? 44 : 24,
+          );
+          expect(box.width).toBeGreaterThanOrEqual(
+            viewport.width < 600 ? 44 : 24,
+          );
+        }
+      }
       const collisions = await page
         .locator(".appearance-trigger:visible")
         .evaluateAll((buttons) =>
@@ -558,7 +581,7 @@ export async function checkGlobalAppearance(
         ).toHaveCSS("color-scheme", theme === "light" ? "light" : "dark");
       const contrast = await expectRenderedContrast(
         page.locator(
-          ".appearance-trigger:visible, .global-brand, .global-nav-link, .catalog-heading, .course-card-title, .course-description, .course-full-description, .tactics-lab h1, .tactic-objective, .studio-course-title, .studio-status, .workspace-tabs button:not(:disabled), .result-heading, .lesson-nav-course, .lesson-nav-position",
+          ".appearance-trigger:visible, .global-brand, .global-nav-link, .catalog-heading, .course-card-title, .course-description, .course-full-description, .tactics-lab h1, .tactic-objective, .studio-course-title, .studio-status, .workspace-tabs button:not(:disabled), .result-heading, .lesson-context-trigger, .lesson-nav-position",
         ),
       );
       expect(

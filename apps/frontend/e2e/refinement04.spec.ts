@@ -190,7 +190,7 @@ for (const [width, height] of [
     const footer = page.locator(".lesson-navigation-bar");
     await expect(
       footer.getByRole("link", { name: "Abrir curso TypeScript", exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       footer.getByRole("button", { name: "Lição anterior", exact: true }),
     ).toBeDisabled();
@@ -205,8 +205,7 @@ for (const [width, height] of [
         .locator(".editor-actions button, .editor-toolbar button")
         .all())
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect((await footer.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    expect((await footer.boundingBox())!.height).toBeLessThanOrEqual(50);
+    expect((await footer.boundingBox())!.height).toBe(width! < 600 ? 45 : 41);
     if (width! >= 1000) {
       const article = (await page.locator(".study-explanation").boundingBox())!;
       const editor = (await page.locator(".study-code").boundingBox())!;
@@ -224,7 +223,7 @@ for (const [width, height] of [
     const positions = await footer.boundingBox();
     await footer.getByRole("button", { name: "Lições", exact: true }).click();
     await expect(
-      page.getByRole("dialog", { name: "Lições · TypeScript" }),
+      page.getByRole("navigation", { name: "Lições do curso", exact: true }),
     ).toBeVisible();
     await contained(page);
     expect(await footer.boundingBox()).toEqual(positions);
@@ -241,7 +240,9 @@ for (const [width, height] of [
     await contained(page);
     // Other authoring tests can append a real lesson to this disposable course.
     await footer.getByRole("button", { name: "Lições", exact: true }).click();
-    const lastLesson = page.getByRole("dialog").locator("nav a").last();
+    const lastLesson = page
+      .locator(".lesson-selector-panel [data-lesson-choice]")
+      .last();
     const lastPath = await lastLesson.getAttribute("href");
     await lastLesson.click();
     await expect(page).toHaveURL(lastPath!);

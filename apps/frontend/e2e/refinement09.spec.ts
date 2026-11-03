@@ -157,6 +157,7 @@ for (const viewport of [
     );
     await expect(page.locator(".learning-shell .site-header")).toBeVisible();
     await expect(page.locator(".global-sidebar")).toHaveCount(0);
+    await page.getByRole("button", { name: "Lições", exact: true }).click();
     await page
       .getByRole("link", {
         name: "Abrir curso Node.js",
@@ -205,6 +206,7 @@ test("another course retains its full description and reader keeps its contextua
   });
   await page.getByRole("link", { name: "Próxima lição", exact: true }).click();
   await expect(page).toHaveURL("/courses/typescript/lessons/union-types");
+  await page.getByRole("button", { name: "Lições", exact: true }).click();
   await page
     .getByRole("link", { name: "Abrir curso TypeScript", exact: true })
     .click();

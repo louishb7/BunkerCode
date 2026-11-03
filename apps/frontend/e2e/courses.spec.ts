@@ -82,6 +82,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
     ],
     { env: { ...process.env, BUNKERCODE_CONTENT_DIR: content } },
   );
+  await page.getByRole("button", { name: "Lições", exact: true }).click();
   await page
     .getByRole("link", { name: "Abrir curso TypeScript", exact: true })
     .click();
@@ -210,6 +211,7 @@ test("navigation exposes Home, Courses and Tactics while retired execution route
   await expect(
     page.getByRole("navigation", { name: "Navegação entre lições" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Lições", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Abrir curso TypeScript", exact: true }),
   ).toHaveAttribute("href", "/courses/typescript");

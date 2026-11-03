@@ -409,7 +409,12 @@ for (const width of [390, 768, 1024, 1440])
           .getByRole("button", { name: "Cancelar", exact: true })
           .click();
         await page.getByRole("button", { name: "Lições", exact: true }).click();
-        await expect(page.getByRole("dialog")).toBeVisible();
+        await expect(
+          page.getByRole("navigation", {
+            name: "Lições do curso",
+            exact: true,
+          }),
+        ).toBeVisible();
         await page.screenshot({ path: info.outputPath(`index-${width}.png`) });
         await page.keyboard.press("Escape");
       }
@@ -565,7 +570,7 @@ test("200 percent CSS zoom preserves product controls and study reflow", async (
     ).toBe(true);
     await expect(
       page.getByRole("link", {
-        name: path === url ? "Abrir curso Oficina de teste" : "Cursos",
+        name: "Cursos",
         exact: true,
       }),
     ).toBeVisible();

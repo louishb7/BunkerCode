@@ -37,10 +37,12 @@ for (const width of [390, 1280, 1440, 1920]) {
           .locator(".workspace-navigation")
           .getByRole("button", { name: "Lições", exact: true }),
       ).toBeVisible();
-      await expect(page.locator(".lesson-nav-course")).toHaveAttribute(
-        "href",
-        "/courses/typescript",
-      );
+      await expect(page.locator(".lesson-nav-course")).toHaveCount(0);
+      await expect(header.locator(".header-global-nav a")).toHaveText([
+        "Início",
+        "Cursos",
+        "Táticas",
+      ]);
       await expect(
         page.locator(".lesson-context, .lesson-pagination"),
       ).toHaveCount(0);

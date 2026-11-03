@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CornerUpLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { LessonIndex } from "./LessonIndex";
 import { lessonPath, type Lesson } from "./api";
@@ -10,16 +10,7 @@ export function LessonNavigation({ lesson }: { lesson: Lesson }) {
   return (
     <div className="lesson-navigation-bar">
       <nav className="workspace-navigation" aria-label="Navegação entre lições">
-        <Link
-          className="lesson-nav-course"
-          aria-label={`Abrir curso ${lesson.course.title}`}
-          to={"/courses/" + encodeURIComponent(lesson.course.id)}
-          title={lesson.course.title}
-        >
-          <CornerUpLeft size={16} aria-hidden="true" />
-          <span>Curso</span>
-        </Link>
-        <LessonIndex course={lesson.course} />
+        <LessonIndex course={lesson.course} slug={lesson.slug} />
         <div className="lesson-nav-neighbors">
           <span
             className="lesson-nav-position"

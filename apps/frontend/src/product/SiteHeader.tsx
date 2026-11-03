@@ -55,50 +55,32 @@ export function SiteHeader() {
         </Link>
         <nav
           className={
-            lesson || learning
-              ? "header-lesson-nav"
-              : "flex h-full items-center gap-3 text-sm sm:gap-6"
+            lesson && !learning ? "header-studio-nav" : "header-global-nav"
           }
           aria-label="Navegação principal"
         >
-          {lesson || learning ? (
+          {lesson && !learning ? (
             <>
-              {lesson && !learning && (
-                <Link
-                  aria-label={`Abrir curso ${lesson.course.title}`}
-                  className="header-course"
-                  to={"/courses/" + encodeURIComponent(lesson.course.id)}
-                  title={lesson.course.title}
-                >
-                  <BookOpen size={18} aria-hidden="true" />
-                  <span>{lesson.course.title}</span>
-                </Link>
-              )}
+              <Link
+                aria-label={`Abrir curso ${lesson.course.title}`}
+                className="header-course"
+                to={"/courses/" + encodeURIComponent(lesson.course.id)}
+                title={lesson.course.title}
+              >
+                <BookOpen size={18} aria-hidden="true" />
+                <span>{lesson.course.title}</span>
+              </Link>
               <Link to="/" className="header-home">
                 Início
               </Link>
             </>
           ) : (
             <>
-              <NavLink
-                to="/"
-                end
-                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
-              >
+              <NavLink to="/" end className="header-home">
                 Início
               </NavLink>
-              <NavLink
-                to="/courses"
-                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
-              >
-                Cursos
-              </NavLink>
-              <NavLink
-                to="/tactics"
-                className="flex h-full items-center border-b-2 border-transparent text-subtle no-underline aria-[current=page]:border-gold aria-[current=page]:text-ink"
-              >
-                Táticas
-              </NavLink>
+              <NavLink to="/courses">Cursos</NavLink>
+              <NavLink to="/tactics">Táticas</NavLink>
             </>
           )}
         </nav>

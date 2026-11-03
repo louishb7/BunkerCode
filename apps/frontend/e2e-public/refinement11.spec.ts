@@ -113,7 +113,7 @@ for (const viewport of [
     });
     await page.getByRole("button", { name: "Lições", exact: true }).click();
     await page
-      .getByRole("dialog")
+      .getByRole("navigation", { name: "Lições do curso", exact: true })
       .getByRole("link", { name: /Union types/ })
       .click();
     await expect(page.locator(".lesson-heading h1")).toHaveText("Union types");

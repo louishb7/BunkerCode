@@ -155,8 +155,8 @@
   .header-reading-tools {
     margin-left: 0;
   }
-  .site-header-content > nav:not(.header-lesson-nav) {
-    flex-wrap: wrap;
+  .site-header-content > .header-global-nav {
+    flex-wrap: nowrap;
     gap: 4px 8px;
     font-size: 12px;
   }

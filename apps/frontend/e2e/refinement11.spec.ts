@@ -58,7 +58,7 @@ async function geometry(page: Page) {
   expect(result.article.bottom).toBe(result.viewport.height);
   expect(result.header.y).toBe(0);
   expect(result.footer.y).toBe(result.header.bottom);
-  expect(result.footer.height).toBe(49); // 48px navigation + bottom border.
+  expect(result.footer.height).toBe(result.viewport.width < 600 ? 45 : 41); // Compact bar; larger touch targets on phones.
   expect(result.home.right).toBeLessThan(result.tools.x);
   return result;
 }
@@ -214,16 +214,19 @@ for (const viewport of [
     const menu = footer.getByRole("button", { name: "Lições", exact: true });
     await menu.focus();
     await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("link")).toHaveCount(1);
-    await expect(dialog.getByRole("link")).toHaveAttribute(
+    const dialog = page.getByRole("navigation", {
+      name: "Lições do curso",
+      exact: true,
+    });
+    await expect(dialog.locator("[data-lesson-choice]")).toHaveCount(1);
+    await expect(dialog.locator("[data-lesson-choice]")).toHaveAttribute(
       "aria-current",
       "page",
     );
     await page.keyboard.press("Escape");
     await expect(menu).toBeFocused();
     await menu.click();
-    await dialog.getByRole("link").click();
+    await dialog.locator("[data-lesson-choice]").click();
     await expect(dialog).not.toBeVisible();
 
     const appearance = page.getByRole("button", {
@@ -266,6 +269,7 @@ for (const viewport of [
     await page.screenshot({
       path: info.outputPath(`code-large-font-${viewport.width}.png`),
     });
+    await menu.click();
     await footer.getByRole("link", { name: /Abrir curso/ }).click();
     await expect(page).toHaveURL(`/courses/${course}`);
     expect(await readFile(file, "utf8")).toBe(original);
@@ -307,7 +311,7 @@ for (const viewport of [
     });
     await page.getByRole("button", { name: "Lições", exact: true }).click();
     await page
-      .getByRole("dialog")
+      .getByRole("navigation", { name: "Lições do curso", exact: true })
       .getByRole("link", { name: /Union types/ })
       .click();
     await expect(page.locator(".lesson-heading h1")).toHaveText("Union types");
