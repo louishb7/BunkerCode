@@ -6,7 +6,7 @@ import {
   checkReadingThemes,
   readingViewports,
 } from "../e2e/reading-theme-checks";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../e2e/auth-fixture";
 
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -19,7 +19,11 @@ for (const viewport of [
   }, info) => {
     const mutations: string[] = [];
     page.on("request", (request) => {
-      if (request.url().includes("/api/") && request.method() !== "GET")
+      if (
+        request.url().includes("/api/") &&
+        !request.url().includes("/api/auth/") &&
+        request.method() !== "GET"
+      )
         mutations.push(request.url());
     });
     await page.setViewportSize(viewport);
@@ -133,7 +137,11 @@ for (const viewport of readingViewports) {
   }, info) => {
     const mutations: string[] = [];
     page.on("request", (request) => {
-      if (request.url().includes("/api/") && request.method() !== "GET")
+      if (
+        request.url().includes("/api/") &&
+        !request.url().includes("/api/auth/") &&
+        request.method() !== "GET"
+      )
         mutations.push(request.url());
     });
     await page.setViewportSize(viewport);

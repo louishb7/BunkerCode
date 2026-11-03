@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -57,7 +57,10 @@ async function codes(page: Page) {
   return page.evaluate(
     () =>
       new Promise<string[]>((resolve, reject) => {
-        const request = indexedDB.open("bunkercode-practice", 2);
+        const request = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;

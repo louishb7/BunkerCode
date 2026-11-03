@@ -1,5 +1,5 @@
 import { selectReadingTone } from "./reading-theme-checks";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 
 for (const viewport of [
   { width: 1440, height: 900 },

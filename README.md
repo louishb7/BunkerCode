@@ -1,23 +1,25 @@
 # BunkerCode
 
-Plataforma pessoal e aberta para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
+Plataforma autoral para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
 
-Stack da plataforma: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, Node.js e PNPM. TypeScript, Node.js, NestJS e PostgreSQL são a trilha de estudo; PostgreSQL ainda não é necessário para iniciar o MVP.
+Stack: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, PostgreSQL, Prisma, Node.js e PNPM. Conteúdo continua em Markdown/JSON; identidade e sessões ficam no PostgreSQL. Gratuidade inicial não define licença open source.
 
 ## Iniciar
 
-Requisitos: Node.js 24+ e pnpm 11.
+Requisitos: Node.js 24.11+ (linha 24) ou 26+, pnpm 11 e PostgreSQL. Configure as variáveis e o banco conforme [autenticação e instalação](docs/authentication.md) antes de iniciar.
 
     pnpm install
+    pnpm --filter @bunkercode/backend db:generate
+    pnpm --filter @bunkercode/backend db:deploy
     pnpm dev
 
-Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar a leitura anônima, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
+Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar o catálogo público e a leitura autenticada, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
 
 ## Escrever uma lição
 
     pnpm lesson:new --course typescript --slug narrowing --title "Narrowing"
 
-Abra a lição no site e clique em **Editar lição** para escrever no Studio visual com Tiptap, inserir código, notas e quizzes e salvar no próprio lesson.md. No Studio, o seletor percorre as lições do curso e **Nova lição** cria um documento vazio sem terminal. **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior. Você também pode editar o arquivo no VS Code. Confira git diff e faça seu commit manualmente; não há rebuild nem commit automático. Também é possível criar o Markdown e inserir a entrada no course.json manualmente. A ordem do manifesto define a navegação. No Leitor, **Lições** e anterior/próxima ficam no footer permanente. O leitor organiza artigo, sumário e prática conforme o conteúdo, com preferências de leitura e divisores acessíveis. Veja [autoria visual e avaliação](docs/visual-authoring.md).
+Entre com uma conta provisionada como ADMIN, abra a lição no site e clique em **Editar lição** para escrever no Studio visual com Tiptap, inserir código, notas e quizzes e salvar no próprio lesson.md. No Studio, o seletor percorre as lições do curso e **Nova lição** cria um documento vazio sem terminal. **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior. Você também pode editar o arquivo no VS Code. Confira git diff e faça seu commit manualmente; não há rebuild nem commit automático. Também é possível criar o Markdown e inserir a entrada no course.json manualmente. A ordem do manifesto define a navegação. No Leitor, **Lições** e anterior/próxima ficam no footer permanente. O leitor organiza artigo, sumário e prática conforme o conteúdo, com preferências de leitura e divisores acessíveis. Veja [autoria visual e avaliação](docs/visual-authoring.md).
 
 Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. A API privada descobre a pasta automaticamente; no ambiente público é necessária seleção explícita. Cursos podem declarar módulos opcionais em `modules`, associando cada lição por `moduleId`. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
 
@@ -41,7 +43,7 @@ No perfil privado, Home e catálogo apresentam Fundamentos de Programação com 
     pnpm build
     pnpm test:browser
 
-Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo fora do checkout, limpas pelo supervisor da execução. `playwright --list` não cria fixtures; diretórios fornecidos explicitamente por ambiente são preservados. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
+Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. Backend e E2E exigem configuração de autenticação e PostgreSQL exclusivo de testes com migrations aplicadas; as fixtures criam contas aleatórias. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo fora do checkout, limpas pelo supervisor da execução. `playwright --list` não cria fixtures; diretórios fornecidos explicitamente por ambiente são preservados. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
 O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. A Home prioriza começar ou continuar uma lição válida, seguida dos cursos da seleção editorial. Não apresenta heatmap, consulta por data ou métricas substitutas; os registros locais de estudo permanecem preservados e visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit com avaliação local quando há teste público definido. Blocos Markdown continuam inertes. Não há banco editorial.
 

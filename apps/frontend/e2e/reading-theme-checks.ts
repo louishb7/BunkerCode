@@ -446,7 +446,7 @@ export async function checkGlobalAppearance(
             const target = button.getBoundingClientRect();
             return Array.from(
               document.querySelectorAll(
-                ".lesson-heading h1, .lesson-heading .eyebrow, .studio-topbar button, .studio-topbar select, .workspace-tabs button, .mobile-workspace-switch button, .catalog-heading, .tactics-heading h1, .global-brand, .global-nav-link, .header-home",
+                ".lesson-heading h1, .lesson-heading .eyebrow, .studio-topbar button, .studio-topbar select, .workspace-tabs button, .mobile-workspace-switch button, .catalog-heading, .tactics-heading h1, .global-brand, .global-nav-link, .header-home, .account-control button",
               ),
             )
               .filter((node) => {
@@ -539,9 +539,12 @@ export async function checkGlobalAppearance(
           .locator(".site-header-content > a")
           .boundingBox())!;
         const home = (await page.locator(".header-home").boundingBox())!;
-        expect(
-          Math.abs(brand.y + brand.height / 2 - home.y - home.height / 2),
-        ).toBeLessThanOrEqual(1);
+        if (viewport.width < 600) {
+          // Account and appearance actions occupy the first row; navigation remains fully reachable below.
+          expect(home.y).toBeGreaterThanOrEqual(brand.y + brand.height);
+        } else {
+          expect(Math.abs(brand.y + brand.height / 2 - home.y - home.height / 2)).toBeLessThanOrEqual(1);
+        }
         const panel = await openAppearance(page);
         await expect(panel.locator("details, .site-theme-options")).toHaveCount(
           0,

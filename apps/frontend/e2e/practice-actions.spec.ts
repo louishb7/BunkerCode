@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { authenticatedGet } from "./auth-fixture";
+import { expect, test, type Page } from "./auth-fixture";
 
 const lesson = "/courses/typescript/lessons/values-and-types";
 const solution = (page: Page) =>
@@ -22,7 +23,10 @@ async function submissions(page: Page) {
   return page.evaluate(
     () =>
       new Promise<unknown[]>((resolve, reject) => {
-        const open = indexedDB.open("bunkercode-practice", 2);
+        const open = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const db = open.result,
@@ -44,7 +48,10 @@ async function savedCodes(page: Page) {
   return page.evaluate(
     () =>
       new Promise<string[]>((resolve, reject) => {
-        const open = indexedDB.open("bunkercode-practice", 2);
+        const open = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const db = open.result;
@@ -69,7 +76,8 @@ test("formatting preserves the editor, selected text, focus and independent undo
   await open(page);
   const initial = (
     (await (
-      await page.request.get(
+      await authenticatedGet(
+        page,
         "/api/content/courses/typescript/lessons/values-and-types/exercise",
       )
     ).json()) as { exercise: { starterCode: string } }
@@ -124,7 +132,8 @@ test("restore needs confirmation, persists starter code, preserves submissions a
   await open(page);
   const initial = (
     (await (
-      await page.request.get(
+      await authenticatedGet(
+        page,
         "/api/content/courses/typescript/lessons/values-and-types/exercise",
       )
     ).json()) as { exercise: { starterCode: string } }

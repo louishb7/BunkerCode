@@ -1,3 +1,4 @@
+import { AuthPage, RequireSession, SessionBoundary } from "./auth/Auth";
 import { GlobalLayout } from "./product/GlobalLayout";
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
@@ -50,6 +51,11 @@ function AppRoutes() {
     <RouteBoundary key={pathname}>
       <Suspense fallback={<ContentStatus error="" />}>
         <Routes>
+          <Route path="/login" element={<AuthPage key="login" />} />
+          <Route
+            path="/register"
+            element={<AuthPage key="register" register />}
+          />
           <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/tactics" element={<TacticsLab />} />
@@ -60,11 +66,22 @@ function AppRoutes() {
             }
           />
           <Route path="/courses/:id" element={<CoursePage />} />
-          <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
+          <Route
+            path="/courses/:id/lessons/:slug"
+            element={
+              <RequireSession>
+                <LessonPage />
+              </RequireSession>
+            }
+          />
           {StudioPage && (
             <Route
               path="/courses/:id/lessons/:slug/edit"
-              element={<StudioPage />}
+              element={
+                <RequireSession admin>
+                  <StudioPage />
+                </RequireSession>
+              }
             />
           )}
           <Route
@@ -85,22 +102,24 @@ function AppRoutes() {
 export function App() {
   return (
     <BrowserRouter>
-      <ScrollRestoration />
-      <a
-        className="skip-link"
-        href="#main-content"
-        onClick={(event) => {
-          event.preventDefault();
-          const main = document.getElementById("main-content");
-          main?.focus({ preventScroll: true });
-          main?.scrollIntoView();
-        }}
-      >
-        Pular para o conteúdo
-      </a>
-      <LessonNavigationProvider>
-        <ApplicationShell />
-      </LessonNavigationProvider>
+      <SessionBoundary>
+        <ScrollRestoration />
+        <a
+          className="skip-link"
+          href="#main-content"
+          onClick={(event) => {
+            event.preventDefault();
+            const main = document.getElementById("main-content");
+            main?.focus({ preventScroll: true });
+            main?.scrollIntoView();
+          }}
+        >
+          Pular para o conteúdo
+        </a>
+        <LessonNavigationProvider>
+          <ApplicationShell />
+        </LessonNavigationProvider>
+      </SessionBoundary>
     </BrowserRouter>
   );
 }

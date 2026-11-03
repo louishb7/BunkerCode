@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -97,12 +97,8 @@ for (const width of [390, 768, 1440])
     ).toBeFocused();
     const lessons = page.locator(".lesson-list a");
     await expect(lessons).toHaveCount(2);
-    await expect(lessons.nth(0)).toContainText(
-      "01" + entries[0]!.title,
-    );
-    await expect(lessons.nth(1)).toContainText(
-      "02" + entries[1]!.title,
-    );
+    await expect(lessons.nth(0)).toContainText("01" + entries[0]!.title);
+    await expect(lessons.nth(1)).toContainText("02" + entries[1]!.title);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

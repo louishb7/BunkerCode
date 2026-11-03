@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 import type { Course, Lesson } from "../src/courses/api";
 const coursePath = "/courses/typescript";
 const lessonPath = coursePath + "/lessons/values-and-types";

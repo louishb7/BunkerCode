@@ -1,14 +1,14 @@
 # Arquitetura atual do BunkerCode
 
-Data: 2026-10-30. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. O Refinamento 01 adiciona atividade local, compilação, execução isolada e submissão não avaliada, com módulos específicos; a infraestrutura aposentada no MVP 02 permanece removida.
+Data: 2026-11-03. Esta é a referência ativa. O MVP 03 contém Home, Cursos, Leitor, prática de escrita e Studio. O Refinamento 01 adiciona atividade local, compilação, execução isolada e submissão não avaliada, com módulos específicos; a infraestrutura aposentada no MVP 02 permanece removida.
 
-BunkerCode é uma plataforma pessoal e aberta para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
+BunkerCode é uma plataforma autoral para estudar programação e transformar entendimento em conteúdo autoral. O fluxo principal é estudar fora, praticar, escrever uma lição no repositório, revisar no site e fazer commit manualmente.
 
 ## Perfis operacionais
 
 A Estabilização 05 separa `authoring` e `public` por configuração explícita capturada no bootstrap, independente de `NODE_ENV` e dos dados HTTP. `pnpm dev` preserva a autoria local. O backend público registra somente leitura: controllers de autoria e prática/runner não são importados. Uma defesa central nega mutações editoriais e de execução mesmo com headers locais forjados. Configuração ausente/inválida encerra o processo antes de ouvir HTTP.
 
-`config/publication.json` seleciona cursos inteiros ou listas explícitas de lições por curso. A seleção atual autoriza somente a Lição 01 do curso Fundamentos de Programação com JavaScript, como candidata local. O snapshot deriva manifestos filtrados na ordem editorial, omitindo módulos sem lições; o Studio mantém a fonte integral. `pnpm publication:prepare <novo-destino>` valida e copia apenas manifestos, lições declaradas e exercícios para snapshot imutável; o processo público exige esse diretório explícito, sem permissões de escrita e sem arquivos extras ou symlinks. A seleção congelada controla listagem, acesso direto e exercício. O frontend público em `dist-public` exclui Studio/Tiptap, rotas de edição e ações remotas; conserva leitura, rascunhos e Táticas locais. O catálogo público usa todos os cursos autorizados pela API, sem a lista visual privada. Não há autenticação nem deploy. A hospedagem futura deve isolar usuário, filesystem e assets conforme o [guia de publicação](../publication.md).
+`config/publication.json` seleciona cursos inteiros ou listas explícitas de lições por curso. A seleção atual autoriza somente a Lição 01 do curso Fundamentos de Programação com JavaScript, como candidata local. O snapshot deriva manifestos filtrados na ordem editorial, omitindo módulos sem lições; o Studio mantém a fonte integral. `pnpm publication:prepare <novo-destino>` valida e copia apenas manifestos, lições declaradas e exercícios para snapshot imutável; o processo público exige esse diretório explícito, sem permissões de escrita e sem arquivos extras ou symlinks. A seleção congelada controla listagem, acesso direto e exercício. O frontend público em `dist-public` exclui Studio/Tiptap, rotas de edição e ações remotas; conserva leitura, rascunhos e Táticas locais. O catálogo público usa todos os cursos autorizados pela API, sem a lista visual privada. A Sprint 1 adiciona identidade e sessões PostgreSQL/Prisma: catálogo público, lições/exercícios autenticados e autoria restrita a ADMIN. Não houve deploy. Veja [autenticação](../authentication.md). A hospedagem futura deve isolar usuário, filesystem e assets conforme o [guia de publicação](../publication.md).
 
 ## Estrutura
 
@@ -228,7 +228,6 @@ Submit revalida a solução atual e só registra conclusão local após aprovaç
 
 [Studio visual e blocos editoriais](../visual-authoring.md) documenta o Tiptap lazy, a barreira de conversão, fallback de fonte, sintaxe versionável e avaliação pública por stdout ou casos de função JSON versionados. Salvamento, rascunhos, revisão e fronteiras HTTP anteriores são preservados. Os exemplos didáticos usam CodeMirror separado da prática. O pacote compartilhado valida blocos antes de salvar e antes de renderizar. Não há contas nem serviços novos.
 
-
 ## Refinamentos 03–04: workspace e autoria
 
 Artigo e workspace usam um container compartilhado sem gap. O divisor vertical mede a largura útil real e preserva mínimos, preferência e teclado. No desktop, o workspace possui abas de 34px, código, toolbar de 36px com divisor incorporado e resultados preenchendo a área até o fim da viewport. Abaixo de 1000px, alternância, abas e ações oferecem alvos de 44px. Run/Submit mantêm rótulos e dispensam os ícones decorativos para caber em 320px; a barra pode quebrar os grupos durante estados com rótulos longos. Run/Submit ficam à esquerda, utilitários de ícone à direita e a área de arrasto entre os grupos. Os botões não iniciam arrasto.
@@ -238,7 +237,6 @@ ResizeObserver desconta abas e toolbar da altura central disponível, inclusive 
 As tonalidades 0/1/2 mantêm a preferência antiga, agora com paletas BunkerCode/Azul profundo/Alto contraste, independentes do Darcula. Studio usa topo mínimo, menu de modos, sidebar estreita, estrutura real e formatação contextual. Não há novo store, executor genérico ou plataforma de avaliação; identidade, esquema IndexedDB e protocolos de autoria existentes permanecem. Os dois exercícios ativos possuem casos públicos de função e passam por compilação no backend e execução Docker. [Detalhes de uso, contrato e limites](../visual-authoring.md).
 
 O Refinamento 14 reduz apenas no mobile os recuos acumulados de alternativas e feedback do quiz no CSS compartilhado pelo leitor e pela prévia. Textos, validação e estados permanecem iguais. **Aparência** recebeu rótulo visível no Refinamento 14; no Refinamento 16, foi substituída por **Tema**, preservando as preferências de tamanho (16–21px) e os IDs de tonalidade. Não há nova paleta; Papel quente foi descartada.
-
 
 ## Aparência global e tonalidades da leitura — Refinamentos 15–16
 
@@ -253,3 +251,7 @@ Um único provider mantém essas preferências entre rotas. Falha de armazenamen
 Os tokens globais reutilizam a paleta clara aprovada: fundo `#eef1f4`, superfícies `#e5eaf0` e elevadas `#dfe6ed`. A classe `reading-theme` mantém as variáveis locais e permite combinações intencionais de leitura/site. Somente a tipografia do BunkerCode escuro foi neutralizada: corpo `#e3e7eb`, títulos `#eef1f4`, secundário `#b7c0c8` e citações `#c1c7ce`, preservando fundo `#191e23` e acentos dourados. As outras cinco paletas de leitura permanecem iguais às aprovadas no Refinamento 15. A aprovação do proprietário no pedido do Refinamento 16 encerra a pendência anterior de comparação com o print do Boot.dev; não há nova interpretação dessa referência.
 
 Darcula continua nos blocos de código, CodeMirror, fonte Markdown e código das Táticas. Barras, controles externos e menus de busca/autocomplete do CodeMirror acompanham o site; esses espaços de código mantêm fundo/foreground e foco próprios. A prévia e os formulários editoriais do Studio seguem o tema global, sem aplicar a preferência local de leitura. Não há dependência nova, provider concorrente ou migração editorial.
+
+## Fundação multiusuário — Sprint 1
+
+O módulo NestJS `auth` registra Prisma, autenticação e guard global por metadados. `User` e `Session` são os únicos modelos; Markdown/JSON não migram para o banco. JWT em memória dura 10 minutos, refresh HttpOnly rotaciona em transação e a identidade/papel atual são consultados em cada request protegido. Formulários reutilizam o shell visual; Home não recebeu dashboard. Rascunhos locais passam a namespaces por identidade, sem apagar bases antigas. [Contratos, configuração e limites](../authentication.md).

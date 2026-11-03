@@ -1,3 +1,4 @@
+import { RequireIdentity } from "../auth/auth.guard";
 import { basename, dirname } from "node:path";
 import {
   Body,
@@ -15,6 +16,7 @@ import {
 import { coursesRoot, loadLesson } from "./courses";
 import { saveLesson } from "./studio";
 
+@RequireIdentity("ADMIN")
 @Controller("content/courses")
 export class AuthoringController {
   @Post(":id/lessons")

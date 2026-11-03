@@ -1,3 +1,4 @@
+import { localIdentityScope } from "../auth/session";
 import { localDay, recordActivity } from "../product/activity-store";
 import { useEffect, useState } from "react";
 import type { Exercise } from "./exercise-api";
@@ -34,13 +35,17 @@ function protect(event: BeforeUnloadEvent) {
   event.returnValue = "";
 }
 function updateProtection() {
-  const needed = pending.size > 0;
+  const needed = [...pending.values()].some(
+    (session) => session.owner === localIdentityScope(),
+  );
   if (needed === protecting) return;
   protecting = needed;
   if (needed) window.addEventListener("beforeunload", protect);
   else window.removeEventListener("beforeunload", protect);
 }
+window.addEventListener("bunkercode-identity-change", updateProtection);
 class DraftSession {
+  readonly owner = localIdentityScope();
   state: Snapshot;
   expected: number | null = null;
   saved: string;
@@ -131,6 +136,7 @@ class DraftSession {
       const { current, previous } = await loadDraft(
         this.scope,
         this.exercise.revision,
+        this.owner,
       );
       this.expected = current?.version ?? null;
       this.saved = current?.code ?? this.exercise.starterCode;
@@ -205,6 +211,7 @@ class DraftSession {
           this.exercise.revision,
           code,
           this.expected,
+          this.owner,
         );
         this.expected = record.version;
         this.saved = code;
@@ -231,7 +238,11 @@ class DraftSession {
     }
     if (!this.writable) {
       try {
-        const { current } = await loadDraft(this.scope, this.exercise.revision);
+        const { current } = await loadDraft(
+          this.scope,
+          this.exercise.revision,
+          this.owner,
+        );
         if (current) {
           this.publish({
             conflict: current,
@@ -252,7 +263,11 @@ class DraftSession {
     if (this.state.saving) return;
     const code = this.state.code;
     try {
-      const { current } = await loadDraft(this.scope, this.exercise.revision);
+      const { current } = await loadDraft(
+        this.scope,
+        this.exercise.revision,
+        this.owner,
+      );
       if (this.state.code !== code) {
         this.publish({
           status:

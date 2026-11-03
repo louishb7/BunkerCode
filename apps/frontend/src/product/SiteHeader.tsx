@@ -1,3 +1,4 @@
+import { AccountControl } from "../auth/Auth";
 import { AppearanceControl } from "../appearance/Appearance";
 import {
   createContext,
@@ -84,6 +85,7 @@ export function SiteHeader() {
             </>
           )}
         </nav>
+        <AccountControl />
         <AppearanceControl key={pathname} reading={false} />
         {learning && (
           <div id="reading-tools" className="header-reading-tools" />

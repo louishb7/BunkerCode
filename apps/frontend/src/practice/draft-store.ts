@@ -1,3 +1,4 @@
+import { localIdentityScope } from "../auth/session";
 import { localDatabase } from "../product/local-database";
 export const MAX_DRAFT_BYTES = 64 * 1024;
 export interface Draft {
@@ -15,7 +16,13 @@ export class DraftConflict extends Error {
   }
 }
 export const draftScope = (course: string, lesson: string, exercise: string) =>
-  JSON.stringify(["bunkercode", course, lesson, exercise]);
+  JSON.stringify([
+    "bunkercode",
+    localIdentityScope(),
+    course,
+    lesson,
+    exercise,
+  ]);
 export const draftKey = (scope: string, revision: string) =>
   JSON.stringify([scope, revision]);
 function valid(value: unknown): value is Draft {
@@ -38,8 +45,9 @@ function valid(value: unknown): value is Draft {
 export async function loadDraft(
   scope: string,
   revision: string,
+  owner = localIdentityScope(),
 ): Promise<{ current?: Draft; previous?: Draft }> {
-  const db = await localDatabase();
+  const db = await localDatabase(owner);
   return new Promise((resolve, reject) => {
     const tx = db.transaction("drafts", "readonly");
     const request = tx.objectStore("drafts").index("scope").getAll(scope);
@@ -72,12 +80,13 @@ export async function saveDraft(
   revision: string,
   code: string,
   expected: number | null,
+  owner = localIdentityScope(),
 ): Promise<Draft> {
   if (new TextEncoder().encode(code).length > MAX_DRAFT_BYTES)
     throw new Error(
       "O rascunho excede 64 KiB. O texto continua no editor; copie ou baixe antes de sair.",
     );
-  const db = await localDatabase();
+  const db = await localDatabase(owner);
   return new Promise((resolve, reject) => {
     const tx = db.transaction("drafts", "readwrite");
     const store = tx.objectStore("drafts");

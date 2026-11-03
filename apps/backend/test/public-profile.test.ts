@@ -1,3 +1,4 @@
+import { authenticatedFetch as fetch, authEnvironment } from "./auth-fixture";
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
@@ -87,6 +88,7 @@ async function start(directory: string) {
     {
       env: {
         PATH: process.env.PATH,
+        ...authEnvironment(),
         BUNKERCODE_PROFILE: "public",
         BUNKERCODE_CONTENT_DIR: directory,
         BUNKERCODE_RUNNER_ENABLED: "1",
@@ -347,6 +349,7 @@ test(
           const child = spawn(process.execPath, [resolve("dist/main.js")], {
             env: {
               PATH: process.env.PATH,
+              ...authEnvironment(),
               NODE_ENV: "production",
               PORT: "0",
               ...env,

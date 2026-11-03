@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
 
 const lesson = "/courses/typescript/lessons/values-and-types";

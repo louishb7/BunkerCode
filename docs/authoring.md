@@ -75,9 +75,9 @@ A combinação não é automática. Um lock também pode gerar 409 quando outra 
 
 ### Limites locais
 
-Frontend e API permanecem em loopback. Use a URL exata `http://127.0.0.1:5173`; `localhost` é uma origem diferente. Para mudar a origem/porta da interface, configure `BUNKERCODE_STUDIO_ORIGIN` no backend com a origem HTTP loopback exata e a mesma URL no navegador. Não exponha o Studio com `--host 0.0.0.0`, proxy público ou túnel; esta fase não oferece autenticação/publicação remota.
+Frontend e API permanecem em loopback. Use a URL exata `http://127.0.0.1:5173`; `localhost` é uma origem diferente. Para mudar a origem/porta da interface, configure `BUNKERCODE_STUDIO_ORIGIN` no backend com a origem HTTP loopback exata e a mesma URL no navegador. Não exponha o Studio com `--host 0.0.0.0`, proxy público ou túnel; a autenticação agora exige ADMIN para autoria, mas publicação remota do Studio continua fora de escopo.
 
-A escrita exige Host loopback, Origin correspondente, JSON, o cabeçalho de comando local e `Sec-Fetch-Site: same-origin` quando presente. Não há CORS aberto. Essas verificações reduzem CSRF no navegador; **o cabeçalho estático não é autenticação** e um programa local pode forjar os cabeçalhos. O usuário, filesystem e processos locais são considerados confiáveis.
+A escrita exige Host loopback, Origin correspondente, JSON, o cabeçalho de comando local e `Sec-Fetch-Site: same-origin` quando presente. Não há CORS aberto. Essas verificações reduzem CSRF no navegador; **o cabeçalho estático não é autenticação** e um programa local pode forjar os cabeçalhos. Além dessas proteções, o guard exige sessão válida e ADMIN atual. O usuário, filesystem e processos locais são considerados confiáveis.
 
 O lock serializa instâncias do Studio, mas o VS Code não participa dele. Uma mudança externa é verificada novamente imediatamente antes do rename; ainda existe uma pequena corrida entre essa leitura e a substituição. Escrita por temporário e rename evita arquivo parcialmente escrito, sem oferecer transação durável contra queda de energia. Crash pode deixar lock/temporário no diretório da lição; eles são ignorados pelo Git, sem expiração/remoção automática. Raiz de conteúdo e seus ancestrais não podem ser symlinks. Linux é a plataforma validada.
 
@@ -181,7 +181,11 @@ O acervo ativo contém Fundamentos de Programação com JavaScript (Lição 01 a
 
 ## Perfil de autoria e publicação
 
-`pnpm dev` seleciona explicitamente o perfil privado `authoring`, preservando Studio, prévia, criação, revisão e gravação. Conteúdo ainda em produção continua acessível localmente. Não exponha esse perfil via proxy público. A leitura anônima usa um build separado e snapshot somente leitura de conteúdo selecionado explicitamente. A candidata atual contém somente a Lição 01 autoral de Fundamentos de Programação com JavaScript. Veja [perfis e publicação](publication.md); editar a lista visual de cards não publica conteúdo.
+`pnpm dev` seleciona explicitamente o perfil privado `authoring`, preservando Studio, prévia, criação, revisão e gravação. Conteúdo ainda em produção continua acessível localmente. Não exponha esse perfil via proxy público. O catálogo público e a leitura autenticada usam um build separado e snapshot somente leitura de conteúdo selecionado explicitamente. A candidata atual contém somente a Lição 01 autoral de Fundamentos de Programação com JavaScript. Veja [perfis e publicação](publication.md); editar a lista visual de cards não publica conteúdo.
+
+## Identidade administrativa
+
+Cadastre uma conta e provisione ADMIN pelo comando local descrito em [autenticação](authentication.md). A interface e todas as operações de autoria exigem esse papel; estudantes podem ler lições, mas não escrever.
 
 ## Primeira lição de um curso vazio
 

@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/Auth";
 import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
 import { validateEditorial } from "@bunkercode/content";
@@ -36,6 +37,7 @@ export function LessonPage() {
 }
 
 function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
+  const { user } = useAuth();
   useLessonNavigation(lesson);
   const id = lesson.course.id,
     slug = lesson.slug;
@@ -131,7 +133,8 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           left={
             <ReadingArticle
               tools={
-                capabilities.authoring && (
+                capabilities.authoring &&
+                user?.role === "ADMIN" && (
                   <Link
                     className="edit-lesson-link"
                     aria-label="Editar lição"

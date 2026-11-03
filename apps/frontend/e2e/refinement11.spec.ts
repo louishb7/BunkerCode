@@ -1,5 +1,5 @@
 import { expandReadingSettings } from "./reading-theme-checks";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { studioView } from "./studio-controls";

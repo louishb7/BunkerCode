@@ -1,5 +1,5 @@
 import { expectHomeWithoutActivity } from "./home-state";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { choices, createRound, executeRound } from "../src/tactics/session";
 
 const course = "fundamentos-programacao-javascript";
@@ -8,10 +8,14 @@ const lesson = `/courses/${course}/lessons/${slug}`;
 const historyKey = "bunkercode:last-lesson:v1";
 
 async function history(page: Page, value: string) {
-  await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
-    key: historyKey,
-    value,
-  });
+  await page.evaluate(
+    ({ key, value }) =>
+      localStorage.setItem(key + ":" + window.__testIdentity, value),
+    {
+      key: historyKey,
+      value,
+    },
+  );
   await page.reload();
 }
 async function noPageOverflow(page: Page, width: number) {
@@ -67,7 +71,10 @@ for (const viewport of [
       fullPage: true,
     });
     expect(
-      await page.evaluate((key) => localStorage.getItem(key), historyKey),
+      await page.evaluate(
+        (key) => localStorage.getItem(key + ":" + window.__testIdentity),
+        historyKey,
+      ),
     ).toBe(JSON.stringify({ course, slug: "missing-lesson" }));
   });
 
@@ -168,7 +175,10 @@ test("home preserves malformed and unavailable history without offering a dead r
       page.getByRole("link", { name: /Continuar estudando/ }),
     ).toHaveCount(0);
     expect(
-      await page.evaluate((key) => localStorage.getItem(key), historyKey),
+      await page.evaluate(
+        (key) => localStorage.getItem(key + ":" + window.__testIdentity),
+        historyKey,
+      ),
     ).toBe(value);
   }
 });

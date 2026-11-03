@@ -1,3 +1,4 @@
+import { AccountControl } from "../auth/Auth";
 import { AppearanceControl } from "../appearance/Appearance";
 import type { ReactNode } from "react";
 import { BookOpen, House, ScanSearch } from "lucide-react";
@@ -34,6 +35,7 @@ export function GlobalLayout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
+        <AccountControl />
         <AppearanceControl reading={false} />
       </aside>
       <div className="global-content">{children}</div>

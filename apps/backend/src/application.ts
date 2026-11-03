@@ -1,4 +1,7 @@
 import "reflect-metadata";
+import { HttpErrors } from "./auth/http-errors";
+import { authConfig } from "./auth/config";
+import { authRateLimit } from "./auth/rate-limit";
 import { NestFactory } from "@nestjs/core";
 import { json, type NextFunction, type Request, type Response } from "express";
 import { AppModule } from "./app.module";
@@ -22,12 +25,42 @@ function studioOrigin() {
 }
 export async function createApplication(quiet = false) {
   const config = operationalConfig();
+  const auth = authConfig();
   const allowedOrigin =
     config.profile === "authoring" ? studioOrigin() : undefined;
   const app = await NestFactory.create(await AppModule.configure(config), {
-    logger: quiet ? false : undefined,
+    logger: quiet ? false : ["log", "warn"],
     bodyParser: false,
   });
+  app.useGlobalFilters(new HttpErrors());
+  app.enableCors({
+    origin: [...auth.origins],
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Bunkercode-Client"],
+  });
+  app.use(
+    "/auth",
+    (req: Request, res: Response, next: NextFunction) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        if (
+          !auth.origins.includes(req.header("origin") ?? "") ||
+          req.header("sec-fetch-site") === "cross-site"
+        ) {
+          res.status(403).json({ message: "Origem não autorizada." });
+          return;
+        }
+        if (!req.is("application/json")) {
+          res.status(415).json({ message: "Envie JSON." });
+          return;
+        }
+      }
+      next();
+    },
+    json({ limit: "4kb" }),
+    authRateLimit(),
+  );
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
       req.method !== "GET" &&
@@ -77,6 +110,23 @@ export async function createApplication(quiet = false) {
   // Markdown can expand through JSON escapes; the decoded byte limit remains 256 KiB.
   app.use("/content/courses", json({ limit: 1600 * 1024 }));
   app.use("/practice", json({ limit: 800 * 1024 }));
+  app.use(
+    (error: unknown, _req: Request, res: Response, next: NextFunction) => {
+      if (
+        error &&
+        typeof error === "object" &&
+        "type" in error &&
+        (error.type === "entity.parse.failed" ||
+          error.type === "entity.too.large")
+      ) {
+        res
+          .status(error.type === "entity.too.large" ? 413 : 400)
+          .json({ message: "Corpo JSON inválido ou acima do limite." });
+        return;
+      }
+      next(error);
+    },
+  );
   app.enableShutdownHooks();
   return app;
 }

@@ -1,5 +1,5 @@
 import { studioView } from "./studio-controls";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator } from "./auth-fixture";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 

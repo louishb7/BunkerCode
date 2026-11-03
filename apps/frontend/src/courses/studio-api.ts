@@ -1,3 +1,4 @@
+import { apiFetch } from "../auth/session";
 import { isContentSlug, isContentTitle } from "./api";
 export interface MarkdownRevision {
   markdown: string;
@@ -66,7 +67,7 @@ async function responseValue(response: Response): Promise<unknown> {
 export async function readEditableLesson(id: string, slug: string) {
   return parseEditableLesson(
     await responseValue(
-      await fetch("/api/content/courses" + editorialPath(id, slug), {
+      await apiFetch("/api/content/courses" + editorialPath(id, slug), {
         cache: "no-store",
       }),
     ),
@@ -79,7 +80,7 @@ export async function saveMarkdown(
 ) {
   const saved = revision(
     await responseValue(
-      await fetch(
+      await apiFetch(
         "/api/content/courses" + editorialPath(id, slug) + "/markdown",
         {
           method: "PUT",
@@ -104,7 +105,7 @@ export async function createLesson(
   try {
     const created = parseEditableLesson(
       await responseValue(
-        await fetch(
+        await apiFetch(
           "/api/content/courses/" + encodeURIComponent(id) + "/lessons",
           {
             method: "POST",

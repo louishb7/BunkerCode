@@ -5,7 +5,7 @@ import {
 } from "./reading-theme-checks";
 import { selectReadingTone } from "./reading-theme-checks";
 import { checkReadingThemes, readingViewports } from "./reading-theme-checks";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 
 const practice = "/courses/typescript/lessons/values-and-types";
 const reading = "/courses/typescript/lessons/union-types";

@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/Auth";
 import { Link, useNavigate, useParams } from "react-router";
 import { lazy, Suspense, useState } from "react";
 import { BookOpen } from "lucide-react";
@@ -90,6 +91,7 @@ export function CoursesPage() {
   );
 }
 export function CoursePage() {
+  const { user } = useAuth();
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
@@ -130,7 +132,7 @@ export function CoursePage() {
                 </section>
               ))}
               <p className="text-subtle">Este curso ainda não tem lições.</p>
-              {NewLessonDialog && (
+              {NewLessonDialog && user?.role === "ADMIN" && (
                 <button type="button" onClick={() => setCreating(true)}>
                   Criar primeira lição
                 </button>
@@ -177,7 +179,7 @@ export function CoursePage() {
           )}
         </section>
       </div>
-      {creating && NewLessonDialog && (
+      {creating && NewLessonDialog && user?.role === "ADMIN" && (
         <Suspense fallback={<p role="status">Abrindo criação de lição…</p>}>
           <NewLessonDialog
             courseId={id}

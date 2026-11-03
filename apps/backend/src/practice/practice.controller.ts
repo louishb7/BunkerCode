@@ -1,3 +1,4 @@
+import { RequireIdentity } from "../auth/auth.guard";
 import { prepareFunctionTests } from "./function-tests";
 import { compileAssessment } from "./assessment";
 import {
@@ -21,6 +22,7 @@ import {
   stopRuns,
   RUN_LIMITS,
 } from "./runner";
+@RequireIdentity("STUDENT")
 @Controller("practice")
 export class PracticeController implements OnApplicationShutdown {
   @Get("runtime")

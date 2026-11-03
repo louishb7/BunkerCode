@@ -1,5 +1,5 @@
 import { studioView } from "./studio-controls";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 const content = process.env.BUNKERCODE_BROWSER_CONTENT_DIR!;
@@ -66,7 +66,10 @@ async function records(page: Page) {
     () =>
       new Promise<{ code: string; revision: string; version: number }[]>(
         (resolve, reject) => {
-          const request = indexedDB.open("bunkercode-practice", 2);
+          const request = indexedDB.open(
+            "bunkercode-practice:" + window.__testIdentity,
+            2,
+          );
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const db = request.result;
@@ -88,7 +91,11 @@ test("real editor persists inert Unicode code, indentation, undo, copy, restore 
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const mutations: string[] = [];
   page.on("request", (req) => {
-    if (req.method() !== "GET" && req.url().includes("/api/"))
+    if (
+      req.method() !== "GET" &&
+      req.url().includes("/api/") &&
+      !req.url().includes("/api/auth/")
+    )
       mutations.push(req.url());
   });
   await page.goto(url);
@@ -297,7 +304,7 @@ test("home validates actual recent destinations and handles unavailable, empty a
   ).toHaveAttribute("href", url);
   await page.evaluate(() =>
     localStorage.setItem(
-      "bunkercode:last-lesson:v1",
+      "bunkercode:last-lesson:v1:" + window.__testIdentity,
       JSON.stringify({ course: "mvp03", slug: "removed" }),
     ),
   );
@@ -306,7 +313,10 @@ test("home validates actual recent destinations and handles unavailable, empty a
     page.getByRole("link", { name: /Continuar estudando/ }),
   ).toHaveCount(0);
   await page.evaluate(() =>
-    localStorage.setItem("bunkercode:last-lesson:v1", "{invalid"),
+    localStorage.setItem(
+      "bunkercode:last-lesson:v1:" + window.__testIdentity,
+      "{invalid",
+    ),
   );
   await page.reload();
   await expect(
@@ -457,7 +467,10 @@ test("corrupt local records are preserved and cannot be overwritten by retry", a
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => {
-        const open = indexedDB.open("bunkercode-practice", 2);
+        const open = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         open.onsuccess = () => {
           const db = open.result;
           const tx = db.transaction("drafts", "readwrite");

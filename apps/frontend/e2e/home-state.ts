@@ -27,12 +27,15 @@ export async function expectStoredActivity(page: Page, count: number) {
       page.evaluate(async () => {
         if (
           !(await indexedDB.databases()).some(
-            (db) => db.name === "bunkercode-practice",
+            (db) => db.name === "bunkercode-practice:" + window.__testIdentity,
           )
         )
           return 0;
         return new Promise<number>((resolve, reject) => {
-          const open = indexedDB.open("bunkercode-practice", 2);
+          const open = indexedDB.open(
+            "bunkercode-practice:" + window.__testIdentity,
+            2,
+          );
           open.onerror = () => reject(open.error);
           open.onsuccess = () => {
             const db = open.result;

@@ -1,3 +1,4 @@
+import { apiFetch } from "../auth/session";
 import type { TestReport } from "@bunkercode/content";
 export interface RuntimeStatus {
   available: boolean;
@@ -28,7 +29,7 @@ export async function runtimeStatus(
     timeout.abort();
   }, 10000);
   try {
-    const response = await fetch("/api/practice/runtime", {
+    const response = await apiFetch("/api/practice/runtime", {
       signal: AbortSignal.any([signal, timeout.signal]),
     });
     const value: unknown = await response.json();
@@ -70,7 +71,7 @@ export async function runSolution(
   },
   signal: AbortSignal,
 ): Promise<RunResult> {
-  const response = await fetch("/api/practice/runs", {
+  const response = await apiFetch("/api/practice/runs", {
     method: "POST",
     headers,
     body: JSON.stringify(value),
@@ -143,12 +144,15 @@ export async function runSolution(
   return r as RunResult;
 }
 export async function cancelSolution(id: string) {
-  const response = await fetch("/api/practice/runs/" + encodeURIComponent(id), {
-    method: "DELETE",
-    headers,
-    body: "{}",
-    keepalive: true,
-  });
+  const response = await apiFetch(
+    "/api/practice/runs/" + encodeURIComponent(id),
+    {
+      method: "DELETE",
+      headers,
+      body: "{}",
+      keepalive: true,
+    },
+  );
   if (!response.ok)
     throw new Error(
       "Não foi possível confirmar o cancelamento. O timeout do runner continua ativo.",

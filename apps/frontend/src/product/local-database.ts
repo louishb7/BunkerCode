@@ -1,7 +1,10 @@
+import { localIdentityScope } from "../auth/session";
 // Schema 2 adds stores without rewriting or deleting schema-1 drafts.
-export function localDatabase(): Promise<IDBDatabase> {
+export function localDatabase(
+  owner = localIdentityScope(),
+): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("bunkercode-practice", 2);
+    const request = indexedDB.open("bunkercode-practice:" + owner, 2);
     let settled = false;
     const timer = window.setTimeout(() => {
       settled = true;

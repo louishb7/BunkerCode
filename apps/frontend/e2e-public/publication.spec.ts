@@ -1,5 +1,5 @@
 import { expectHomeWithoutActivity } from "../e2e/home-state";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../e2e/auth-fixture";
 import { choices, createRound, executeRound } from "../src/tactics/session";
 import { readFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -30,7 +30,11 @@ for (const viewport of [
     }
     const mutations: string[] = [];
     page.on("request", (request) => {
-      if (request.url().includes("/api/") && request.method() !== "GET")
+      if (
+        request.url().includes("/api/") &&
+        !request.url().includes("/api/auth/") &&
+        request.method() !== "GET"
+      )
         mutations.push(request.url());
     });
     await page.goto("/");
@@ -346,7 +350,11 @@ test("public build has no Studio, source content, maps or unlisted static files"
 test("public tactics remain browser-only", async ({ page }) => {
   const privateCalls: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/api/")) privateCalls.push(request.url());
+    if (
+      request.url().includes("/api/") &&
+      !request.url().includes("/api/auth/")
+    )
+      privateCalls.push(request.url());
   });
   const round = createRound(4812, 0, 1);
   const correct = choices(round).findIndex(

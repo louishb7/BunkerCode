@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import legacySessions from "./session-legacy.json" with { type: "json" };
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -444,7 +444,10 @@ test("cold lazy route runs every mode without API, storage, workers or dynamic s
 }) => {
   const apiRequests: string[] = [];
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname.startsWith("/api/"))
+    if (
+      new URL(request.url()).pathname.startsWith("/api/") &&
+      !new URL(request.url()).pathname.startsWith("/api/auth/")
+    )
       apiRequests.push(request.url());
   });
   await page.route("**/api/**", (route) => route.abort());

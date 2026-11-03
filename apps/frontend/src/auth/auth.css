@@ -1,0 +1,91 @@
+.session-root {
+  display: contents;
+}
+.auth-page {
+  max-width: 30rem;
+  padding-block: 3rem;
+}
+.auth-page h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.auth-page form {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1.5rem;
+}
+.auth-page label {
+  font-weight: 600;
+}
+.auth-page input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  background: var(--color-bunker);
+  color: var(--color-ink);
+}
+.auth-page button,
+.account-control button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.auth-page button {
+  background: var(--color-gold);
+  color: var(--color-bunker);
+  font-weight: 600;
+}
+.auth-page :is(input, button, a):focus-visible,
+.account-control :focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+.auth-page [role="alert"],
+.account-control [role="alert"] {
+  color: var(--color-ink);
+  border-left: 3px solid var(--color-gold);
+  padding-left: 0.75rem;
+}
+.auth-page button:disabled,
+.account-control button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.account-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+.account-control span {
+  overflow-wrap: anywhere;
+  max-width: 14rem;
+}
+@media (max-width: 700px) {
+  .site-header .account-control span {
+    display: none;
+  }
+}
+/* Keep the existing navigation reachable alongside account and reading controls. */
+@media (max-width: 599px) {
+  .site-header .site-header-content {
+    flex-wrap: wrap;
+  }
+  .site-header
+    .site-header-content
+    > :is(.header-global-nav, .header-studio-nav) {
+    order: 1;
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+  .site-header .account-control {
+    margin-left: auto;
+    padding: 0;
+  }
+}

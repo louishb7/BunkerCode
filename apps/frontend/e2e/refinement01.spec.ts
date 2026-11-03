@@ -1,5 +1,6 @@
+import { authenticatedGet } from "./auth-fixture";
 import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
-import { expect as baseExpect, test, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Page } from "./auth-fixture";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 const expect = baseExpect.configure({ timeout: 30000 });
@@ -31,7 +32,10 @@ async function records(page: Page, store: string) {
   return page.evaluate(
     (name) =>
       new Promise<unknown[]>((resolve, reject) => {
-        const request = indexedDB.open("bunkercode-practice", 2);
+        const request = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result;
@@ -120,7 +124,7 @@ test("edits and submissions produce distinct genuine activity, with historical o
 }) => {
   await open(page);
   const runtime = (await (
-    await page.request.get("/api/practice/runtime")
+    await authenticatedGet(page, "/api/practice/runtime")
   ).json()) as { available: boolean };
   await code(page, 'const productName = "Livro";');
   await code(page, 'const productName = "Caderno";');
@@ -171,7 +175,10 @@ test("schema-one drafts upgrade intact and submitted versions survive a new edit
   await page.evaluate(
     ({ id, revision }) =>
       new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open("bunkercode-practice", 1);
+        const open = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          1,
+        );
         open.onupgradeneeded = () =>
           open.result
             .createObjectStore("drafts", { keyPath: "key" })
@@ -180,6 +187,7 @@ test("schema-one drafts upgrade intact and submitted versions survive a new edit
           const db = open.result,
             scope = JSON.stringify([
               "bunkercode",
+              window.__testIdentity,
               "typescript",
               "values-and-types",
               id,

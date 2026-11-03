@@ -2,7 +2,7 @@ import { expandReadingSettings } from "./reading-theme-checks";
 import { selectReadingTone } from "./reading-theme-checks";
 import { expectRenderedContrast } from "./reading-theme-checks";
 import { studioView, studioTools } from "./studio-controls";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./auth-fixture";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 const root = join(

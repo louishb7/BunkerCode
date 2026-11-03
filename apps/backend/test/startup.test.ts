@@ -1,3 +1,4 @@
+import { authenticatedFetch as fetch, authEnvironment } from "./auth-fixture";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -42,6 +43,7 @@ test(
       // Deliberately do not inherit NODE_PATH, NODE_OPTIONS or package-manager settings.
       env: {
         PATH: process.env.PATH,
+        ...authEnvironment(),
         BUNKERCODE_PROFILE: "authoring",
         PORT: String(port),
         BUNKERCODE_CONTENT_DIR: content,
@@ -66,7 +68,7 @@ test(
         assert.equal(child.exitCode, null, output);
         try {
           ready = (
-            await fetch(base + "/content/courses", {
+            await globalThis.fetch(base + "/content/courses", {
               signal: AbortSignal.timeout(500),
             })
           ).ok;

@@ -1,6 +1,6 @@
-# Autoria privada e leitura pública
+# Autoria privada, catálogo público e leitura autenticada
 
-O produto mantém dois perfis explícitos, sem autenticação. A candidata local da Lição 01 possui seleção editorial restritiva. Hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes antes de qualquer deploy.
+O produto mantém dois perfis explícitos. A Sprint 1 adiciona autenticação em ambos: catálogo público e conteúdo integral somente com sessão válida. Veja [configuração, endpoints e limites](authentication.md). A candidata local da Lição 01 possui seleção editorial restritiva. Hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes antes de qualquer deploy.
 
 ## Autoria local
 
@@ -15,7 +15,14 @@ O backend direto (`node apps/backend/dist/main.js`) exige `BUNKERCODE_PROFILE=au
 A única seleção editorial para publicação é `config/publication.json`, atualmente:
 
 ```json
-{ "courses": [{ "id": "fundamentos-programacao-javascript", "lessons": ["o-que-significa-programar"] }] }
+{
+  "courses": [
+    {
+      "id": "fundamentos-programacao-javascript",
+      "lessons": ["o-que-significa-programar"]
+    }
+  ]
+}
 ```
 
 A Integração Editorial 01 autoriza somente a primeira lição autoral do novo curso, no Módulo 00. Essa seleção prepara uma candidata local, sem deploy. Para selecionar outros conteúdos revisados, o proprietário altera explicitamente os slugs:
@@ -48,29 +55,31 @@ BUNKERCODE_CONTENT_DIR=/tmp/bunkercode-public-launch-01 pnpm start:public
 pnpm preview:public --port 5174
 ```
 
+Antes de iniciar o backend para esse preview, inclua `http://127.0.0.1:5174` em `BUNKERCODE_AUTH_ORIGINS`, mantendo as demais origens locais necessárias. Login e refresh recusam origens não configuradas. Use o endereço com `127.0.0.1`, coerente com a allowlist e com o cookie host-only.
+
 O build público fica em `apps/frontend/dist-public`, separado de `dist`. O backend continua ouvindo somente `127.0.0.1:3001`. O preview é uma ferramenta de revisão local, não o servidor de hospedagem recomendado. O build público impede Studio/Tiptap no grafo dos chunks, não registra a rota `/courses/:id/lessons/:slug/edit` e remove o link de edição. Acesso direto ou reload dessa rota mostra página inexistente. O backend mantém a fronteira de segurança mesmo se um cliente usar o build errado ou enviar requisições manualmente.
 
-O leitor mantém Markdown sanitizado, navegação contextual, lições/módulos, responsividade, CodeMirror, formatação e rascunhos IndexedDB locais. Não oferece Run, cancelamento ou Submit que acionaria análise/execução remota; explica a limitação no painel existente, sem mudar seu layout. O painel público não consulta `/practice/runtime`. Não houve migração nem alteração dos contratos de rascunhos, submissões ou atividade. Registros antigos do mesmo navegador continuam locais. Táticas usa seu avaliador estruturado no navegador, sem executar o texto apresentado e sem backend.
+O leitor mantém Markdown sanitizado, navegação contextual, lições/módulos, responsividade, CodeMirror, formatação e rascunhos IndexedDB locais. Não oferece Run, cancelamento ou Submit que acionaria análise/execução remota; explica a limitação no painel existente, sem mudar seu layout. O painel público não consulta `/practice/runtime`. Os contratos de rascunhos, submissões e atividade permanecem locais, agora com namespace por identidade. Registros antigos sem namespace ficam preservados, sem importação automática. Táticas usa seu avaliador estruturado no navegador, sem executar o texto apresentado e sem backend.
 
 O painel público afirma explicitamente que o código não é executado, enviado nem avaliado. Escrever e formatar não representam avaliação ou entrega. Nos dois perfis, a Home oferece início/retomada e catálogo, sem calendário ou consulta por data. Registros locais continuam preservados, sem migração ou limpeza. **Painéis** mantém os presets locais de largura/altura, sem comandos remotos; os controles do Workspace mobile têm alvos de 44px. A aparência de leitura mantém as três tonalidades existentes e o tamanho de texto persistido.
 
 ## HTTP
 
-| Caminho | Público | Autoria |
-| --- | --- | --- |
-| `GET/HEAD /content/courses` | Somente seleção do snapshot | Todos os cursos locais |
-| `GET/HEAD /content/courses/:id` | 200 selecionado; 404 restante | Leitura local |
-| `GET/HEAD /content/courses/:id/lessons/:slug` | Somente curso selecionado e lição declarada | Leitura local |
-| `GET/HEAD /content/courses/:id/lessons/:slug/exercise` | Mesma fronteira; exercício opcional | Leitura local |
-| `POST /content/courses/:id/lessons` | 403, controller ausente | Criação protegida |
-| `PUT /content/courses/:id/lessons/:slug/markdown` | 403, controller ausente | Gravação protegida |
-| `GET /practice/runtime` | 404, controller ausente | Disponibilidade local |
-| `POST /practice/runs` | 403, controller ausente | Execução protegida |
-| `DELETE /practice/runs/:id` | 403, controller ausente | Cancelamento protegido |
-| Outras mutações sob `/content/courses*` ou `/practice*` | 403 pela defesa central | Proteção local e/ou 404 |
-| Rotas aposentadas, arquivos internos e outras rotas | 404 | 404 |
+| Caminho                                                 | Público                                                    | Autoria                    |
+| ------------------------------------------------------- | ---------------------------------------------------------- | -------------------------- |
+| `GET/HEAD /content/courses`                             | Somente seleção do snapshot                                | Todos os cursos locais     |
+| `GET/HEAD /content/courses/:id`                         | 200 selecionado; 404 restante                              | Leitura local              |
+| `GET/HEAD /content/courses/:id/lessons/:slug`           | Sessão válida; somente curso selecionado e lição declarada | Sessão válida              |
+| `GET/HEAD /content/courses/:id/lessons/:slug/exercise`  | Sessão válida; mesma fronteira; exercício opcional         | Sessão válida              |
+| `POST /content/courses/:id/lessons`                     | 403, controller ausente                                    | ADMIN e criação protegida  |
+| `PUT /content/courses/:id/lessons/:slug/markdown`       | 403, controller ausente                                    | ADMIN e gravação protegida |
+| `GET /practice/runtime`                                 | 404, controller ausente                                    | Sessão válida; disponibilidade local |
+| `POST /practice/runs`                                   | 403, controller ausente                                    | Sessão válida; execução protegida |
+| `DELETE /practice/runs/:id`                             | 403, controller ausente                                    | Sessão válida; cancelamento protegido |
+| Outras mutações sob `/content/courses*` ou `/practice*` | 403 pela defesa central                                    | Proteção local e/ou 404    |
+| Rotas aposentadas, arquivos internos e outras rotas     | 404                                                        | 404                        |
 
-Respostas de conteúdo continuam `Cache-Control: no-store`. Headers Host, Origin, `x-bunkercode-client`, `x-bunkercode-profile`, query e body não alteram o perfil capturado no bootstrap. O processo público não importa controllers de autoria/prática, Studio server-side ou runner; `BUNKERCODE_RUNNER_ENABLED=1` não os habilita. Não há rotas administrativas alternativas, login ou sessão.
+Respostas de conteúdo continuam `Cache-Control: no-store`. Headers Host, Origin, `x-bunkercode-client`, `x-bunkercode-profile`, query e body não alteram o perfil capturado no bootstrap. O processo público não importa controllers de autoria/prática, Studio server-side ou runner; `BUNKERCODE_RUNNER_ENABLED=1` não os habilita. As rotas `/auth/*` operam em ambos os perfis; não há endpoint público para conceder ADMIN.
 
 ## Fronteira do filesystem e hospedagem futura
 
@@ -89,7 +98,6 @@ Os testes backend iniciam processos públicos reais, verificam ausência de mód
 Os testes de scripts também iniciam o Vite real para comprovar que perfil ausente, vazio ou desconhecido falha antes de ouvir HTTP, mesmo com `NODE_ENV=production` e `VITE_BUNKERCODE_PROFILE=authoring`. O servidor de desenvolvimento recusa o perfil público; use o build público e seu preview. O E2E público percorre apresentação do curso, leitor, próxima/anterior e reload pelos links reais.
 
 O lançamento público deste ciclo não requer Docker porque não disponibiliza Run. Eventual exposição futura exigirá nova decisão de produto e segurança: testes reais de limites de CPU/memória/PIDs/saída/timeout, filesystem read-only, usuário sem privilégios, rede bloqueada, capabilities/seccomp/cgroup v2, ausência de mounts/segredos/socket, compilação confiável no backend, cancelamento, concorrência e abuso de recursos. Skips por Docker ausente não são aprovação desse isolamento, e a validação local atual não autoriza Run público.
-
 
 ## Checklist de implantação da versão candidata
 

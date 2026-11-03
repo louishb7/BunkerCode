@@ -1,3 +1,4 @@
+import { authenticatedFetch as fetch } from "./auth-fixture";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";

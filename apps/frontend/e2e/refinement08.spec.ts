@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "./auth-fixture";
 import { writeFile } from "node:fs/promises";
 import type { Course, CourseSummary } from "../src/courses/api";
 

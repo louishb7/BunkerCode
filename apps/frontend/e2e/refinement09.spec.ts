@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 import { writeFile } from "node:fs/promises";
 import type { Course } from "../src/courses/api";
 

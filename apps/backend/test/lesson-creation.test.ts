@@ -1,3 +1,4 @@
+import { authenticatedFetch as fetch } from "./auth-fixture";
 import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import fs from "node:fs";

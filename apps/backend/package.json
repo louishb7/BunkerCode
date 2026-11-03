@@ -9,21 +9,31 @@
     "test": "pnpm build && BUNKERCODE_PROFILE=authoring tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
     "start:authoring": "BUNKERCODE_PROFILE=authoring node dist/main.js",
-    "start:public": "BUNKERCODE_PROFILE=public node dist/main.js"
+    "start:public": "BUNKERCODE_PROFILE=public node dist/main.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "admin:grant": "tsx src/auth/provision-admin.ts"
   },
   "dependencies": {
+    "@bunkercode/content": "workspace:*",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "express": "^5.2.1",
+    "jose": "6.2.15",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0",
-    "@bunkercode/content": "workspace:*",
     "typescript": "~5.9.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "prisma": "7.10.1",
     "tsx": "^4.20.0"
   }
 }

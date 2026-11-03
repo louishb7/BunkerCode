@@ -1,5 +1,5 @@
 import { expectHomeWithoutActivity, expectStoredActivity } from "./home-state";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 
 const titles = [
   "Fundamentos de Programação com JavaScript",
@@ -21,12 +21,15 @@ async function localRecords(page: Page) {
   return page.evaluate(async () => {
     if (
       !(await indexedDB.databases()).some(
-        (db) => db.name === "bunkercode-practice",
+        (db) => db.name === "bunkercode-practice:" + window.__testIdentity,
       )
     )
       return { activity: [], drafts: [], submissions: [] };
     return new Promise<Record<string, unknown[]>>((resolve, reject) => {
-      const open = indexedDB.open("bunkercode-practice", 2);
+      const open = indexedDB.open(
+        "bunkercode-practice:" + window.__testIdentity,
+        2,
+      );
       open.onerror = () => reject(open.error);
       open.onsuccess = () => {
         const db = open.result;
@@ -119,7 +122,10 @@ test("Home preserves historical local records of all ages without displaying act
   await page.evaluate(
     () =>
       new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open("bunkercode-practice", 2);
+        const open = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         open.onsuccess = () => {
           const db = open.result;
           const tx = db.transaction("activity", "readwrite");

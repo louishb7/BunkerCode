@@ -1,3 +1,4 @@
+import { RequireIdentity } from "../auth/auth.guard";
 import { Controller, Get, Header, Param, Inject } from "@nestjs/common";
 import { ContentReader } from "./content-reader";
 
@@ -14,11 +15,13 @@ export class ContentController {
   course(@Param("id") id: string) {
     return this.reader.course(id);
   }
+  @RequireIdentity()
   @Get(":id/lessons/:slug")
   @Header("Cache-Control", "no-store")
   lesson(@Param("id") id: string, @Param("slug") slug: string) {
     return this.reader.lesson(id, slug);
   }
+  @RequireIdentity()
   @Get(":id/lessons/:slug/exercise")
   @Header("Cache-Control", "no-store")
   exercise(@Param("id") id: string, @Param("slug") slug: string) {

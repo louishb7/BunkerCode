@@ -1,3 +1,4 @@
+import { localIdentityScope } from "../auth/session";
 import {
   lazy,
   Suspense,
@@ -47,6 +48,7 @@ const tabBuffers = new Map<
   string,
   { buffer: BufferState; storageError: string }
 >();
+window.addEventListener("bunkercode-identity-change", () => tabBuffers.clear());
 window.addEventListener("beforeunload", (event) => {
   if (!tabBuffers.size) return;
   event.preventDefault();
@@ -123,7 +125,8 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   const newLessonButton = useRef<HTMLButtonElement>(null);
   const id = lesson.course.id,
     slug = lesson.slug;
-  const storageKey = "bunkercode:studio:" + id + "/" + slug;
+  const storageKey =
+    "bunkercode:studio:" + localIdentityScope() + ":" + id + "/" + slug;
   const [initial] = useState(() => initialBuffer(storageKey, lesson));
   const [buffer, setBuffer] = useState<BufferState>(initial.buffer);
   const [notice, setNotice] = useState(initial.notice);

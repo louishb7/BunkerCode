@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 const fixture = "/courses/readiness/lessons/first";
@@ -53,7 +53,10 @@ async function submissions(page: Page) {
     () =>
       new Promise<{ code: string; state: string; lesson: string }[]>(
         (resolve, reject) => {
-          const request = indexedDB.open("bunkercode-practice", 2);
+          const request = indexedDB.open(
+            "bunkercode-practice:" + window.__testIdentity,
+            2,
+          );
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const db = request.result;

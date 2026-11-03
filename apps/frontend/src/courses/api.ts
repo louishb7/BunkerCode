@@ -1,3 +1,4 @@
+import { apiFetch } from "../auth/session";
 import { useEffect, useState } from "react";
 export interface LessonEntry {
   slug: string;
@@ -229,7 +230,7 @@ async function contentResponse(
 ): Promise<unknown> {
   let response: Response, text: string;
   try {
-    response = await fetch("/api/content/courses" + path, {
+    response = await apiFetch("/api/content/courses" + path, {
       signal,
       cache: "no-store",
     });

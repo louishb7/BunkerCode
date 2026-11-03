@@ -3,6 +3,8 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+  "@prisma/engines": true
+  prisma: true
 # Security patches until upstream Express/NestJS update their transitive pins.
 overrides:
   body-parser@2.3.0: 2.4.0

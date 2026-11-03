@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./auth-fixture";
 for (const width of [390, 1280, 1440, 1920])
   test(`integrated workspace navigation and horizontal dimensions at ${width}px`, async ({
     page,

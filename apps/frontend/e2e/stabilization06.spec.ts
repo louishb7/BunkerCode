@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./auth-fixture";
 import { selectStudioText } from "./studio-controls";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";

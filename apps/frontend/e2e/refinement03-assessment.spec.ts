@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { authenticatedGet } from "./auth-fixture";
+import { expect, test, type Page } from "./auth-fixture";
 const textbox = (page: Page) =>
   page.getByRole("textbox", { name: "Código da solução", exact: true });
 async function code(page: Page, source: string) {
@@ -21,7 +22,7 @@ for (const language of ["javascript", "typescript"] as const)
     await expect(
       page.getByText("Aguardando execução", { exact: true }),
     ).toBeVisible();
-    const runtime = await page.request.get("/api/practice/runtime");
+    const runtime = await authenticatedGet(page, "/api/practice/runtime");
     const status = (await runtime.json()) as {
       available: boolean;
       reason: string;
@@ -137,7 +138,10 @@ test("existing unassessed submission remains read-only, with its old revision an
   await page.evaluate(
     () =>
       new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open("bunkercode-practice", 2);
+        const request = indexedDB.open(
+          "bunkercode-practice:" + window.__testIdentity,
+          2,
+        );
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
           const db = request.result,
@@ -147,6 +151,7 @@ test("existing unassessed submission remains read-only, with its old revision an
             id: "legacy-record",
             scope: JSON.stringify([
               "bunkercode",
+              window.__testIdentity,
               "typescript",
               "values-and-types",
               "product-values",

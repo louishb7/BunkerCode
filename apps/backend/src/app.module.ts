@@ -1,3 +1,4 @@
+import { AuthModule } from "./auth/auth.module";
 import { Module, type DynamicModule } from "@nestjs/common";
 import { ContentController } from "./content/content.controller";
 import { ContentReader } from "./content/content-reader";
@@ -17,6 +18,7 @@ export class AppModule {
         : [];
     return {
       module: AppModule,
+      imports: [AuthModule],
       controllers: [ContentController, ...privateControllers],
       providers: [
         { provide: ContentReader, useValue: new ContentReader(config) },
