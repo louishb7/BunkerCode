@@ -1,4 +1,4 @@
-# Identidade e sessões — Sprint 1
+# Identidade, sessões e leitura pública
 
 Esta sprint adiciona PostgreSQL/Prisma e autenticação à plataforma existente. Conteúdo continua canônico em Markdown/JSON; gratuidade não atribui licença open source. Não há progresso, preferências remotas, soluções persistidas ou dashboard individual. Não houve deploy público.
 
@@ -25,6 +25,8 @@ Variáveis obrigatórias: `DATABASE_URL`, `BUNKERCODE_JWT_SECRET`, `BUNKERCODE_J
 
 `Session`: UUID, FK do usuário com cascade, hash SHA-256 único do refresh aleatório de 256 bits, hash anterior único, timestamps de criação/rotação, expiração absoluta em 30 dias e revogação. Índices por usuário/expiração. Há somente esses dois modelos e o enum Role; não há tabelas editoriais ou de aprendizagem.
 
+`@OptionalIdentity()` é usado apenas nas leituras de conteúdo: sem Bearer, entrega a seleção publicada; com Bearer, valida assinatura e sessão antes de considerar o papel. Token inválido/expirado recebe 401, sem fallback administrativo. Os guards obrigatórios de Studio e execução permanecem ativos.
+
 Identidade pública: `{ id, email, role }`. `AuthenticatedRequest.identity` contém essa projeção após `@RequireIdentity()`; `@RequireIdentity("ADMIN")` exige o papel atual. O backend deriva o UUID do JWT verificado e da sessão no banco. Nunca aceita `userId` do cliente como autorização.
 
 ## Fluxo HTTP
@@ -39,7 +41,7 @@ O navegador usa **mesma origem com proxy `/api`**. O proxy remove esse prefixo a
 | `POST /auth/logout`                                          | 204; revoga sessão correspondente e limpa cookie                              |
 | `GET /auth/me`                                               | Bearer obrigatório; retorna `{ user }`                                        |
 | `GET/HEAD /content/courses[/:id]`                            | Catálogo/metadados públicos conforme seleção do perfil                        |
-| `GET/HEAD .../:id/lessons/:slug[/exercise]`                  | STUDENT ou ADMIN; seleção editorial continua aplicada                         |
+| `GET/HEAD .../:id/lessons/:slug[/exercise]`                  | Sem conta ou STUDENT: seleção publicada; ADMIN: editorial apenas em authoring                         |
 | `POST .../:id/lessons`, `PUT .../:id/lessons/:slug/markdown` | ADMIN atual e todas as proteções locais anteriores; ausentes no perfil public |
 | `/practice/*`                                                | Sessão válida mais restrições anteriores; ausente no perfil public            |
 
@@ -49,13 +51,21 @@ Em refresh, uma transação PostgreSQL bloqueia a linha, troca o hash atual e gu
 
 Após reload, uma tentativa de refresh recupera identidade; falha leva ao estado anônimo. Requests privados recebem no máximo um refresh e uma repetição, sem loop. BroadcastChannel comunica troca/logout às outras abas. Logout confirmado remove o token e desmonta o estado privado. Falha de rede no logout é apresentada e exige nova tentativa, sem alegar revogação. JWTs já emitidos permanecem criptograficamente válidos até expirar, mas **este backend consulta a sessão em cada request**, recusando imediatamente logout/revogação e alterações de papel. Não existe bypass administrativo por ambiente/header.
 
+## Entrada e navegação
+
+Login e cadastro têm composição própria com a insígnia existente, área editorial e formulário. No celular, a área editorial é ocultada para priorizar os campos. Apenas cadastro apresenta requisitos de criação de senha; ambos permitem revelar/ocultar a senha, colagem e autocomplete. Erros de campo recebem associação acessível e foco; erro de conexão preserva os valores. Recuperação de senha não é oferecida, pois não existe esse fluxo.
+
+Entrar voluntariamente pelo leitor preserva `next` válido de curso/lição/Studio sob `/courses`; URLs externas e segmentos como `..` caem no catálogo; alternar login/cadastro conserva esse destino. Studio continua exigindo conta ADMIN. Logout troca o namespace local e mantém outras abas em leitura pública, sem expor o rascunho da conta anterior. Falha de refresh no reload mantém o visitante na lição publicada, sem loop para login.
+
+A conta identifica a sessão. Rascunhos e atividade permanecem neste navegador, separados por identidade ou namespace anônimo; não são progresso sincronizado. Sem conta, a prática oferece escrita e formatação locais, sem consultar ou executar `/practice/*`. Em authoring, execução por STUDENT usa somente exercícios da seleção publicada; ADMIN pode usar exercícios editoriais. O perfil public continua sem runner para qualquer papel.
+
 ## Segurança e limites
 
 Operações de autenticação por cookie exigem Origin exata autorizada, JSON e rejeitam Sec-Fetch-Site cross-site. CORS usa allowlist com credentials, nunca `*`. A topologia suporta aplicação e API na mesma origem; implantação cross-site exigiria redesenho explícito da política de cookie/CSRF. Erros JSON e exceções internas não retornam SQL, parâmetros, hashes ou credenciais. Conteúdo e auth usam no-store.
 
 Login/cadastro: 30 tentativas por IP/15 minutos e 10 por e-mail/15 minutos, inclusive falhas; no máximo quatro hashes em andamento por processo, com a vaga retida até o cálculo terminar mesmo que a conexão HTTP seja encerrada. Refresh/logout: 120/IP/minuto. Contadores em memória são limitados a 20 mil chaves, expiram e não confiam em X-Forwarded-For. Reiniciar o processo reinicia os contadores. Antes de escala horizontal, use limitador compartilhado/gateway; atrás de proxy todos podem compartilhar o IP observado, exigindo configuração validada de proxy confiável e limites externos. Não há banimento permanente de conta.
 
-Curso e lição não entram no bundle; filesystem não é servido estaticamente. Anônimos não recebem Markdown/exercícios por GET, HEAD ou variação de caixa da rota. Esconder controles React é conveniência, e o guard continua obrigatório. Conteúdo legitimamente exibido pode ser copiado; não há DRM, pagamento ou licenciamento implementado.
+Curso e lição não entram no bundle; filesystem não é servido estaticamente. Anônimos e estudantes recebem somente Markdown/exercícios publicados. A seleção filtra também catálogo, contagem, módulos e navegação anterior/próxima; conteúdo omitido retorna 404 em GET/HEAD. Em authoring, ADMIN pode ler o acervo editorial integral. No perfil public, nem ADMIN amplia o snapshot. Esconder controles React é conveniência, e o guard continua obrigatório. Conteúdo legitimamente exibido pode ser copiado; não há DRM, pagamento ou licenciamento implementado.
 
 Dados locais existentes de prática, atividade, retomada e Studio passam a usar namespace por UUID para evitar exibição cruzada na UI. Dados antigos sem namespace permanecem intactos, sem importação automática. Isso não é sincronização nem uma barreira contra quem controla o navegador/DevTools. Temas e dimensões continuam preferências locais do navegador; não foram transformados em preferências de conta. Não há limpeza de bancos históricos.
 

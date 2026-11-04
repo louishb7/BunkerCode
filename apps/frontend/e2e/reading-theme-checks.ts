@@ -506,7 +506,7 @@ export async function checkGlobalAppearance(
         expect(new Set(surfaces).size).toBe(1);
         await expect(page.locator(".global-sidebar")).toHaveCSS(
           "background-color",
-          "rgb(229, 235, 240)",
+          "rgb(240, 240, 237)",
         );
       }
       const reading = name === "reader" || name === "workspace";

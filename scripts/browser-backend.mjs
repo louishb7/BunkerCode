@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
-import { chmodSync, lstatSync, readdirSync } from "node:fs";
+import { chmodSync, lstatSync, readdirSync, writeFileSync } from "node:fs";
 import { preparePublication } from "../apps/backend/dist/publication-preparation.js";
 import { withBrowserFixture } from "./browser-fixture.mjs";
 
@@ -9,6 +9,24 @@ await withBrowserFixture(
   resolve("content"),
   async (content) => {
     let snapshot;
+    let selectionFile = process.env.BUNKERCODE_PUBLICATION_FILE;
+    if (
+      process.env.BUNKERCODE_PROFILE === "authoring" &&
+      process.env.BUNKERCODE_BROWSER_PUBLIC_COURSES
+    ) {
+      if (process.env.BUNKERCODE_BROWSER_OWNED_CONTENT_DIR !== content)
+        throw new Error(
+          "Browser publication selection requires a supervisor-owned fixture",
+        );
+      selectionFile = join(content, "browser-publication.json");
+      writeFileSync(
+        selectionFile,
+        JSON.stringify({
+          courses: JSON.parse(process.env.BUNKERCODE_BROWSER_PUBLIC_COURSES),
+        }),
+        { flag: "wx" },
+      );
+    }
     if (process.env.BUNKERCODE_PROFILE === "public") {
       if (
         process.env.BUNKERCODE_BROWSER_OWNED_CONTENT_DIR !==
@@ -32,7 +50,13 @@ await withBrowserFixture(
       await new Promise((resolveRun, reject) => {
         const child = spawn(process.execPath, ["apps/backend/dist/main.js"], {
           stdio: "inherit",
-          env: { ...process.env, BUNKERCODE_CONTENT_DIR: snapshot ?? content },
+          env: {
+            ...process.env,
+            BUNKERCODE_CONTENT_DIR: snapshot ?? content,
+            ...(selectionFile
+              ? { BUNKERCODE_PUBLICATION_FILE: selectionFile }
+              : {}),
+          },
         });
         const stop = () => child.kill("SIGTERM");
         process.on("SIGINT", stop);

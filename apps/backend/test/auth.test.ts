@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SignJWT, decodeJwt } from "jose";
 import { HttpException } from "@nestjs/common";
+import type { Lesson, CourseSummary } from "../src/content/courses";
 import { createApplication } from "../src/application";
 import { PrismaService } from "../src/auth/prisma.service";
 import { authConfig } from "../src/auth/config";
@@ -35,10 +36,29 @@ test(
         id: "demo",
         title: "Demo",
         description: "Fixture",
-        lessons: [{ slug: "first", title: "First" }],
+        modules: [
+          { id: "open", title: "Open" },
+          { id: "private", title: "Private module" },
+        ],
+        lessons: [
+          { slug: "first", title: "First", moduleId: "open" },
+          { slug: "draft", title: "Secret draft", moduleId: "private" },
+        ],
       }),
     );
     writeFileSync(join(folder, "lesson.md"), "# Protected lesson");
+    mkdirSync(join(root, "courses/demo/lessons/draft"));
+    writeFileSync(
+      join(root, "courses/demo/lessons/draft/lesson.md"),
+      "# Private editorial text",
+    );
+    const selection = join(root, "publication.json");
+    writeFileSync(
+      selection,
+      JSON.stringify({ courses: [{ id: "demo", lessons: ["first"] }] }),
+    );
+    const previousSelection = process.env.BUNKERCODE_PUBLICATION_FILE;
+    process.env.BUNKERCODE_PUBLICATION_FILE = selection;
     process.env.BUNKERCODE_CONTENT_DIR = root;
     const app = await createApplication(true);
     const db = app.get(PrismaService);
@@ -171,18 +191,76 @@ test(
         },
       );
       await t.test(
-        "catalog remains public; lesson, exercise, HEAD and casing cannot bypass authentication",
+        "anonymous and student reads expose only published lessons, modules and navigation",
         async () => {
           assert.equal((await get("/content/courses")).status, 200);
           assert.equal((await get("/content/courses/demo")).status, 200);
-          for (const path of [
-            lesson,
-            lesson + "/exercise",
-            lesson.toUpperCase(),
-          ]) {
-            assert.equal((await get(path)).status, 401);
-            assert.equal((await get(path, undefined, "HEAD")).status, 401);
+          const catalog = (await (
+            await get("/content/courses")
+          ).json()) as CourseSummary[];
+          assert.deepEqual(
+            catalog.map((c: { id: string; lessonCount: number }) => [
+              c.id,
+              c.lessonCount,
+            ]),
+            [["demo", 1]],
+          );
+          for (const token of [undefined, a.accessToken, b.accessToken]) {
+            for (const path of [lesson, lesson + "/exercise"]) {
+              assert.equal((await get(path, token)).status, 200);
+              assert.equal((await get(path, token, "HEAD")).status, 200);
+            }
+            const page = (await (await get(lesson, token)).json()) as Lesson;
+            assert.equal(page.previous, null);
+            assert.equal(page.next, null);
+            assert.deepEqual(
+              page.course.lessons.map((l: { slug: string }) => l.slug),
+              ["first"],
+            );
+            assert.deepEqual(
+              page.course.modules?.map((m: { id: string }) => m.id),
+              ["open"],
+            );
+            for (const path of [
+              "/content/courses/demo/lessons/draft",
+              "/content/courses/demo/lessons/draft/exercise",
+            ]) {
+              assert.equal((await get(path, token)).status, 404);
+              assert.equal((await get(path, token, "HEAD")).status, 404);
+            }
           }
+          for (const method of ["GET", "HEAD"])
+            assert.equal(
+              (await get(lesson.toUpperCase(), undefined, method)).status,
+              400,
+            );
+          assert.equal((await get("/practice/runtime")).status, 401);
+          const run = {
+            id: randomUUID(),
+            course: "demo",
+            lesson: "draft",
+            exercise: "secret",
+            revision: "v1",
+            source: "",
+            javascript: "",
+          };
+          assert.equal(
+            (
+              await post("/practice/runs", run, {
+                "X-Bunkercode-Client": "local",
+              })
+            ).status,
+            401,
+          );
+          assert.equal(
+            (
+              await post("/practice/runs", run, {
+                "X-Bunkercode-Client": "local",
+                Authorization: "Bearer " + a.accessToken,
+              })
+            ).status,
+            404,
+          );
           for (const path of [
             "/content/courses/demo/lessons/first/lesson.md",
             "/courses/demo/lessons/first/lesson.md",
@@ -314,6 +392,15 @@ test(
             ],
             { stdio: "pipe" },
           );
+          assert.equal(
+            (await get("/content/courses/demo/lessons/draft", a.accessToken))
+              .status,
+            200,
+          );
+          const editorial = (await (
+            await get(lesson, a.accessToken)
+          ).json()) as Lesson;
+          assert.equal(editorial.next?.slug, "draft");
           assert.equal((await edit()).status, 409); // Reaches physical revision validation.
           assert.equal(
             (
@@ -333,6 +420,11 @@ test(
             data: { role: "STUDENT" },
           });
           assert.equal((await edit()).status, 403);
+          assert.equal(
+            (await get("/content/courses/demo/lessons/draft", a.accessToken))
+              .status,
+            404,
+          );
         },
       );
       await t.test(
@@ -439,6 +531,9 @@ test(
         },
       );
     } finally {
+      if (previousSelection === undefined)
+        delete process.env.BUNKERCODE_PUBLICATION_FILE;
+      else process.env.BUNKERCODE_PUBLICATION_FILE = previousSelection;
       await app.close();
       delete process.env.BUNKERCODE_CONTENT_DIR;
     }

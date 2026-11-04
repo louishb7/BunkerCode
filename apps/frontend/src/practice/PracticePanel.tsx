@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/Auth";
 import { capabilities } from "../capabilities";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -40,6 +41,8 @@ export default function PracticePanel({
   lesson: string;
   exercise: Exercise;
 }) {
+  const { user } = useAuth();
+  const canExecute = capabilities.remoteExecution && !!user;
   const draft = useDraft(course, lesson, exercise);
   const [notice, setNotice] = useState("");
   const [file, setFile] = useState<"solution" | "tests">("solution");
@@ -49,7 +52,7 @@ export default function PracticePanel({
     availability,
     check: checkRuntime,
     cancelPending: cancelRuntimeCheck,
-  } = useRuntimeAvailability();
+  } = useRuntimeAvailability(canExecute);
   const submitting = useRef(false);
   const [phase, setPhase] = useState<
     "idle" | "compiling" | "checking" | "running"
@@ -371,7 +374,7 @@ export default function PracticePanel({
               aria-label="Ações do código"
               className="editor-actions"
             >
-              {capabilities.remoteExecution && (
+              {canExecute && (
                 <div className="code-primary-actions">
                   {phase !== "idle" ? (
                     <button
@@ -477,7 +480,7 @@ export default function PracticePanel({
                 <h2 className="result-heading">Resultado</h2>
                 <p role="status" className="text-sm">
                   {result?.message ??
-                    (capabilities.remoteExecution
+                    (canExecute
                       ? "Aguardando execução"
                       : "Prática local: escreva e formate seu código. O rascunho fica neste navegador. O código não é executado, enviado nem avaliado no ambiente público.")}
                 </p>
@@ -601,7 +604,7 @@ export default function PracticePanel({
                 <h2 className="result-heading">Histórico do código</h2>
                 {!draft.previous && !submissions.length && (
                   <p>
-                    {capabilities.remoteExecution
+                    {canExecute
                       ? "Nenhuma solução registrada. Submit guarda o snapshot analisado."
                       : "Nenhuma solução registrada neste navegador. Seu rascunho é salvo localmente."}
                   </p>

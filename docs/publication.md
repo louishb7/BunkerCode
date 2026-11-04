@@ -1,6 +1,6 @@
-# Autoria privada, catálogo público e leitura autenticada
+# Autoria privada e leitura pública
 
-O produto mantém dois perfis explícitos. A Sprint 1 adiciona autenticação em ambos: catálogo público e conteúdo integral somente com sessão válida. Veja [configuração, endpoints e limites](authentication.md). A candidata local da Lição 01 possui seleção editorial restritiva. Hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes antes de qualquer deploy.
+O produto mantém dois perfis explícitos. Autenticação existe em ambos, mas catálogo, cursos, módulos e lições publicados são acessíveis sem conta. Conteúdo editorial não publicado é exclusivo de ADMIN no perfil authoring. Veja [configuração, endpoints e limites](authentication.md). A candidata local da Lição 01 possui seleção editorial restritiva. Hospedagem, isolamento do usuário de serviço, proxy e validação externa continuam pendentes antes de qualquer deploy.
 
 ## Autoria local
 
@@ -10,9 +10,11 @@ O produto mantém dois perfis explícitos. A Sprint 1 adiciona autenticação em
 
 O backend direto (`node apps/backend/dist/main.js`) exige `BUNKERCODE_PROFILE=authoring` ou `public`. Ausência, valor desconhecido ou configuração pública incompleta encerram o processo antes de abrir a porta. `NODE_ENV` não escolhe capacidades. O Vite também rejeita perfil ausente/inválido. Os scripts locais declaram o perfil para preservar o fluxo habitual; não há fallback administrativo de produção.
 
+Visitantes e STUDENT no perfil authoring usam `config/publication.json`, capturada no bootstrap. `BUNKERCODE_PUBLICATION_FILE` permite apontar explicitamente outra seleção (por exemplo, em um acervo isolado); o formato é o mesmo do snapshot. Reinicie o backend após mudar a seleção. Curso selecionado ausente no checkout é omitido do catálogo e responde 404; manifesto inválido, lição selecionada inexistente ou symlink continuam erros explícitos. Falha ao ler/validar a seleção impede o bootstrap. Configuração manual sem seleção publica zero cursos, nunca todo o acervo.
+
 ## Seleção e snapshot público
 
-A única seleção editorial para publicação é `config/publication.json`, atualmente:
+A seleção editorial padrão para publicação é `config/publication.json`, atualmente:
 
 ```json
 {
@@ -61,20 +63,20 @@ O build público fica em `apps/frontend/dist-public`, separado de `dist`. O back
 
 O leitor mantém Markdown sanitizado, navegação contextual, lições/módulos, responsividade, CodeMirror, formatação e rascunhos IndexedDB locais. Não oferece Run, cancelamento ou Submit que acionaria análise/execução remota; explica a limitação no painel existente, sem mudar seu layout. O painel público não consulta `/practice/runtime`. Os contratos de rascunhos, submissões e atividade permanecem locais, agora com namespace por identidade. Registros antigos sem namespace ficam preservados, sem importação automática. Táticas usa seu avaliador estruturado no navegador, sem executar o texto apresentado e sem backend.
 
-O painel público afirma explicitamente que o código não é executado, enviado nem avaliado. Escrever e formatar não representam avaliação ou entrega. Nos dois perfis, a Home oferece início/retomada e catálogo, sem calendário ou consulta por data. Registros locais continuam preservados, sem migração ou limpeza. **Painéis** mantém os presets locais de largura/altura, sem comandos remotos; os controles do Workspace mobile têm alvos de 44px. A aparência de leitura mantém as três tonalidades existentes e o tamanho de texto persistido.
+O painel público afirma explicitamente que o código não é executado, enviado nem avaliado. Escrever e formatar não representam avaliação ou entrega. Nos dois perfis, a Home de visitante apresenta a proposta e **Explorar cursos** como ação principal; login/cadastro são voluntários. A Home autenticada mantém início/retomada e catálogo, sem calendário ou consulta por data. Registros locais continuam preservados, sem migração ou limpeza. **Painéis** mantém os presets locais de largura/altura, sem comandos remotos; os controles do Workspace mobile têm alvos de 44px. A aparência de leitura mantém as seis tonalidades existentes e o tamanho de texto persistido.
 
 ## HTTP
 
 | Caminho                                                 | Público                                                    | Autoria                    |
 | ------------------------------------------------------- | ---------------------------------------------------------- | -------------------------- |
-| `GET/HEAD /content/courses`                             | Somente seleção do snapshot                                | Todos os cursos locais     |
-| `GET/HEAD /content/courses/:id`                         | 200 selecionado; 404 restante                              | Leitura local              |
-| `GET/HEAD /content/courses/:id/lessons/:slug`           | Sessão válida; somente curso selecionado e lição declarada | Sessão válida              |
-| `GET/HEAD /content/courses/:id/lessons/:slug/exercise`  | Sessão válida; mesma fronteira; exercício opcional         | Sessão válida              |
+| `GET/HEAD /content/courses`                             | Somente seleção do snapshot                                | Seleção; ADMIN vê todos     |
+| `GET/HEAD /content/courses/:id`                         | 200 selecionado; 404 restante                              | Seleção; ADMIN vê todos    |
+| `GET/HEAD /content/courses/:id/lessons/:slug`           | Sem conta; somente seleção | Seleção; ADMIN vê todos    |
+| `GET/HEAD /content/courses/:id/lessons/:slug/exercise`  | Sem conta; mesma seleção; exercício opcional         | Seleção; ADMIN vê todos    |
 | `POST /content/courses/:id/lessons`                     | 403, controller ausente                                    | ADMIN e criação protegida  |
 | `PUT /content/courses/:id/lessons/:slug/markdown`       | 403, controller ausente                                    | ADMIN e gravação protegida |
 | `GET /practice/runtime`                                 | 404, controller ausente                                    | Sessão válida; disponibilidade local |
-| `POST /practice/runs`                                   | 403, controller ausente                                    | Sessão válida; execução protegida |
+| `POST /practice/runs`                                   | 403, controller ausente                                    | Sessão válida; exercício autorizado e execução protegida |
 | `DELETE /practice/runs/:id`                             | 403, controller ausente                                    | Sessão válida; cancelamento protegido |
 | Outras mutações sob `/content/courses*` ou `/practice*` | 403 pela defesa central                                    | Proteção local e/ou 404    |
 | Rotas aposentadas, arquivos internos e outras rotas     | 404                                                        | 404                        |

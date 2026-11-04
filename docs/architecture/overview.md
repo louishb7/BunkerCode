@@ -254,4 +254,10 @@ Darcula continua nos blocos de código, CodeMirror, fonte Markdown e código das
 
 ## Fundação multiusuário — Sprint 1
 
-O módulo NestJS `auth` registra Prisma, autenticação e guard global por metadados. `User` e `Session` são os únicos modelos; Markdown/JSON não migram para o banco. JWT em memória dura 10 minutos, refresh HttpOnly rotaciona em transação e a identidade/papel atual são consultados em cada request protegido. Formulários reutilizam o shell visual; Home não recebeu dashboard. Rascunhos locais passam a namespaces por identidade, sem apagar bases antigas. [Contratos, configuração e limites](../authentication.md).
+O módulo NestJS `auth` registra Prisma, autenticação e guard global por metadados. `User` e `Session` são os únicos modelos; Markdown/JSON não migram para o banco. JWT em memória dura 10 minutos, refresh HttpOnly rotaciona em transação e a identidade/papel atual são consultados em cada request protegido. Login/cadastro usam shell próprio; Home conserva a estrutura de descoberta e retomada. Rascunhos locais passam a namespaces por identidade, sem apagar bases antigas. [Contratos, configuração e limites](../authentication.md).
+
+## Entrada pública e identidade visual
+
+O `ContentController` usa identidade opcional somente em GET/HEAD. Visitantes e STUDENT recebem projeção da seleção explícita, inclusive módulos, contagens e navegação; ADMIN acessa conteúdo editorial integral apenas em authoring. `ContentReader` reutiliza a projeção de publicação, sem nova fonte editorial. Endpoints de autoria mantêm guard ADMIN e proteções locais; execução mantém sessão obrigatória e verifica a autorização do exercício. O snapshot public permanece restritivo para todos os papéis.
+
+Login/cadastro reutilizam marca, ícones e tipografia existentes em duas áreas no desktop e formulário prioritário no celular. Home de visitante convida a explorar cursos sem conta. A classe local `entry-surface` aplica neutros claros (`#f0f0ed`, `#f9f9f6`), texto `#252823` e acento `#7b5915` somente à autenticação e Home/catálogo/apresentação dos cursos. Botões principais usam `#e8bd68`. Não altera tokens globais, Studio ou as seis paletas do leitor; tema escuro continua herdando a paleta existente. Não há biblioteca, imagem gerada, animação ou fonte remota nova.

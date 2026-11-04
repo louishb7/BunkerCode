@@ -70,9 +70,10 @@ function ModuleHeading({
 }
 
 export function CoursesPage() {
+  const { user } = useAuth();
   const { data, error } = useContent("", parseCourses);
   if (!data) return <ContentStatus error={error} />;
-  const courses = discoverableCourses(data);
+  const courses = discoverableCourses(data, user?.role === "ADMIN");
   return (
     <Page title="Cursos" className="product-page catalog-page">
       <h1 className="catalog-heading">Cursos</h1>

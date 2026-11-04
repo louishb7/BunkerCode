@@ -66,14 +66,7 @@ function AppRoutes() {
             }
           />
           <Route path="/courses/:id" element={<CoursePage />} />
-          <Route
-            path="/courses/:id/lessons/:slug"
-            element={
-              <RequireSession>
-                <LessonPage />
-              </RequireSession>
-            }
-          />
+          <Route path="/courses/:id/lessons/:slug" element={<LessonPage />} />
           {StudioPage && (
             <Route
               path="/courses/:id/lessons/:slug/edit"
@@ -126,6 +119,12 @@ export function App() {
 
 function ApplicationShell() {
   const { pathname } = useLocation();
+  if (pathname === "/login" || pathname === "/register")
+    return (
+      <div className="entry-surface auth-shell">
+        <AppRoutes />
+      </div>
+    );
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
   const globalNavigation =
     pathname === "/" || /^\/courses(?:\/[^/]+)?\/?$/.test(pathname);

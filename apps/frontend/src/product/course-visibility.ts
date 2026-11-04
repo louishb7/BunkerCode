@@ -9,8 +9,11 @@ const visibleCourseIds = [
   "nestjs",
 ];
 
-export function discoverableCourses(courses: readonly CourseSummary[]) {
-  if (!capabilities.authoring) return [...courses];
+export function discoverableCourses(
+  courses: readonly CourseSummary[],
+  editorial = true,
+) {
+  if (!capabilities.authoring || !editorial) return [...courses];
   return visibleCourseIds.flatMap((id) => {
     const course = courses.find((item) => item.id === id);
     return course ? [course] : [];

@@ -14,7 +14,7 @@ const destinations = [
 
 export function GlobalLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="global-layout">
+    <div className="global-layout entry-surface">
       <aside className="global-sidebar" aria-label="Navegação da plataforma">
         <Link className="global-brand" to="/" aria-label="BunkerCode — Início">
           <Insignia />

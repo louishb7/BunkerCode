@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/Auth";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -72,19 +73,48 @@ function ContinueStudy({
   );
 }
 export function HomePage() {
+  const { user } = useAuth();
   const { data, error } = useContent("", parseCourses);
   const [recent] = useState(recentLesson);
-  const courses = data ? discoverableCourses(data) : undefined;
+  const courses = data
+    ? discoverableCourses(data, user?.role === "ADMIN")
+    : undefined;
   const firstCourse = courses?.find((course) => course.lessonCount > 0);
   return (
     <Page title="Início" className="product-page dashboard-page">
-      <h1 className="sr-only">Início</h1>
+      {user ? (
+        <h1 className="sr-only">Início</h1>
+      ) : (
+        <section
+          className="visitor-introduction"
+          aria-labelledby="visitor-title"
+        >
+          <h1 id="visitor-title">
+            Aprenda programação.
+            <br />
+            Construa seu entendimento.
+          </h1>
+          <p>
+            Explore cursos, leia as lições e transforme cada ideia em
+            conhecimento próprio. Comece sem cadastro.
+          </p>
+          <div className="visitor-actions">
+            <Link className="entry-primary" to="/courses">
+              Explorar cursos
+            </Link>
+            <Link to="/register">Criar conta</Link>
+          </div>
+          <p className="visitor-note">
+            Já tem uma conta? <Link to="/login">Entrar</Link>
+          </p>
+        </section>
+      )}
       <div className="home-study-overview">
         {recent ? (
           <ContinueStudy recent={recent} fallback={firstCourse} />
-        ) : (
+        ) : user ? (
           <StartStudy course={firstCourse} />
-        )}
+        ) : null}
       </div>
       <section aria-labelledby="home-courses" className="home-courses">
         <div className="collection-heading">

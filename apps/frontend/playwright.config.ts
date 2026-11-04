@@ -54,6 +54,12 @@ export default defineConfig({
       env: {
         PORT: "3012",
         BUNKERCODE_PROFILE: "authoring",
+        // Explicit publication only in the supervisor-owned disposable fixture.
+        BUNKERCODE_BROWSER_PUBLIC_COURSES:
+          process.env.BUNKERCODE_BROWSER_OWNED_CONTENT_DIR ===
+          process.env.BUNKERCODE_BROWSER_CONTENT_DIR
+            ? '[{"id":"fundamentos-programacao-javascript","lessons":["o-que-significa-programar"]},{"id":"typescript","lessons":["values-and-types"]}]'
+            : "",
         NODE_PATH: "",
         BUNKERCODE_STUDIO_ORIGIN: "http://127.0.0.1:5184",
         BUNKERCODE_CONTENT_DIR: process.env.BUNKERCODE_BROWSER_CONTENT_DIR,

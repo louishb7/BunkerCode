@@ -11,6 +11,8 @@ import type { Request } from "express";
 import { AuthService, type Identity } from "./auth.service";
 export const RequireIdentity = (role: "STUDENT" | "ADMIN" = "STUDENT") =>
   SetMetadata("identity", role);
+export const OptionalIdentity = () => SetMetadata("identity", "OPTIONAL");
+export type PublicRequest = Request & { identity?: Identity };
 export type AuthenticatedRequest = Request & { identity: Identity };
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -20,10 +22,11 @@ export class AuthGuard implements CanActivate {
   ) {}
   async canActivate(context: ExecutionContext) {
     const role = this.reflector.getAllAndOverride<
-      "STUDENT" | "ADMIN" | undefined
+      "STUDENT" | "ADMIN" | "OPTIONAL" | undefined
     >("identity", [context.getHandler(), context.getClass()]);
     if (!role) return true;
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    if (role === "OPTIONAL" && !request.headers.authorization) return true;
     request.identity = await this.auth.authenticate(
       request.headers.authorization,
     );

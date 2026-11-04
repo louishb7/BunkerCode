@@ -1,8 +1,10 @@
-import { RequireIdentity } from "../auth/auth.guard";
+import { RequireIdentity, type AuthenticatedRequest } from "../auth/auth.guard";
 import { prepareFunctionTests } from "./function-tests";
 import { compileAssessment } from "./assessment";
 import {
   Body,
+  Inject,
+  Req,
   Controller,
   Delete,
   Get,
@@ -14,7 +16,7 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import type { Response } from "express";
-import { loadExercise } from "../content/exercise";
+import { ContentReader } from "../content/content-reader";
 import {
   cancelRun,
   runCode,
@@ -25,6 +27,7 @@ import {
 @RequireIdentity("STUDENT")
 @Controller("practice")
 export class PracticeController implements OnApplicationShutdown {
+  constructor(@Inject(ContentReader) private readonly reader: ContentReader) {}
   @Get("runtime")
   @Header("Cache-Control", "no-store")
   async status() {
@@ -34,6 +37,7 @@ export class PracticeController implements OnApplicationShutdown {
   @Header("Cache-Control", "no-store")
   async run(
     @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
     if (!body || typeof body !== "object")
@@ -62,7 +66,11 @@ export class PracticeController implements OnApplicationShutdown {
       )
     )
       throw new HttpException("Identidade ou tamanho de código inválido.", 400);
-    const definition = loadExercise(course!, lesson!);
+    const { exercise: definition } = this.reader.exercise(
+      course!,
+      lesson!,
+      request.identity.role === "ADMIN",
+    );
     if (
       !definition ||
       definition.id !== exercise ||

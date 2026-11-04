@@ -16,14 +16,14 @@ type RuntimeCheck = {
 
 // One query per mounted practice panel; operations await its promise rather
 // than a render's snapshot. A cancelled/failed query can be retried explicitly.
-export function useRuntimeAvailability() {
+export function useRuntimeAvailability(enabled = capabilities.remoteExecution) {
   const [availability, setAvailability] = useState<RuntimeAvailability>({
     state: "unknown",
   });
   const request = useRef<RuntimeCheck>(undefined);
   const mounted = useRef(false);
   const check = useCallback(() => {
-    if (!capabilities.remoteExecution)
+    if (!enabled)
       return Promise.resolve<RuntimeDecision>({
         state: "unavailable",
         status: {
@@ -66,7 +66,7 @@ export function useRuntimeAvailability() {
         setAvailability(value);
     });
     return promise;
-  }, []);
+  }, [enabled]);
   const cancelPending = useCallback(() => {
     const current = request.current;
     if (current && !current.result) {
@@ -77,12 +77,12 @@ export function useRuntimeAvailability() {
   }, []);
   useEffect(() => {
     mounted.current = true;
-    if (capabilities.remoteExecution) void check();
+    if (enabled) void check();
     return () => {
       mounted.current = false;
       request.current?.controller.abort();
       request.current = undefined;
     };
-  }, [check]);
+  }, [check, enabled]);
   return { availability, check, cancelPending };
 }

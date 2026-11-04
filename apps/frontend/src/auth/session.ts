@@ -100,6 +100,14 @@ export function recoverSession(): Promise<boolean> {
   });
   return refreshing;
 }
+export class AuthError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 export async function signIn(
   action: "login" | "register",
   email: string,
@@ -111,14 +119,19 @@ export async function signIn(
     generation++;
     const response = await post(action, { email, password });
     if (!response.ok)
-      throw new Error(
+      throw new AuthError(
         response.status === 409
           ? "Este e-mail já está cadastrado."
           : response.status === 429
             ? "Muitas tentativas. Aguarde antes de tentar novamente."
             : response.status === 400
-              ? "Use e-mail válido e senha de 12 a 128 caracteres."
-              : "Não foi possível entrar. Confira e-mail e senha.",
+              ? action === "register"
+                ? "Use e-mail válido e senha de 12 a 128 caracteres."
+                : "Não foi possível entrar. Confira e-mail e senha."
+              : response.status === 401
+                ? "Não foi possível entrar. Confira e-mail e senha."
+                : "Serviço indisponível. Tente novamente.",
+        response.status,
       );
     accept(await response.json());
     channel?.postMessage("changed");

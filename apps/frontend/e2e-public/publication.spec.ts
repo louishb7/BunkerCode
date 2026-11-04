@@ -1,3 +1,4 @@
+import { test as anonymousTest } from "@playwright/test";
 import { expectHomeWithoutActivity } from "../e2e/home-state";
 import { expect, test } from "../e2e/auth-fixture";
 import { choices, createRound, executeRound } from "../src/tactics/session";
@@ -410,3 +411,42 @@ test("partial fixture course exposes only the selected lesson through reader and
   await page.goto("/courses/linux/lessons/paths");
   await expect(page.getByRole("alert")).toBeVisible();
 });
+
+anonymousTest(
+  "published snapshot is readable without a session and never calls private practice APIs",
+  async ({ page, request }) => {
+    const privateRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/practice/"))
+        privateRequests.push(request.url());
+    });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "Aprenda programação",
+    );
+    await page
+      .getByRole("link", { name: "Explorar cursos", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Cursos", exact: true }),
+    ).toBeVisible();
+    await page.goto(lesson);
+    await expect(page.locator(".cm-editor")).toBeVisible();
+    await page.reload();
+    await expect(page.locator(".cm-editor")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Entrar", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Run", exact: true }),
+    ).toHaveCount(0);
+    expect(privateRequests).toEqual([]);
+    expect(
+      (await request.get("/api/content/courses/linux/lessons/paths")).status(),
+    ).toBe(404);
+    expect(
+      (await request.get("/api/content/courses/linux/lessons/pipes")).status(),
+    ).toBe(200);
+    expect((await request.get("/api/practice/runtime")).status()).toBe(404);
+  },
+);
