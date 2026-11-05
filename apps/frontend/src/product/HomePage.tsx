@@ -89,14 +89,10 @@ export function HomePage() {
           className="visitor-introduction"
           aria-labelledby="visitor-title"
         >
-          <h1 id="visitor-title">
-            Aprenda programação.
-            <br />
-            Construa seu entendimento.
-          </h1>
+          <h1 id="visitor-title">Aprenda programação.</h1>
           <p>
-            Explore cursos, leia as lições e transforme cada ideia em
-            conhecimento próprio. Comece sem cadastro.
+            Cursos e lições abertas para ler, experimentar e estudar no seu
+            ritmo.
           </p>
           <div className="visitor-actions">
             <Link className="entry-primary" to="/courses">
@@ -104,9 +100,6 @@ export function HomePage() {
             </Link>
             <Link to="/register">Criar conta</Link>
           </div>
-          <p className="visitor-note">
-            Já tem uma conta? <Link to="/login">Entrar</Link>
-          </p>
         </section>
       )}
       <div className="home-study-overview">

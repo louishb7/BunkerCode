@@ -9,7 +9,6 @@ import {
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { Eye, EyeOff, ArrowLeft, Code2 } from "lucide-react";
 import { Insignia } from "../product/Brand";
-import { AppearanceControl } from "../appearance/Appearance";
 import { Page } from "../courses/Page";
 import {
   AuthError,
@@ -78,8 +77,10 @@ export function AccountControl() {
       <Link
         className="account-control"
         to={
-          "/login?next=" +
-          encodeURIComponent(location.pathname + location.search)
+          location.pathname === "/login" || location.pathname === "/register"
+            ? "/login" + location.search
+            : "/login?next=" +
+              encodeURIComponent(location.pathname + location.search)
         }
       >
         Entrar
@@ -187,15 +188,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   }
   return (
     <Page title={register ? "Criar conta" : "Entrar"} className="auth-page">
-      <header className="auth-topbar">
-        <Link className="auth-brand" to="/" aria-label="BunkerCode — Início">
-          <Insignia />
-          <span>
-            Bunker<span className="text-gold">Code</span>
-          </span>
-        </Link>
-        <AppearanceControl reading={false} />
-      </header>
       <div className="auth-composition">
         <aside
           className="auth-introduction"
@@ -203,20 +195,13 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         >
           <div className="auth-emblem">
             <Insignia large />
+            <span className="brand-wordmark">
+              Bunker<span className="text-gold">Code</span>
+            </span>
           </div>
-          <h2>
-            Entenda o código.
-            <br />
-            Construa seu conhecimento.
-          </h2>
-          <p>
-            Cursos e lições de programação para estudar no seu ritmo, com espaço
-            para ler, experimentar e pensar.
-          </p>
           <figure className="auth-code-example">
             <figcaption>
-              <Code2 size={18} aria-hidden="true" /> Uma ideia, escrita em
-              código
+              <Code2 size={18} aria-hidden="true" /> JavaScript · exemplo
             </figcaption>
             <pre>
               <code>
@@ -231,20 +216,10 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                 {"}"};
               </code>
             </pre>
-            <p>Exemplo ilustrativo de JavaScript.</p>
           </figure>
-          <p className="auth-public-note">
-            As lições publicadas são abertas. Sua conta é um convite para uma
-            experiência individual.
-          </p>
         </aside>
         <section className="auth-form-area" aria-labelledby="auth-title">
           <h1 id="auth-title">{register ? "Criar conta" : "Entrar"}</h1>
-          <p className="auth-description">
-            {register
-              ? "Seu espaço de estudo começa com uma conta."
-              : "Bom ter você de volta ao BunkerCode."}
-          </p>
           <form onSubmit={submit} aria-busy={busy} noValidate>
             <div className="auth-field">
               <label htmlFor="auth-email">E-mail</label>
@@ -279,12 +254,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   autoComplete={register ? "new-password" : "current-password"}
                   aria-invalid={!!fieldErrors.password}
                   aria-describedby={
-                    [
-                      register ? "password-help" : "",
-                      fieldErrors.password ? "password-error" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ") || undefined
+                    fieldErrors.password ? "password-error" : undefined
                   }
                 />
                 <button
@@ -301,12 +271,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   )}
                 </button>
               </div>
-              {register && (
-                <p id="password-help" className="auth-hint">
-                  Use de 12 a 128 caracteres. Você pode colar a senha do seu
-                  gerenciador.
-                </p>
-              )}
               {fieldErrors.password && (
                 <p id="password-error" className="auth-error" role="alert">
                   {fieldErrors.password}
@@ -353,10 +317,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             <ArrowLeft size={16} aria-hidden="true" />
             Explorar cursos sem conta
           </Link>
-          <p className="auth-storage-note">
-            Sua conta identifica a sessão. Rascunhos e atividade continuam
-            salvos apenas neste navegador.
-          </p>
         </section>
       </div>
     </Page>

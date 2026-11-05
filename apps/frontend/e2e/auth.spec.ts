@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import {
+  checkPublicShell,
   expectRenderedContrast,
   selectSiteTheme,
 } from "./reading-theme-checks";
@@ -77,7 +78,10 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   });
   await page.goto(lesson);
   await expect(page.locator(".cm-editor")).toBeVisible();
-  await page.getByRole("link", { name: "Entrar", exact: true }).click();
+  await page
+    .locator(".site-header")
+    .getByRole("link", { name: "Entrar", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/login\?next=/);
   await expect(page.getByLabel("Senha", { exact: true })).toHaveAttribute(
     "autocomplete",
@@ -125,7 +129,10 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
   await expect(page.locator("#password-error")).toContainText("12 a 128");
   await page.setViewportSize({ width: 1280, height: 960 });
-  await page.getByRole("link", { name: "Entrar", exact: true }).click();
+  await page
+    .locator(".site-header")
+    .getByRole("link", { name: "Entrar", exact: true })
+    .click();
   await selectSiteTheme(page, "bunkercode");
   await page.screenshot({
     path: info.outputPath("login-desktop-dark.png"),
@@ -385,4 +392,10 @@ test("authentication rejects return paths that could escape courses or loop back
   await expect(
     page.getByRole("heading", { name: "Cursos", exact: true }),
   ).toBeVisible();
+});
+
+test("shared public shell, anonymous theme persistence and responsive authentication", async ({
+  page,
+}, info) => {
+  await checkPublicShell(page, info);
 });

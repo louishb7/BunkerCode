@@ -22,8 +22,8 @@ for (const viewport of [
       course.title,
     );
     await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
-    await expect(page.locator(".global-sidebar")).toHaveCount(1);
-    await expect(page.locator(".site-header")).toHaveCount(0);
+    await expect(page.locator(".global-sidebar")).toHaveCount(0);
+    await expect(page.locator(".site-header")).toHaveCount(1);
     const navigation = page.getByRole("navigation", {
       name: "Navegação principal",
     });
@@ -75,6 +75,7 @@ for (const viewport of [
         "::after",
       );
       return {
+        page: bounds(".course-page"),
         introduction: bounds(".course-introduction"),
         description: bounds(".course-full-description"),
         metadata: bounds(".course-metadata"),
@@ -120,7 +121,8 @@ for (const viewport of [
     if (viewport.width >= 1280) {
       expect(metrics.introduction.height).toBeLessThan(210);
       expect(metrics.timeline.width).toBeGreaterThan(850);
-      expect(metrics.lesson.top).toBeLessThan(330);
+      // Content density is measured within the page, below the shared header.
+      expect(metrics.lesson.top - metrics.page.top).toBeLessThan(330);
     }
     const first = lessons.first();
     const normalBorder = await first.evaluate(
@@ -164,7 +166,7 @@ for (const viewport of [
         exact: true,
       })
       .click();
-    await expect(page.locator(".global-sidebar")).toHaveCount(1);
+    await expect(page.locator(".site-header")).toHaveCount(1);
     await navigation.getByRole("link", { name: "Cursos", exact: true }).click();
     await expect(page).toHaveURL("/courses");
   });
@@ -211,7 +213,7 @@ test("another course retains its full description and reader keeps its contextua
     .getByRole("link", { name: "Abrir curso TypeScript", exact: true })
     .click();
   await page.reload();
-  await expect(page.locator(".global-sidebar")).toHaveCount(1);
+  await expect(page.locator(".site-header")).toHaveCount(1);
   await expect(page.locator(".lesson-list a").nth(1)).toHaveAttribute(
     "href",
     "/courses/typescript/lessons/union-types",

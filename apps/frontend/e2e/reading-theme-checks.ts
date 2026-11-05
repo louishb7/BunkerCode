@@ -405,11 +405,11 @@ export async function checkGlobalAppearance(
       await expect(page.locator(ready!).first()).toBeAttached();
       await expect(page.locator("html")).toHaveCSS(
         "background-color",
-        theme === "light" ? "rgb(229, 235, 240)" : "rgb(17, 20, 23)",
+        theme === "light" ? "rgb(244, 244, 245)" : "rgb(17, 20, 23)",
       );
       await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
         "content",
-        theme === "light" ? "#e5ebf0" : "#111417",
+        theme === "light" ? "#f4f4f5" : "#111417",
       );
       const global = page.getByRole("button", {
         name: "Tema do site",
@@ -446,7 +446,7 @@ export async function checkGlobalAppearance(
             const target = button.getBoundingClientRect();
             return Array.from(
               document.querySelectorAll(
-                ".lesson-heading h1, .lesson-heading .eyebrow, .studio-topbar button, .studio-topbar select, .workspace-tabs button, .mobile-workspace-switch button, .catalog-heading, .tactics-heading h1, .global-brand, .global-nav-link, .header-home, .account-control button",
+                ".lesson-heading h1, .lesson-heading .eyebrow, .studio-topbar button, .studio-topbar select, .workspace-tabs button, .mobile-workspace-switch button, .catalog-heading, .tactics-heading h1, .brand-wordmark, .header-global-nav a, .header-home, .account-control button",
               ),
             )
               .filter((node) => {
@@ -474,7 +474,7 @@ export async function checkGlobalAppearance(
       if (["home", "catalog", "course"].includes(name!))
         await expect(
           page
-            .locator(".global-sidebar")
+            .locator(".site-header")
             .getByRole("button", { name: "Tema do site", exact: true }),
         ).toBeVisible();
       const sitePanel = await openSiteAppearance(page);
@@ -504,9 +504,9 @@ export async function checkGlobalAppearance(
             ),
           );
         expect(new Set(surfaces).size).toBe(1);
-        await expect(page.locator(".global-sidebar")).toHaveCSS(
+        await expect(page.locator(".site-header")).toHaveCSS(
           "background-color",
-          "rgb(240, 240, 237)",
+          "rgb(244, 244, 245)",
         );
       }
       const reading = name === "reader" || name === "workspace";
@@ -543,7 +543,9 @@ export async function checkGlobalAppearance(
           // Account and appearance actions occupy the first row; navigation remains fully reachable below.
           expect(home.y).toBeGreaterThanOrEqual(brand.y + brand.height);
         } else {
-          expect(Math.abs(brand.y + brand.height / 2 - home.y - home.height / 2)).toBeLessThanOrEqual(1);
+          expect(
+            Math.abs(brand.y + brand.height / 2 - home.y - home.height / 2),
+          ).toBeLessThanOrEqual(1);
         }
         const panel = await openAppearance(page);
         await expect(panel.locator("details, .site-theme-options")).toHaveCount(
@@ -584,7 +586,7 @@ export async function checkGlobalAppearance(
         ).toHaveCSS("color-scheme", theme === "light" ? "light" : "dark");
       const contrast = await expectRenderedContrast(
         page.locator(
-          ".appearance-trigger:visible, .global-brand, .global-nav-link, .catalog-heading, .course-card-title, .course-description, .course-full-description, .tactics-lab h1, .tactic-objective, .studio-course-title, .studio-status, .workspace-tabs button:not(:disabled), .result-heading, .lesson-context-trigger, .lesson-nav-position",
+          ".appearance-trigger:visible, .brand-wordmark, .header-global-nav a, .catalog-heading, .course-card-title, .course-description, .course-full-description, .tactics-lab h1, .tactic-objective, .studio-course-title, .studio-status, .workspace-tabs button:not(:disabled), .result-heading, .lesson-context-trigger, .lesson-nav-position",
         ),
       );
       expect(
@@ -603,13 +605,13 @@ export async function checkGlobalAppearance(
     .click();
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(229, 235, 240)",
+    "rgb(244, 244, 245)",
   );
   await page.locator('.course-card[href="/courses/typescript"]').click();
   await expect(page.locator(".course-identity h1")).toBeVisible();
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(229, 235, 240)",
+    "rgb(244, 244, 245)",
   );
   await info.attach("global-contrast.json", {
     body: JSON.stringify(samples, null, 2),
@@ -727,7 +729,7 @@ export async function checkThemeHierarchy(
     await expect(completion).toBeVisible();
     await expect(page.locator(".cm-tooltip-autocomplete")).toHaveCSS(
       "background-color",
-      "rgb(237, 240, 242)",
+      "rgb(255, 255, 255)",
     );
     await expectRenderedContrast(completion);
     await page.screenshot({
@@ -741,7 +743,7 @@ export async function checkThemeHierarchy(
     await expect(search).toBeVisible();
     await expect(page.locator(".cm-panels")).toHaveCSS(
       "background-color",
-      "rgb(237, 240, 242)",
+      "rgb(255, 255, 255)",
     );
     await search.locator("input.cm-textfield").first().fill("preserved");
     await expectRenderedContrast(
@@ -786,5 +788,104 @@ export async function checkThemeHierarchy(
     await page.reload();
     await expect(document).toContainText("Theme draft.");
     await expect(page.getByText(/Rascunho recuperado/)).toBeVisible();
+  }
+}
+
+// Anonymous navigation must retain one shell and the same palette across route boundaries.
+export async function checkPublicShell(page: Page, info: TestInfo) {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await selectSiteTheme(page, "light");
+  const routes = [
+    ["home", "/", ".course-card"],
+    ["courses", "/courses", ".course-card"],
+    ["course", "/courses/typescript", ".course-identity h1"],
+    [
+      "lesson",
+      "/courses/typescript/lessons/values-and-types",
+      ".lesson-heading h1",
+    ],
+    ["tactics", "/tactics?seed=42", ".tactics-lab h1"],
+    ["login", "/login", "#auth-title"],
+    ["register", "/register", "#auth-title"],
+  ];
+  for (const [name, route, ready] of routes) {
+    await page.goto(route!);
+    await expect(page.locator(ready!).first()).toBeVisible();
+    await expect(page.locator(".global-sidebar, .auth-topbar")).toHaveCount(0);
+    await expect(page.locator(".site-header")).toHaveCount(1);
+    await expect(page.locator(".header-global-nav a")).toHaveText([
+      "Início",
+      "Cursos",
+      "Táticas",
+    ]);
+    await expect(
+      page
+        .locator(".site-header")
+        .getByRole("link", { name: "Entrar", exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Tema do site", exact: true }),
+    ).toHaveCount(1);
+    await expect(page.locator(".site-header")).toHaveCSS(
+      "background-color",
+      "rgb(244, 244, 245)",
+    );
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "light",
+    );
+    await expectRenderedContrast(
+      page.locator(
+        ".header-global-nav a, .account-control, .auth-form-area label, .auth-submit",
+      ),
+    );
+    await page.screenshot({
+      path: info.outputPath(`${name}-light.png`),
+      fullPage: true,
+    });
+  }
+  await page.goto("/");
+  await selectSiteTheme(page, "bunkercode");
+  await page.reload();
+  await expect(page.locator(".course-card").first()).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-site-theme",
+    "bunkercode",
+  );
+  await page.screenshot({
+    path: info.outputPath("home-dark.png"),
+    fullPage: true,
+  });
+  for (const route of ["/login", "/register"]) {
+    await page.goto(route);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "bunkercode",
+    );
+    await expectRenderedContrast(
+      page.locator(".header-global-nav a, .auth-form-area label, .auth-submit"),
+    );
+    await page.screenshot({
+      path: info.outputPath(`${route.slice(1)}-dark.png`),
+      fullPage: true,
+    });
+  }
+  await selectSiteTheme(page, "light");
+  for (const width of [375, 320, 800]) {
+    await page.setViewportSize({ width, height: width === 800 ? 450 : 844 });
+    for (const route of ["/login", "/register"]) {
+      await page.goto(route);
+      await expect(page.getByLabel("E-mail", { exact: true })).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(width);
+      await expect(page.locator(".auth-emblem")).toBeVisible();
+      if (width === 375)
+        await page.screenshot({
+          path: info.outputPath(`${route.slice(1)}-mobile.png`),
+          fullPage: true,
+        });
+    }
   }
 }

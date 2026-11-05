@@ -1,3 +1,4 @@
+import { checkPublicShell } from "../e2e/reading-theme-checks";
 import { test as anonymousTest } from "@playwright/test";
 import { expectHomeWithoutActivity } from "../e2e/home-state";
 import { expect, test } from "../e2e/auth-fixture";
@@ -448,5 +449,12 @@ anonymousTest(
       (await request.get("/api/content/courses/linux/lessons/pipes")).status(),
     ).toBe(200);
     expect((await request.get("/api/practice/runtime")).status()).toBe(404);
+  },
+);
+
+anonymousTest(
+  "shared public shell, anonymous theme persistence and responsive authentication",
+  async ({ page }, info) => {
+    await checkPublicShell(page, info);
   },
 );

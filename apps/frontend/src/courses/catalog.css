@@ -167,9 +167,9 @@
   line-height: 1.6;
 }
 
-/* Discovery and course introductions share navigation; reading and authoring own their shells. */
-.global-content .product-page {
-  max-width: 1440px;
+/* Discovery uses the shared public header and a bounded content column. */
+.application-route > .product-page {
+  max-width: 1240px;
   padding: 36px clamp(24px, 3.5vw, 56px) 64px;
 }
 .catalog-heading {
@@ -371,7 +371,7 @@
   }
 }
 @media (max-width: 639px) {
-  .global-content .product-page {
+  .application-route > .product-page {
     padding: 28px 20px 48px;
   }
   .catalog-heading {
@@ -389,4 +389,35 @@
 /* Course identity belongs to the logo; Light cards share one neutral surface. */
 :root[data-site-theme="light"] .course-card {
   background: var(--color-surface);
+}
+
+/* Public Home introduction shares the discovery column. */
+.visitor-introduction {
+  padding: 24px 0 40px;
+  max-width: 720px;
+}
+.visitor-introduction h1 {
+  color: var(--color-ink);
+  font-size: clamp(30px, 3.6vw, 46px);
+  line-height: 1.16;
+  font-weight: 650;
+  letter-spacing: -1.5px;
+  margin: 0 0 20px;
+}
+.visitor-introduction > p {
+  max-width: 55ch;
+  line-height: 1.7;
+  color: var(--color-subtle);
+}
+.visitor-actions {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 26px 0 12px;
+}
+.visitor-actions > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }

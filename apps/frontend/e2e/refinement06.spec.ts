@@ -18,7 +18,7 @@ for (const viewport of [
     await expect(page.locator(".course-card")).toHaveCount(4);
     await expectHomeWithoutActivity(page);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Início");
-    await expect(page.locator(".site-header")).toHaveCount(0);
+    await expect(page.locator(".site-header")).toHaveCount(1);
     const nav = page.getByRole("navigation", {
       name: "Navegação principal",
       exact: true,
@@ -51,8 +51,10 @@ for (const viewport of [
     ).toHaveCount(0);
     await expect(page.locator(".course-last-visit")).toHaveCount(0);
     if (viewport.width >= 1024) {
-      const sidebar = await page.locator(".global-sidebar").boundingBox();
-      expect(sidebar!.width).toBe(220);
+      const header = await page.locator(".site-header").boundingBox();
+      expect(header!.width).toBe(viewport.width);
+      expect(header!.height).toBeLessThan(80);
+      await expect(page.locator(".global-sidebar")).toHaveCount(0);
       const cards = await page.locator(".course-card").evaluateAll((nodes) =>
         nodes.map((node) => {
           const rect = node.getBoundingClientRect();

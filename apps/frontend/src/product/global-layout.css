@@ -1,101 +1,104 @@
-.global-layout {
+.entry-surface {
   min-height: 100dvh;
+  background: var(--color-bunker);
+  color: var(--color-text);
 }
-.global-sidebar {
-  background: var(--sidebar-background, #15191d);
-  border-bottom: 1px solid var(--color-line);
-  padding: 12px 20px 0;
-}
-.global-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  min-height: 44px;
-  color: var(--color-ink);
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -0.6px;
-  text-decoration: none;
-}
-.global-nav {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.global-nav-link {
-  display: flex;
+.entry-surface .entry-primary {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 14px;
-  border-bottom: 2px solid transparent;
-  color: var(--color-subtle);
-  font-size: 14px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border: 1px solid #b78730;
+  border-radius: 7px;
+  background: #e8bd68;
+  color: #282116;
+  font: inherit;
+  font-weight: 650;
   text-decoration: none;
-  transition:
-    background 120ms,
-    color 120ms;
 }
-.global-nav-link:hover {
+.entry-surface .entry-primary:hover {
+  background: #f1cd87;
+}
+/* One navigation system for discovery, authentication, tactics and reading. */
+.site-header {
+  background: var(--color-bunker);
+  border-bottom: 1px solid var(--color-line);
+}
+.site-header .site-header-content {
+  max-width: 1240px;
+  min-height: 72px;
+  gap: 32px;
+  padding-inline: 28px;
+}
+.site-header .account-control {
+  margin-left: auto;
+  min-height: 44px;
+  align-items: center;
+}
+.site-header a.account-control {
+  padding: 10px 16px;
   color: var(--color-ink);
-  background: color-mix(in srgb, var(--color-ink) 3%, transparent);
+  text-decoration: none;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  font-weight: 600;
 }
-.global-nav-link[aria-current="page"] {
-  color: var(--color-gold);
-  border-color: var(--color-gold);
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+.site-header a.account-control:hover {
+  background: var(--color-raised);
 }
-.global-nav-link:active {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
+.site-header .site-appearance .appearance-trigger {
+  min-width: 44px;
+  padding: 8px;
 }
-.global-brand:focus-visible,
-.global-nav-link:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
+.site-header .site-appearance .appearance-trigger span {
+  display: none;
 }
-.global-content {
-  min-width: 0;
+.site-header .site-appearance .appearance-panel {
+  width: 240px;
 }
-@media (max-width: 359px) {
-  .global-nav-link {
-    padding-inline: 10px;
+.site-header .header-reading-tools {
+  margin-left: 0;
+}
+@media (max-width: 1023px) {
+  .site-header .account-control span {
+    display: none;
   }
 }
-@media (min-width: 1024px) {
-  .global-layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-  .global-sidebar {
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    padding: 28px 16px 24px;
-    border-bottom: 0;
-    border-right: 1px solid var(--color-line);
-  }
-  .global-brand {
-    margin-inline: 6px;
-    font-size: 18px;
-  }
-  .global-nav {
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 40px;
-  }
-  .global-nav-link {
-    justify-content: flex-start;
+@media (max-width: 799px) {
+  .site-header .site-header-content {
     gap: 12px;
     padding-inline: 16px;
-    border: 0;
-    border-left: 2px solid transparent;
-    border-radius: 0 5px 5px 0;
   }
-  .global-nav-link[aria-current="page"] {
-    border-color: var(--color-gold);
+  .site-header .header-global-nav {
+    gap: 16px;
+  }
+}
+@media (max-width: 599px) {
+  .site-header .site-header-content,
+  .learning-shell .site-header-content {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 8px 16px 0;
+  }
+  .site-header
+    .site-header-content
+    > :is(.header-global-nav, .header-studio-nav) {
+    order: 1;
+    flex: 1 0 100%;
+    justify-content: center;
+    gap: 28px;
+    font-size: 14px;
+  }
+  .site-header .account-control {
+    padding: 0;
+  }
+  .site-header a.account-control {
+    padding-inline: 14px;
+  }
+  .site-header .site-appearance .appearance-panel {
+    position: fixed;
+    top: 60px;
+    right: 16px;
   }
 }

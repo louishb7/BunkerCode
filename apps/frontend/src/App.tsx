@@ -1,5 +1,4 @@
 import { AuthPage, RequireSession, SessionBoundary } from "./auth/Auth";
-import { GlobalLayout } from "./product/GlobalLayout";
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
 import { Component, lazy, Suspense, type ReactNode } from "react";
@@ -119,25 +118,13 @@ export function App() {
 
 function ApplicationShell() {
   const { pathname } = useLocation();
-  if (pathname === "/login" || pathname === "/register")
-    return (
-      <div className="entry-surface auth-shell">
-        <AppRoutes />
-      </div>
-    );
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
-  const globalNavigation =
-    pathname === "/" || /^\/courses(?:\/[^/]+)?\/?$/.test(pathname);
-  if (globalNavigation)
-    return (
-      <GlobalLayout>
-        <AppRoutes />
-      </GlobalLayout>
-    );
   return (
     <div
       className={
-        learning ? "application-shell learning-shell" : "application-shell"
+        learning
+          ? "application-shell entry-surface learning-shell"
+          : "application-shell entry-surface"
       }
     >
       <SiteHeader />

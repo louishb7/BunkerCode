@@ -197,7 +197,7 @@ test("reading appearance stays usable when local storage is denied", async ({
   await selectSiteTheme(page, "light");
   await expect(page.locator("html")).toHaveCSS(
     "background-color",
-    "rgb(229, 235, 240)",
+    "rgb(244, 244, 245)",
   );
   await selectReadingTone(page, 3);
   await expect(page.locator(".study-explanation")).toHaveClass(

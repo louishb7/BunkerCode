@@ -63,8 +63,8 @@ for (const viewport of [
     await expect(
       page.getByRole("heading", { name: courseTitle, exact: true }),
     ).toBeFocused();
-    await expect(page.locator(".global-sidebar")).toHaveCount(1);
-    await expect(page.locator(".site-header")).toHaveCount(0);
+    await expect(page.locator(".global-sidebar")).toHaveCount(0);
+    await expect(page.locator(".site-header")).toHaveCount(1);
     await expect(page.locator(".course-metadata")).toHaveText("4 lições");
     await expect(page.locator(".course-module")).toHaveCount(2);
     const headings = page.getByRole("heading", { level: 3 });
