@@ -65,7 +65,8 @@ test(
     await app.listen(0, "127.0.0.1");
     const base = await app.getUrl();
     const email = `student-${randomUUID()}@example.test`,
-      password = "vento cobre lua";
+      password = "abc123";
+    const username = `student_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
     const post = (
       path: string,
       body: unknown = {},
@@ -85,28 +86,36 @@ test(
     let a: Result, b: Result, firstCookie: string, currentCookie: string;
     try {
       await t.test(
-        "registration rejects short, breached and contextual passwords while login preserves legacy passwords",
+        "registration enforces six characters, an ASCII letter and digit while login preserves legacy passwords",
         async () => {
           for (const invalid of [
+            "abcdef",
             "123456",
-            "abcdefghijklmno".slice(0, 14),
-            "😀".repeat(14),
-            "123456789012345",
-            "passwordpassword",
-            "PASSWORDPASSWORD",
-            "bunkercode123456789",
-          ])
+            "ab12",
+            "ééééé1",
+            "😀😀😀😀😀1",
+          ]) {
+            const response = await post("/auth/register", {
+              email: `invalid-${randomUUID()}@example.test`,
+              username: `invalid_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
+              password: invalid,
+            });
+            assert.equal(response.status, 400);
             assert.equal(
-              (
-                await post("/auth/register", {
-                  email: `invalid-${randomUUID()}@example.test`,
-                  password: invalid,
-                })
-              ).status,
-              400,
+              ((await response.json()) as { code: string }).code,
+              "INVALID_PASSWORD",
             );
+          }
+          for (const valid of ["a12345", "ABC123", "abc123!"]) {
+            const response = await post("/auth/register", {
+              email: `valid-${randomUUID()}@example.test`,
+              username: `valid_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
+              password: valid,
+            });
+            assert.equal(response.status, 201);
+          }
           const legacyEmail = `legacy-${randomUUID()}@example.test`;
-          const legacyPassword = "abcde1";
+          const legacyPassword = "legacy-password-without-digits";
           await db.user.create({
             data: {
               email: legacyEmail,
@@ -129,6 +138,7 @@ test(
         async () => {
           const response = await post("/auth/register", {
             email: " " + email.toUpperCase() + " ",
+            username: " " + username.toUpperCase() + " ",
             password,
           });
           assert.equal(response.status, 201);
@@ -146,6 +156,7 @@ test(
           assert.deepEqual(Object.keys(a.user).sort(), ["email", "id", "role"]);
           const second = await post("/auth/register", {
             email: `second-${randomUUID()}@example.test`,
+            username: `second_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
             password,
           });
           assert.equal(second.status, 201);
@@ -155,6 +166,7 @@ test(
             (
               await post("/auth/register", {
                 email: email.toUpperCase(),
+                username: `other_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
                 password,
               })
             ).status,
@@ -164,6 +176,7 @@ test(
             (
               await post("/auth/register", {
                 email: `admin-${randomUUID()}@example.test`,
+                username: `admin_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
                 password,
                 role: "ADMIN",
               })
@@ -173,6 +186,40 @@ test(
           const stored = await db.user.findUniqueOrThrow({
             where: { id: a.user.id },
           });
+          assert.equal(stored.username, username);
+          const duplicate = await post("/auth/register", {
+            email: `duplicate-${randomUUID()}@example.test`,
+            username: username.toUpperCase(),
+            password,
+          });
+          assert.equal(duplicate.status, 409);
+          assert.equal(
+            ((await duplicate.json()) as { code: string }).code,
+            "USERNAME_TAKEN",
+          );
+          await assert.rejects(
+            db.user.create({
+              data: {
+                email: `direct-${randomUUID()}@example.test`,
+                username,
+                passwordHash: stored.passwordHash,
+              },
+            }),
+            (error: unknown) =>
+              !!error &&
+              typeof error === "object" &&
+              "code" in error &&
+              error.code === "P2002",
+          );
+          await assert.rejects(
+            db.user.create({
+              data: {
+                email: `uppercase-${randomUUID()}@example.test`,
+                username: username.toUpperCase(),
+                passwordHash: stored.passwordHash,
+              },
+            }),
+          );
           assert.match(stored.passwordHash, /^scrypt\$131072\$8\$1\$/);
           assert.ok(!stored.passwordHash.includes(password));
           const session = await db.session.findFirstOrThrow({
@@ -581,46 +628,53 @@ test(
 );
 
 test("strict credentials and production configuration fail closed", () => {
+  const valid = {
+    email: "x@y.test",
+    username: "valid_user",
+    password: "abc123",
+  };
   for (const body of [
     null,
     [],
     {},
-    { email: "bad", password: "short" },
-    { email: "x..y@example.test", password: "vento cobre lua" },
-    { email: ".x@example.test", password: "vento cobre lua" },
-    { email: "x@" + "a".repeat(64) + ".test", password: "vento cobre lua" },
-    { email: "x@y.test", password: "a".repeat(128) + "1" },
-    { email: "x@y.test", password: "abcd1" },
-    { email: "x@y.test", password: "abcdef" },
-    { email: "x@y.test", password: "123456" },
-    { email: "x@y.test", password: "123456789012345" },
-    { email: "x@y.test", password: "passwordpassword" },
-    { email: "x@y.test", password: "correct horse battery staple" },
-    { email: "x@y.test", password: "😀".repeat(14) },
-    { email: "x@y.test", password: "😀".repeat(129) },
-    { email: "nome-de-usuario@example.test", password: "nome-de-usuario" },
-    {
-      email: "nome-de-usuario@example.test",
-      password: "nome-de-usuario@example.test",
-    },
-    { email: "x@y.test", password: "vento cobre lua", role: "ADMIN" },
+    { ...valid, email: "bad" },
+    { ...valid, email: "x..y@example.test" },
+    { ...valid, email: ".x@example.test" },
+    { ...valid, email: "x@" + "a".repeat(64) + ".test" },
+    { ...valid, password: "a".repeat(128) + "1" },
+    { ...valid, password: "abcdef" },
+    { ...valid, password: "123456" },
+    { ...valid, password: "ab12" },
+    { ...valid, password: "ééééé1" },
+    { ...valid, password: "abc１２３" },
+    { ...valid, username: "ab" },
+    { ...valid, username: "x".repeat(31) },
+    { ...valid, username: "invalid-name" },
+    { email: valid.email, password: valid.password },
+    { ...valid, confirmation: valid.password },
+    { ...valid, role: "ADMIN" },
   ])
     assert.throws(() => credentials(body));
   for (const password of [
-    "vento cobre lua",
-    "😀".repeat(15),
-    Array.from({ length: 128 }, (_, index) =>
-      String.fromCodePoint(0x410 + index),
-    ).join(""),
-    "frase passwordpassword com floresta",
+    "abc123",
+    "a12345",
+    "ABC123",
+    "abc123!",
+    "passwordpassword1",
+    "a".repeat(127) + "1",
+    "😀".repeat(126) + "a1",
   ])
-    assert.equal(
-      credentials({ email: "x@y.test", password }).password,
-      password,
-    );
+    assert.equal(credentials({ ...valid, password }).password, password);
   assert.equal(
-    credentials({ email: "x@y.test", password: "abcde1" }, "login").password,
-    "abcde1",
+    credentials({ ...valid, username: "  Mixed_User  " }).username,
+    "mixed_user",
+  );
+  assert.equal(
+    credentials(
+      { email: valid.email, password: "legacy-without-digits" },
+      "login",
+    ).password,
+    "legacy-without-digits",
   );
   const original = process.env.NODE_ENV,
     origins = process.env.BUNKERCODE_AUTH_ORIGINS,
@@ -683,6 +737,7 @@ test(
         },
         body: JSON.stringify({
           email: `restart-${randomUUID()}@example.test`,
+          username: `restart_${randomUUID().replaceAll("-", "").slice(0, 16)}`,
           password: randomUUID(),
         }),
       });

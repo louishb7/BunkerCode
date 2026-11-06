@@ -14,6 +14,7 @@ enum Role {
 model User {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique @db.VarChar(254)
+  username     String?   @unique @db.VarChar(30)
   passwordHash String
   role         Role      @default(STUDENT)
   createdAt    DateTime  @default(now())

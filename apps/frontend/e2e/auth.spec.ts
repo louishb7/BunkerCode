@@ -10,10 +10,19 @@ import {
 } from "./reading-theme-checks";
 const lesson = "/courses/typescript/lessons/values-and-types";
 const password = () => randomUUID();
-async function register(page: Page, email: string, secret: string) {
+const registrationUsername = () =>
+  `student_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+async function register(
+  page: Page,
+  email: string,
+  secret: string,
+  username = registrationUsername(),
+) {
   await page.goto("/register?next=" + encodeURIComponent(lesson));
   await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("Usuário", { exact: true }).fill(username);
   await page.getByLabel("Senha", { exact: true }).fill(secret);
+  await page.getByLabel("Confirmar senha", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(lesson + "$"));
   await expect(page.locator(".cm-editor")).toBeVisible();
@@ -120,10 +129,15 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   await expect(page.getByLabel("E-mail", { exact: true })).toBeFocused();
   await expect(page.locator("#email-error")).toContainText("válido");
   await page.getByLabel("E-mail", { exact: true }).fill("valid@example.test");
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(registrationUsername());
   await page.getByLabel("Senha", { exact: true }).fill("short");
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
-  await expect(page.locator("#password-error")).toContainText("15 caracteres");
+  await expect(page.locator("#password-error")).toContainText(
+    "6 caracteres, 1 letra e 1 número",
+  );
   await page.setViewportSize({ width: 1280, height: 960 });
   await page
     .locator(".auth-switch")
@@ -149,74 +163,173 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   await expect(page).toHaveURL(/\/login\?next=/);
 });
 
-test("registration counts Unicode characters and rejects breached passwords without composition rules", async ({
+test("registration has four fields, independent password checks, matching confirmation and one real submission", async ({
   page,
 }, info) => {
   await page.goto("/register");
-  const email = `phrase-${randomUUID()}@example.test`;
-  const requirements = page.getByRole("list", { name: "Requisitos da senha" });
-  const length = requirements
-    .getByRole("listitem")
-    .filter({ hasText: "Pelo menos 15 caracteres" });
+  const form = page.locator(".auth-form-area form");
+  await expect(form.locator("input")).toHaveCount(4);
+  expect(await form.locator("label").allTextContents()).toEqual([
+    "E-mail",
+    "Usuário",
+    "Senha",
+    "Confirmar senha",
+  ]);
   const input = page.getByLabel("Senha", { exact: true });
-  await expect(input).toHaveAttribute(
-    "aria-describedby",
-    "password-requirements password-guidance",
-  );
-  await expect(page.locator("#password-guidance")).toContainText(
-    "Não é obrigatório usar números ou símbolos",
-  );
-  await expect(length).toContainText("Pendente:");
-  await input.fill("😀".repeat(14));
-  await expect(length).toContainText("Pendente:");
-  await input.fill("😀".repeat(15));
-  await expect(length).toContainText("Cumprido:");
-  await input.fill("vento cobre lu");
+  const confirmation = page.getByLabel("Confirmar senha", { exact: true });
+  await expect(input).toHaveAttribute("type", "password");
+  await expect(confirmation).toHaveAttribute("type", "password");
+  await expect(page.locator("#password-guidance")).toHaveCount(0);
+  const requirements = page.getByRole("list", { name: "Requisitos da senha" });
+  expect(
+    await requirements.locator("li > span:last-child").allTextContents(),
+  ).toEqual([
+    "Pelo menos 6 caracteres",
+    "Pelo menos 1 letra",
+    "Pelo menos 1 número",
+  ]);
+  const items = requirements.getByRole("listitem");
+  const assertChecks = async (states: boolean[]) => {
+    for (const [index, met] of states.entries())
+      await expect(items.nth(index)).toContainText(
+        met ? "Cumprido:" : "Pendente:",
+      );
+  };
+  await assertChecks([false, false, false]);
   await selectSiteTheme(page, "light");
-  await expect(length).toContainText("Pendente:");
-  await expectRenderedContrast(requirements.getByRole("listitem"));
   await page.screenshot({
-    path: info.outputPath("password-policy-pending-light.png"),
+    path: info.outputPath("registration-four-fields-light.png"),
     fullPage: true,
   });
+  for (const [value, states] of [
+    ["123456", [true, false, true]],
+    ["abcdef", [true, true, false]],
+    ["ab12", [false, true, true]],
+    ["abc123", [true, true, true]],
+    ["a12345", [true, true, true]],
+    ["ABC123", [true, true, true]],
+    ["abc123!", [true, true, true]],
+    ["ééééé1", [true, false, true]],
+    ["abc１２３", [true, true, false]],
+  ] as const) {
+    await input.fill(value);
+    await assertChecks([...states]);
+  }
+  await input.fill("abc123");
+  await input.press("End");
+  await input.press("Backspace");
+  await assertChecks([false, true, true]);
+  await input.fill("abc123");
+  await input.press("Home");
+  for (let i = 0; i < 3; i++) await input.press("Delete");
+  await assertChecks([false, false, true]);
+  await input.fill("abc123");
+  await input.press("End");
+  for (let i = 0; i < 3; i++) await input.press("Backspace");
+  await assertChecks([false, true, false]);
+  await expectRenderedContrast(items);
+  const email = `four-${randomUUID()}@example.test`,
+    username = registrationUsername();
   await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(username.toUpperCase());
+  await input.fill("abc123");
+  const payloads: unknown[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/auth/register"))
+      payloads.push(request.postDataJSON());
+  });
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
-  await expect(input).toBeFocused();
-  await expect(page.locator("#password-error")).toContainText("15 caracteres");
-  await input.fill("passwordpassword");
-  await expect(page.locator("#password-error")).toHaveCount(0);
-  await expect(length).toContainText("Cumprido:");
-  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
-  await expect(input).toBeFocused();
-  await expect(page.locator("#password-error")).toContainText(
-    "lista de senhas vazadas",
+  await expect(confirmation).toBeFocused();
+  await expect(page.locator("#confirmation-error")).toContainText(
+    "Confirme sua senha",
   );
+  await confirmation.fill("ABC123");
+  await expect(page.locator("#confirmation-error")).toContainText(
+    "As senhas não coincidem",
+  );
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  expect(payloads).toHaveLength(0);
+  await confirmation.fill("abc123");
+  await expect(page.locator("#confirmation-error")).toHaveCount(0);
+  await input.fill("abc124");
+  await expect(page.locator("#confirmation-error")).toContainText(
+    "As senhas não coincidem",
+  );
+  await input.fill("abc123");
+  await expect(page.locator("#confirmation-error")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Mostrar confirmação de senha", exact: true })
+    .click();
+  await expect(confirmation).toHaveAttribute("type", "text");
+  await page
+    .getByRole("button", { name: "Ocultar confirmação de senha", exact: true })
+    .click();
+  await selectSiteTheme(page, "bunkercode");
+  await expectRenderedContrast(items);
   await page.screenshot({
-    path: info.outputPath("password-policy-blocked-light.png"),
+    path: info.outputPath("registration-checks-dark.png"),
     fullPage: true,
   });
-  await input.fill("vento cobre lua");
-  await expect(page.locator("#password-error")).toHaveCount(0);
-  await selectSiteTheme(page, "bunkercode");
-  await expectRenderedContrast(requirements.getByRole("listitem"));
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     375,
   );
   await page.screenshot({
-    path: info.outputPath("password-policy-mobile-dark.png"),
+    path: info.outputPath("registration-four-fields-mobile.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  await form.evaluate((element) => {
+    (element as HTMLFormElement).requestSubmit();
+    (element as HTMLFormElement).requestSubmit();
+  });
   await expect(page).toHaveURL(/\/courses$/);
+  expect(payloads).toEqual([{ email, username, password: "abc123" }]);
   await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await expect(page.locator(".auth-form-area input")).toHaveCount(2);
+  await expect(requirements).toHaveCount(0);
   await page.getByLabel("E-mail", { exact: true }).fill(email);
-  await expect(
-    page.getByRole("list", { name: "Requisitos da senha" }),
-  ).toHaveCount(0);
-  await page.getByLabel("Senha", { exact: true }).fill("vento cobre lua");
+  await input.fill("abc123");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+});
+
+test("username duplicates ignore case and recover through the corresponding field", async ({
+  page,
+}, info) => {
+  const username = registrationUsername();
+  await register(
+    page,
+    `username-${randomUUID()}@example.test`,
+    "abc123",
+    username,
+  );
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await page.goto("/register");
+  await page
+    .getByLabel("E-mail", { exact: true })
+    .fill(`duplicate-${randomUUID()}@example.test`);
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(username.toUpperCase());
+  await page.getByLabel("Senha", { exact: true }).fill("abc123");
+  await page.getByLabel("Confirmar senha", { exact: true }).fill("abc123");
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  await expect(page.locator("#username-error")).toContainText(
+    "Este usuário já está em uso.",
+  );
+  await expect(page.getByLabel("Usuário", { exact: true })).toBeFocused();
+  await page.screenshot({
+    path: info.outputPath("registration-username-unavailable.png"),
+    fullPage: true,
+  });
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(registrationUsername());
+  await expect(page.locator("#username-error")).toHaveCount(0);
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page).toHaveURL(/\/courses$/);
 });
 
@@ -297,7 +410,11 @@ test("distinct accounts, duplicate email, wrong password and lost refresh resolv
   ).toBeVisible();
   await page.goto("/register");
   await page.getByLabel("E-mail", { exact: true }).fill(email.toUpperCase());
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(registrationUsername());
   await page.getByLabel("Senha", { exact: true }).fill(secret);
+  await page.getByLabel("Confirmar senha", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("já está cadastrado");
   await page.goto("/login");
@@ -453,7 +570,14 @@ test("authentication rejects return paths that could escape courses or loop back
   await page
     .getByLabel("E-mail", { exact: true })
     .fill(`return-${randomUUID()}@example.test`);
-  await page.getByLabel("Senha", { exact: true }).fill(password());
+  const returnPassword = password();
+  await page
+    .getByLabel("Usuário", { exact: true })
+    .fill(registrationUsername());
+  await page.getByLabel("Senha", { exact: true }).fill(returnPassword);
+  await page
+    .getByLabel("Confirmar senha", { exact: true })
+    .fill(returnPassword);
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page).toHaveURL(/\/courses$/);
   await expect(

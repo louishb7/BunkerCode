@@ -104,7 +104,7 @@ export class AuthError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly field?: "password",
+    readonly field?: "email" | "username" | "password",
   ) {
     super(message);
   }
@@ -113,27 +113,53 @@ export async function signIn(
   action: "login" | "register",
   email: string,
   password: string,
+  username?: string,
 ) {
   // Finish an initial recovery before changing the account/cookie.
   if (refreshing) await refreshing;
   return sessionLock(async () => {
     generation++;
-    const response = await post(action, { email, password });
-    if (!response.ok && action === "register" && response.status === 400) {
+    const response = await post(
+      action,
+      action === "register"
+        ? { email, username, password }
+        : { email, password },
+    );
+    if (
+      !response.ok &&
+      action === "register" &&
+      [400, 409].includes(response.status)
+    ) {
       const value: unknown = await response.json().catch(() => null);
-      if (value && typeof value === "object" && "code" in value) {
-        if (value.code === "PASSWORD_TOO_SHORT")
-          throw new AuthError(
-            "Use pelo menos 15 caracteres na senha. Você pode usar uma frase, sem precisar de números ou símbolos.",
-            400,
-            "password",
-          );
-        if (value.code === "PASSWORD_BLOCKED")
-          throw new AuthError(
-            "Esta senha é comum, previsível ou consta da lista de senhas vazadas. Escolha uma frase única e mais longa; evite pequenas variações da mesma senha.",
-            400,
-            "password",
-          );
+      const failures = {
+        INVALID_EMAIL: { message: "Informe um e-mail válido.", field: "email" },
+        INVALID_USERNAME: {
+          message: "Use de 3 a 30 letras, números ou _ no usuário.",
+          field: "username",
+        },
+        INVALID_PASSWORD: {
+          message:
+            "A senha precisa ter pelo menos 6 caracteres, 1 letra e 1 número.",
+          field: "password",
+        },
+        USERNAME_TAKEN: {
+          message: "Este usuário já está em uso.",
+          field: "username",
+        },
+        EMAIL_TAKEN: {
+          message: "Este e-mail já está cadastrado.",
+          field: "email",
+        },
+      } as const;
+      if (
+        value &&
+        typeof value === "object" &&
+        "code" in value &&
+        typeof value.code === "string" &&
+        Object.hasOwn(failures, value.code)
+      ) {
+        const failure = failures[value.code as keyof typeof failures];
+        throw new AuthError(failure.message, response.status, failure.field);
       }
     }
     if (!response.ok)
@@ -144,7 +170,7 @@ export async function signIn(
             ? "Muitas tentativas. Aguarde antes de tentar novamente."
             : response.status === 400
               ? action === "register"
-                ? "Confira o e-mail e use uma senha única com pelo menos 15 caracteres."
+                ? "Confira os dados do cadastro."
                 : "Não foi possível entrar. Confira e-mail e senha."
               : response.status === 401
                 ? "Não foi possível entrar. Confira e-mail e senha."

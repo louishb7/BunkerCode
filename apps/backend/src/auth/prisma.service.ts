@@ -26,7 +26,7 @@ export class PrismaService
     try {
       await this.$connect();
       // The driver adapter creates its pool lazily; $connect alone is not readiness.
-      await this.user.findFirst({ select: { id: true } });
+      await this.user.findFirst({ select: { id: true, username: true } });
       await this.session.findFirst({ select: { id: true } });
     } catch (error) {
       await this.$disconnect();

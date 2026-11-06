@@ -12,6 +12,7 @@ try {
   const auth = new AuthService(db);
   const result = await auth.register({
     email: `browser-${randomUUID()}@example.test`,
+    username: `browser_${randomUUID().replaceAll("-", "").slice(0, 20)}`,
     password: randomUUID(),
   });
   await db.user.update({

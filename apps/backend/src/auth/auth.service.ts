@@ -32,11 +32,12 @@ export class AuthService {
   private readonly config = authConfig();
   constructor(@Inject(PrismaService) private readonly db: PrismaService) {}
   async register(body: unknown) {
-    const { email, password } = credentials(body);
+    const { email, username, password } = credentials(body);
     try {
       const user = await this.db.user.create({
         data: {
           email,
+          username,
           passwordHash: await hashPassword(password),
           role: "STUDENT",
         },
@@ -46,8 +47,25 @@ export class AuthService {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
-      )
-        throw new ConflictException("Não foi possível cadastrar este e-mail.");
+      ) {
+        // The PostgreSQL adapter does not always provide meta.target. Resolve
+        // the field after the database rejects the insert, without a racy precheck.
+        const usernameExists = await this.db.user.findUnique({
+          where: { username },
+          select: { id: true },
+        });
+        if (usernameExists)
+          throw new ConflictException({
+            statusCode: 409,
+            code: "USERNAME_TAKEN",
+            message: "Este usuário já está em uso.",
+          });
+        throw new ConflictException({
+          statusCode: 409,
+          code: "EMAIL_TAKEN",
+          message: "Este e-mail já está cadastrado.",
+        });
+      }
       throw error;
     }
   }

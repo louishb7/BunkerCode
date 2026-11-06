@@ -126,13 +126,20 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
+    username?: string;
     password?: string;
+    confirmation?: string;
   }>({});
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(false);
   const [passwordValue, setPasswordValue] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const submitting = useRef(false);
   const passwordRequirements = [
-    { label: "Pelo menos 15 caracteres", met: [...passwordValue].length >= 15 },
+    { label: "Pelo menos 6 caracteres", met: [...passwordValue].length >= 6 },
+    { label: "Pelo menos 1 letra", met: /[A-Za-z]/.test(passwordValue) },
+    { label: "Pelo menos 1 número", met: /[0-9]/.test(passwordValue) },
   ];
   const feedback = useRef<HTMLParagraphElement>(null);
   const requested =
@@ -146,47 +153,57 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   if (user) return <Navigate to={next} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (submitting.current) return;
     const form = event.currentTarget;
     const fields = new FormData(form);
     const email = String(fields.get("email")).trim();
     const password = String(fields.get("password"));
+    const username = String(fields.get("username") ?? "")
+      .trim()
+      .toLowerCase();
     const errors: typeof fieldErrors = {};
     const emailInput = form.elements.namedItem("email") as HTMLInputElement;
     if (!email || emailInput.validity.typeMismatch || email.length > 254)
       errors.email = "Informe um e-mail válido.";
+    if (register && !/^[a-z0-9_]{3,30}$/.test(username))
+      errors.username = "Use de 3 a 30 letras, números ou _ no usuário.";
     if (!password) errors.password = "Informe sua senha.";
-    else if (register && [...password].length < 15)
-      errors.password = "Use pelo menos 15 caracteres na senha.";
+    else if (
+      register &&
+      ([...password].length < 6 ||
+        !/[A-Za-z]/.test(password) ||
+        !/[0-9]/.test(password))
+    )
+      errors.password =
+        "A senha precisa ter pelo menos 6 caracteres, 1 letra e 1 número.";
     else if ([...password].length > 128)
       errors.password = "Use até 128 caracteres na senha.";
+    if (register && !confirmation) errors.confirmation = "Confirme sua senha.";
+    else if (register && confirmation !== password)
+      errors.confirmation = "As senhas não coincidem.";
     setFieldErrors(errors);
     setError("");
-    if (errors.email || errors.password) {
-      (
-        form.elements.namedItem(
-          errors.email ? "email" : "password",
-        ) as HTMLInputElement
-      ).focus();
+    const invalid = (
+      ["email", "username", "password", "confirmation"] as const
+    ).find((field) => errors[field]);
+    if (invalid) {
+      (form.elements.namedItem(invalid) as HTMLInputElement).focus();
       return;
     }
+    submitting.current = true;
     setBusy(true);
     try {
-      await signIn(register ? "register" : "login", email, password);
+      await signIn(
+        register ? "register" : "login",
+        email,
+        password,
+        register ? username : undefined,
+      );
       navigate(next, { replace: true });
     } catch (failure) {
-      if (failure instanceof AuthError && failure.status === 409) {
-        setFieldErrors({
-          email: failure.message,
-        });
-        emailInput.focus();
-      } else if (
-        failure instanceof AuthError &&
-        register &&
-        failure.field === "password"
-      ) {
-        setFieldErrors({ password: failure.message });
-        (form.elements.namedItem("password") as HTMLInputElement).focus();
+      if (failure instanceof AuthError && failure.field) {
+        setFieldErrors({ [failure.field]: failure.message });
+        (form.elements.namedItem(failure.field) as HTMLInputElement).focus();
       } else {
         setError(
           failure instanceof AuthError
@@ -196,6 +213,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         requestAnimationFrame(() => feedback.current?.focus());
       }
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -252,6 +270,37 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                 </p>
               )}
             </div>
+            {register && (
+              <div className="auth-field">
+                <label htmlFor="auth-username">Usuário</label>
+                <input
+                  id="auth-username"
+                  name="username"
+                  type="text"
+                  required
+                  maxLength={30}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-invalid={!!fieldErrors.username}
+                  aria-describedby={
+                    fieldErrors.username ? "username-error" : undefined
+                  }
+                  onChange={() => {
+                    if (fieldErrors.username)
+                      setFieldErrors((current) => ({
+                        ...current,
+                        username: undefined,
+                      }));
+                  }}
+                />
+                {fieldErrors.username && (
+                  <p id="username-error" className="auth-error" role="alert">
+                    {fieldErrors.username}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="auth-field">
               <label htmlFor="auth-password">Senha</label>
               <div className="auth-password">
@@ -263,18 +312,22 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   value={passwordValue}
                   onChange={(event) => {
                     setPasswordValue(event.target.value);
-                    if (fieldErrors.password)
-                      setFieldErrors((current) => ({
-                        ...current,
-                        password: undefined,
-                      }));
+                    const next = event.target.value;
+                    setFieldErrors((current) => ({
+                      ...current,
+                      password: undefined,
+                      confirmation: confirmation
+                        ? confirmation === next
+                          ? undefined
+                          : "As senhas não coincidem."
+                        : current.confirmation,
+                    }));
                   }}
                   autoComplete={register ? "new-password" : "current-password"}
                   aria-invalid={!!fieldErrors.password}
                   aria-describedby={
                     [
                       register ? "password-requirements" : "",
-                      register ? "password-guidance" : "",
                       fieldErrors.password ? "password-error" : "",
                     ]
                       .filter(Boolean)
@@ -318,19 +371,71 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   ))}
                 </ul>
               )}
-              {register && (
-                <p id="password-guidance" className="auth-password-guidance">
-                  Prefira uma frase única. Não é obrigatório usar números ou
-                  símbolos. Senhas comuns ou presentes na lista de vazamentos
-                  são recusadas ao criar a conta.
-                </p>
-              )}
               {fieldErrors.password && (
                 <p id="password-error" className="auth-error" role="alert">
                   {fieldErrors.password}
                 </p>
               )}
             </div>
+            {register && (
+              <div className="auth-field">
+                <label htmlFor="auth-confirmation">Confirmar senha</label>
+                <div className="auth-password">
+                  <input
+                    id="auth-confirmation"
+                    name="confirmation"
+                    type={confirmationVisible ? "text" : "password"}
+                    required
+                    autoComplete="new-password"
+                    value={confirmation}
+                    aria-invalid={!!fieldErrors.confirmation}
+                    aria-describedby={
+                      fieldErrors.confirmation
+                        ? "confirmation-error"
+                        : undefined
+                    }
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setConfirmation(value);
+                      if (fieldErrors.confirmation)
+                        setFieldErrors((current) => ({
+                          ...current,
+                          confirmation:
+                            value === passwordValue
+                              ? undefined
+                              : "As senhas não coincidem.",
+                        }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="auth-reveal"
+                    aria-label={
+                      confirmationVisible
+                        ? "Ocultar confirmação de senha"
+                        : "Mostrar confirmação de senha"
+                    }
+                    aria-pressed={confirmationVisible}
+                    onClick={() => setConfirmationVisible(!confirmationVisible)}
+                  >
+                    {confirmationVisible ? (
+                      <EyeOff size={19} aria-hidden="true" />
+                    ) : (
+                      <Eye size={19} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.confirmation && (
+                  <p
+                    id="confirmation-error"
+                    className="auth-error"
+                    role="alert"
+                  >
+                    {fieldErrors.confirmation}
+                  </p>
+                )}
+              </div>
+            )}
             {error && (
               <p
                 ref={feedback}
