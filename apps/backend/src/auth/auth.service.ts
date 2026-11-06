@@ -8,6 +8,12 @@ import { Prisma, type User } from "@prisma/client";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { PrismaService } from "./prisma.service";
+import {
+  AuthLimited,
+  AuthRateLimiter,
+  loginTargetLimit,
+  loginWindow,
+} from "./rate-limit";
 import { authConfig } from "./config";
 import {
   credentials,
@@ -15,6 +21,7 @@ import {
   hashPassword,
   verifyPassword,
 } from "./credentials";
+let activePasswordRequests = 0;
 export const refreshLifetime = 30 * 24 * 60 * 60 * 1000;
 export const publicUser = (user: User) => ({
   id: user.id,
@@ -30,9 +37,34 @@ const validToken = (token: string | undefined): token is string =>
 @Injectable()
 export class AuthService {
   private readonly config = authConfig();
-  constructor(@Inject(PrismaService) private readonly db: PrismaService) {}
+  private readonly limits: AuthRateLimiter;
+  constructor(@Inject(PrismaService) private readonly db: PrismaService) {
+    this.limits = new AuthRateLimiter(db);
+  }
+  private async passwordWork<T>(run: () => Promise<T>): Promise<T> {
+    if (activePasswordRequests >= 16) throw new AuthLimited(2);
+    activePasswordRequests++;
+    try {
+      return await run();
+    } finally {
+      activePasswordRequests--;
+    }
+  }
   async register(body: unknown) {
     const { email, username, password } = credentials(body);
+    return this.passwordWork(() =>
+      this.registerIdentity(email, username, password),
+    );
+  }
+  private async registerIdentity(
+    email: string,
+    username: string,
+    password: string,
+  ) {
+    await this.limits.consume([
+      { key: `register:email:${email}`, max: 5, window: 3600000 },
+      { key: `register:username:${username}`, max: 5, window: 3600000 },
+    ]);
     try {
       const user = await this.db.user.create({
         data: {
@@ -70,14 +102,41 @@ export class AuthService {
     }
   }
   async login(body: unknown) {
-    const { email, password } = credentials(body, "login");
-    const user = await this.db.user.findUnique({ where: { email } });
+    const { identifier, password } = credentials(body, "login");
+    return this.passwordWork(() => this.loginIdentity(identifier, password));
+  }
+  private async loginIdentity(identifier: string, password: string) {
+    const user = await this.db.user.findUnique({
+      where: identifier.includes("@")
+        ? { email: identifier }
+        : { username: identifier },
+    });
+    // The same UUID bucket covers both aliases, across IPs and backend instances.
+    // Misses receive an equally bounded identifier bucket before dummy scrypt.
+    await this.limits.consume([
+      {
+        key: `login:identifier:${identifier}`,
+        max: loginTargetLimit,
+        window: loginWindow,
+      },
+      ...(user
+        ? [
+            {
+              key: `login:account:${user.id}`,
+              max: loginTargetLimit,
+              window: loginWindow,
+            },
+          ]
+        : []),
+    ]);
     const valid = await verifyPassword(
       password,
       user?.passwordHash ?? dummyHash,
     );
     if (!user || !valid)
-      throw new UnauthorizedException("E-mail ou senha inválidos.");
+      throw new UnauthorizedException(
+        "Não foi possível entrar. Confira seus dados.",
+      );
     return this.start(user);
   }
   private async access(user: User, sessionId: string) {
@@ -129,6 +188,10 @@ export class AuthService {
         where: { id: rows[0].id },
         include: { user: true },
       });
+      await this.limits.consume(
+        [{ key: `refresh:session:${session.id}`, max: 120, window: 60000 }],
+        tx,
+      );
       if (session.revokedAt || session.expiresAt.getTime() <= Date.now())
         return { kind: "invalid" as const };
       if (session.tokenHash !== tokenHash) {

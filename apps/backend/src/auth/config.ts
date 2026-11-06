@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { StartupError } from "../startup-error";
 
 export interface AuthConfig {
@@ -7,6 +8,9 @@ export interface AuthConfig {
   audience: string;
   origins: readonly string[];
   secure: boolean;
+  trustedProxies: string[];
+  loginIpLimit: number;
+  registerIpLimit: number;
 }
 export function authConfig(): AuthConfig {
   const databaseUrl = process.env.DATABASE_URL;
@@ -78,6 +82,34 @@ export function authConfig(): AuthConfig {
         "BUNKERCODE_AUTH_ORIGINS must contain exact HTTPS origins (HTTP loopback only in development).",
       );
   }
+  const trustedProxies =
+    process.env.BUNKERCODE_TRUSTED_PROXIES?.split(",") ?? [];
+  for (const entry of trustedProxies) {
+    const [address, prefix, extra] = entry.split("/");
+    const version = isIP(address ?? "");
+    if (
+      !version ||
+      extra !== undefined ||
+      (prefix !== undefined &&
+        (!/^\d+$/.test(prefix) ||
+          Number(prefix) < 1 ||
+          Number(prefix) > (version === 4 ? 32 : 128)))
+    )
+      throw new StartupError(
+        "auth configuration",
+        "BUNKERCODE_TRUSTED_PROXIES accepts only explicit IP addresses or CIDRs separated by commas; never hop counts or wildcards.",
+      );
+  }
+  const positive = (key: string, fallback: number) => {
+    const value = process.env[key];
+    if (value === undefined) return fallback;
+    if (!/^[1-9][0-9]*$/.test(value) || Number(value) > 10000)
+      throw new StartupError(
+        "auth configuration",
+        `${key} must be an integer from 1 to 10000.`,
+      );
+    return Number(value);
+  };
   return Object.freeze({
     databaseUrl,
     secret: new TextEncoder().encode(secret),
@@ -85,5 +117,8 @@ export function authConfig(): AuthConfig {
     audience,
     origins,
     secure,
+    trustedProxies,
+    loginIpLimit: positive("BUNKERCODE_AUTH_LOGIN_IP_LIMIT", 120),
+    registerIpLimit: positive("BUNKERCODE_AUTH_REGISTER_IP_LIMIT", 60),
   });
 }

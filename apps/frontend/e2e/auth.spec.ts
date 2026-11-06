@@ -288,12 +288,29 @@ test("registration has four fields, independent password checks, matching confir
   await expect(page).toHaveURL(/\/courses$/);
   expect(payloads).toEqual([{ email, username, password: "abc123" }]);
   await page.getByRole("button", { name: "Sair", exact: true }).click();
+  const loginPayloads: unknown[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/auth/login"))
+      loginPayloads.push(request.postDataJSON());
+  });
+  await expect(
+    page.getByLabel("E-mail ou usuário", { exact: true }),
+  ).toHaveAttribute("autocomplete", "username");
   await expect(page.locator(".auth-form-area input")).toHaveCount(2);
   await expect(requirements).toHaveCount(0);
-  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page
+    .getByLabel("E-mail ou usuário", { exact: true })
+    .fill(username.toUpperCase());
   await input.fill("abc123");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/courses$/);
+  expect(loginPayloads).toEqual([
+    { identifier: username.toUpperCase(), password: "abc123" },
+  ]);
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Sair", exact: true }),
+  ).toBeVisible();
 });
 
 test("username duplicates ignore case and recover through the corresponding field", async ({
@@ -418,10 +435,10 @@ test("distinct accounts, duplicate email, wrong password and lost refresh resolv
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("já está cadastrado");
   await page.goto("/login");
-  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("E-mail ou usuário", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password());
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Confira e-mail e senha");
+  await expect(page.getByRole("alert")).toContainText("Confira seus dados");
   await register(page, `second-${randomUUID()}@example.test`, password());
   await context.clearCookies();
   let refreshes = 0;
@@ -540,7 +557,7 @@ test("switching accounts isolates persisted drafts and failed-write recovery buf
     page.getByRole("heading", { name: "Entrar", exact: true }),
   ).toBeVisible();
   await page.goto("/login?next=" + encodeURIComponent(lesson));
-  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("E-mail ou usuário", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(editor).toHaveText(
@@ -589,4 +606,40 @@ test("shared public shell, anonymous theme persistence and responsive authentica
   page,
 }, info) => {
   await checkPublicShell(page, info);
+});
+
+test("real login throttling gives a retry delay without exposing identifiers or repeating requests", async ({
+  page,
+}, info) => {
+  const identifier = `throttle_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+  for (let i = 0; i < 10; i++) {
+    const response = await page.request.post("/api/auth/login", {
+      headers: { Origin: "http://127.0.0.1:5184" },
+      data: { identifier, password: "wrong123" },
+    });
+    expect(response.status()).toBe(401);
+    expect((await response.json()).message).toBe(
+      "Não foi possível entrar. Confira seus dados.",
+    );
+  }
+  await page.goto("/login");
+  await page.getByLabel("E-mail ou usuário", { exact: true }).fill(identifier);
+  await page.getByLabel("Senha", { exact: true }).fill("wrong123");
+  const response = page.waitForResponse((r) =>
+    r.url().endsWith("/api/auth/login"),
+  );
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  expect((await response).status()).toBe(429);
+  await expect(page.getByRole("alert")).toContainText(
+    /Tente novamente em [0-9]+ segundos/,
+  );
+  await expect(page.getByRole("alert")).not.toContainText(identifier);
+  await expect(
+    page.getByRole("button", { name: "Entrar", exact: true }),
+  ).toBeDisabled();
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.screenshot({
+    path: info.outputPath("login-rate-limit-mobile.png"),
+    fullPage: true,
+  });
 });

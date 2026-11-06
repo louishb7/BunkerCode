@@ -131,6 +131,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     confirmation?: string;
   }>({});
   const [busy, setBusy] = useState(false);
+  const [retryUntil, setRetryUntil] = useState(0);
   const [visible, setVisible] = useState(false);
   const [passwordValue, setPasswordValue] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -150,10 +151,18 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     ) && !requested.includes("\\")
       ? requested
       : "/courses";
+  useEffect(() => {
+    if (!retryUntil) return;
+    const timer = window.setTimeout(
+      () => setRetryUntil(0),
+      Math.max(0, retryUntil - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [retryUntil]);
   if (user) return <Navigate to={next} replace />;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current) return;
+    if (submitting.current || retryUntil > Date.now()) return;
     const form = event.currentTarget;
     const fields = new FormData(form);
     const email = String(fields.get("email")).trim();
@@ -163,8 +172,13 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       .toLowerCase();
     const errors: typeof fieldErrors = {};
     const emailInput = form.elements.namedItem("email") as HTMLInputElement;
-    if (!email || emailInput.validity.typeMismatch || email.length > 254)
+    if (
+      register &&
+      (!email || emailInput.validity.typeMismatch || email.length > 254)
+    )
       errors.email = "Informe um e-mail válido.";
+    else if (!register && (!email || email.length > 254))
+      errors.email = "Não foi possível entrar. Confira seus dados.";
     if (register && !/^[a-z0-9_]{3,30}$/.test(username))
       errors.username = "Use de 3 a 30 letras, números ou _ no usuário.";
     if (!password) errors.password = "Informe sua senha.";
@@ -201,6 +215,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       );
       navigate(next, { replace: true });
     } catch (failure) {
+      if (failure instanceof AuthError && failure.retryAfter)
+        setRetryUntil(Date.now() + failure.retryAfter * 1000);
       if (failure instanceof AuthError && failure.field) {
         setFieldErrors({ [failure.field]: failure.message });
         (form.elements.namedItem(failure.field) as HTMLInputElement).focus();
@@ -251,14 +267,16 @@ export function AuthPage({ register = false }: { register?: boolean }) {
           <h1 id="auth-title">{register ? "Criar conta" : "Entrar"}</h1>
           <form onSubmit={submit} aria-busy={busy} noValidate>
             <div className="auth-field">
-              <label htmlFor="auth-email">E-mail</label>
+              <label htmlFor="auth-email">
+                {register ? "E-mail" : "E-mail ou usuário"}
+              </label>
               <input
                 id="auth-email"
                 name="email"
-                type="email"
+                type={register ? "email" : "text"}
                 required
                 maxLength={254}
-                autoComplete="email"
+                autoComplete={register ? "email" : "username"}
                 autoCapitalize="none"
                 spellCheck={false}
                 aria-invalid={!!fieldErrors.email}
@@ -448,7 +466,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             )}
             <button
               className="entry-primary auth-submit"
-              disabled={busy}
+              disabled={busy || retryUntil > Date.now()}
               type="submit"
             >
               {busy

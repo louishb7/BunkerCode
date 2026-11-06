@@ -929,7 +929,11 @@ export async function checkPublicShell(page: Page, info: TestInfo) {
       if (route === "/")
         await expect(page.locator(".course-card").first()).toBeVisible();
       else
-        await expect(page.getByLabel("E-mail", { exact: true })).toBeVisible();
+        await expect(
+          page.getByLabel(route === "/login" ? "E-mail ou usuário" : "E-mail", {
+            exact: true,
+          }),
+        ).toBeVisible();
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBe(width);

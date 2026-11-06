@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { HttpErrors } from "./auth/http-errors";
 import { authConfig } from "./auth/config";
+import { PrismaService } from "./auth/prisma.service";
 import { authRateLimit } from "./auth/rate-limit";
 import { NestFactory } from "@nestjs/core";
 import { json, type NextFunction, type Request, type Response } from "express";
@@ -51,6 +52,13 @@ export async function createApplication(quiet = false) {
     logger: quiet ? false : ["log", "warn"],
     bodyParser: false,
   });
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .set(
+      "trust proxy",
+      auth.trustedProxies.length ? auth.trustedProxies : false,
+    );
   app.useGlobalFilters(new HttpErrors());
   app.enableCors({
     origin: [...auth.origins],
@@ -78,7 +86,7 @@ export async function createApplication(quiet = false) {
       next();
     },
     json({ limit: "4kb" }),
-    authRateLimit(),
+    authRateLimit(app.get(PrismaService)),
   );
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (

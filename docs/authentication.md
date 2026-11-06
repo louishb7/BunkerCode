@@ -60,7 +60,7 @@ Variáveis obrigatórias: `DATABASE_URL`, `BUNKERCODE_JWT_SECRET`, `BUNKERCODE_J
 
 ## Modelos e contratos
 
-`User`: UUID, e-mail único normalizado, `username` opcional no banco e único quando presente, hash de senha, papel `STUDENT | ADMIN` e data de criação. Novos cadastros exigem e-mail, usuário e senha; campos extras são rejeitados. O usuário é normalizado com trim/minúsculas e aceita de 3 a 30 caracteres ASCII `a–z`, `0–9` ou `_`. A unicidade e a forma canônica são garantidas também no PostgreSQL. Login continua exclusivamente por e-mail; a identidade pública continua `{ id, email, role }`.
+`User`: UUID, e-mail único normalizado, `username` opcional no banco e único quando presente, hash de senha, papel `STUDENT | ADMIN` e data de criação. Novos cadastros exigem e-mail, usuário e senha; campos extras são rejeitados. O usuário é normalizado com trim/minúsculas e aceita de 3 a 30 caracteres ASCII `a–z`, `0–9` ou `_`. A unicidade e a forma canônica são garantidas também no PostgreSQL. Login aceita e-mail ou usuário; a identidade pública continua `{ id, email, role }`.
 
 A senha de cadastro exige exatamente três mínimos: 6 pontos de código Unicode, uma letra ASCII `A–Z/a–z` e um número ASCII `0–9`. Outros caracteres são aceitos, mas não substituem letra/número. Mantêm-se os limites de 128 pontos de código/512 bytes, sem truncamento ou normalização silenciosa. Senhas antigas continuam aceitas no login, independentemente dos novos mínimos. Scrypt mantém N=131072, r=8, p=1, salt aleatório de 16 bytes e comparação em tempo constante. Login de conta inexistente executa o mesmo custo de hash.
 
@@ -72,31 +72,39 @@ Identidade pública: `{ id, email, role }`. `AuthenticatedRequest.identity` cont
 
 ## Cadastro, confirmação e migração de usuário
 
-O formulário contém exatamente quatro campos, nesta ordem: **E-mail**, **Usuário**, **Senha**, **Confirmar senha**. A única orientação permanente abaixo de Senha é a lista “Pelo menos 6 caracteres”, “Pelo menos 1 letra” e “Pelo menos 1 número”. Os estados são independentes e imediatos, com verde/ícone e texto acessível para cumprimento; remover um requisito devolve o estado neutro. Login não mostra essa lista, usuário nem confirmação. Não há conselhos, medidor de força ou tooltip de senha.
+O formulário contém exatamente quatro campos, nesta ordem: **E-mail**, **Usuário**, **Senha**, **Confirmar senha**. A única orientação permanente abaixo de Senha é a lista “Pelo menos 6 caracteres”, “Pelo menos 1 letra” e “Pelo menos 1 número”. Os estados são independentes e imediatos, com verde/ícone e texto acessível para cumprimento; remover um requisito devolve o estado neutro. Login mostra somente “E-mail ou usuário” e “Senha”, sem lista ou confirmação. Não há conselhos, medidor de força ou tooltip de senha.
 
 A confirmação deve ser idêntica à senha e é validada no cliente, sem envio à API, logs ou persistência. Falta/divergência impede a requisição, mantém o foco no campo correto e é corrigida conforme a edição. Os dois campos de senha começam mascarados e oferecem controles próprios de visibilidade. Um bloqueio síncrono evita submissões duplicadas.
 
-`POST /auth/register` recebe somente `{ email, username, password }`. O backend valida os três mínimos da senha e o formato do usuário. HTTP 400 usa códigos `INVALID_EMAIL`, `INVALID_USERNAME` ou `INVALID_PASSWORD`; HTTP 409 usa `EMAIL_TAKEN` ou `USERNAME_TAKEN`. O cliente apresenta mensagens controladas no campo correspondente, sem exibir erros brutos. Hash, tokens, rate limits e permissões anteriores permanecem iguais. A lista de bloqueio e seu gerador da política anterior foram aposentados por decisão expressa do produto; esta regra não afirma conformidade NIST.
+`POST /auth/register` recebe somente `{ email, username, password }`. O backend valida os três mínimos da senha e o formato do usuário. HTTP 400 usa códigos `INVALID_EMAIL`, `INVALID_USERNAME` ou `INVALID_PASSWORD`; HTTP 409 usa `EMAIL_TAKEN` ou `USERNAME_TAKEN`. O cliente apresenta mensagens controladas no campo correspondente, sem exibir erros brutos. Hash, tokens e permissões anteriores permanecem iguais; os limites compartilhados são descritos abaixo. A lista de bloqueio e seu gerador da política anterior foram aposentados por decisão expressa do produto; esta regra não afirma conformidade NIST.
 
-A migration `20261106000000_username` acrescenta somente a coluna nullable `User.username`, o índice único e um CHECK de formato/minúsculas. Ela preserva todos os registros e não atribui nomes arbitrários: contas anteriores permanecem com `NULL` e continuam autenticando por e-mail. Vários valores NULL são permitidos. Novos cadastros exigem o campo pela validação do serviço. Não é necessário backfill para compatibilidade; eventual escolha de nome por contas antigas exige uma necessidade futura e não faz parte desta entrega. Não existe edição de perfil ou login por nome de usuário.
+A migration `20261106000000_username` acrescenta somente a coluna nullable `User.username`, o índice único e um CHECK de formato/minúsculas. Ela preserva todos os registros e não atribui nomes arbitrários: contas anteriores permanecem com `NULL` e continuam autenticando por e-mail. Vários valores NULL são permitidos. Novos cadastros exigem o campo pela validação do serviço. Não é necessário backfill para compatibilidade; eventual escolha de nome por contas antigas exige uma necessidade futura e não faz parte desta entrega. Não existe edição de perfil; contas sem usuário continuam entrando por e-mail.
 
 Revise o SQL e aplique `pnpm --filter @bunkercode/backend db:deploy:local` no desenvolvimento e `db:deploy` com ambiente explícito no deploy. Gere novamente o client com `db:generate`. Não use reset, db push ou recriação de banco. A migration é transacional e falha sem aplicar o DDL se não conseguir o lock em 5 segundos; investigue o consumidor antes de repetir.
+
+## Login por e-mail ou usuário
+
+O contrato canônico de `POST /auth/login` é `{ identifier, password }`. O campo da interface chama-se **E-mail ou usuário**, é texto com autocomplete `username` e preserva o controle de visibilidade da senha. `identifier` recebe o mesmo trim/minúsculas do cadastro; presença de `@` seleciona e-mail, ausência seleciona username. Não há alteração do nome armazenado. A API mantém `{ email, password }` para clientes anteriores; ambos os campos juntos, campos extras, tipos incorretos e limites excedidos são recusados. A chave legada é somente um alias do identificador, não uma segunda tentativa de autenticação.
+
+Existe um único verificador de senha. Conta ausente executa scrypt dummy com os mesmos parâmetros. Falhas de credenciais válidas como entrada retornam sempre 401 e **“Não foi possível entrar. Confira seus dados.”**, sem informar existência ou formato do identificador. Payload estruturalmente inválido retorna 400; limite retorna 429. Não há endpoint público de descoberta. O cliente usa a mensagem genérica, mostra o prazo de Retry-After em 429 e desabilita reenvio durante a espera, sem tentativas automáticas.
+
+A migration `20261106010000_auth_throttle` acrescenta apenas `AuthThrottle` para contadores compartilhados. Login por username, por si, não exige mudança em User/Session: a coluna e o índice anteriores são reutilizados. Aplique a migration antes de iniciar o código atualizado; a prontidão verifica a tabela. Registros de usuários, senhas e sessões não são regravados.
 
 ## Fluxo HTTP
 
 O navegador usa **mesma origem com proxy `/api`**. O proxy remove esse prefixo antes de encaminhar ao Nest. A tabela usa os caminhos diretos do backend:
 
-| Endpoint                                                     | Resultado e autorização                                                       |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `POST /auth/register`                                        | 201; recebe e-mail/usuário/senha, cria STUDENT e sessão; 400 inválido, 409 duplicado                       |
-| `POST /auth/login`                                           | 200; credenciais válidas; 401 uniforme para credenciais incorretas            |
-| `POST /auth/refresh`                                         | 200; cookie válido, rotação e novo access; 401 inválido                       |
-| `POST /auth/logout`                                          | 204; revoga sessão correspondente e limpa cookie                              |
-| `GET /auth/me`                                               | Bearer obrigatório; retorna `{ user }`                                        |
-| `GET/HEAD /content/courses[/:id]`                            | Catálogo/metadados públicos conforme seleção do perfil                        |
-| `GET/HEAD .../:id/lessons/:slug[/exercise]`                  | Sem conta ou STUDENT: seleção publicada; ADMIN: editorial apenas em authoring                         |
-| `POST .../:id/lessons`, `PUT .../:id/lessons/:slug/markdown` | ADMIN atual e todas as proteções locais anteriores; ausentes no perfil public |
-| `/practice/*`                                                | Sessão válida mais restrições anteriores; ausente no perfil public            |
+| Endpoint                                                     | Resultado e autorização                                                                        |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `POST /auth/register`                                        | 201; recebe e-mail/usuário/senha, cria STUDENT e sessão; 400 inválido, 409 duplicado           |
+| `POST /auth/login`                                           | 200; identificador/senha válidos; 401 uniforme para credenciais incorretas, 429 para limitação |
+| `POST /auth/refresh`                                         | 200; cookie válido, rotação e novo access; 401 inválido                                        |
+| `POST /auth/logout`                                          | 204; revoga sessão correspondente e limpa cookie                                               |
+| `GET /auth/me`                                               | Bearer obrigatório; retorna `{ user }`                                                         |
+| `GET/HEAD /content/courses[/:id]`                            | Catálogo/metadados públicos conforme seleção do perfil                                         |
+| `GET/HEAD .../:id/lessons/:slug[/exercise]`                  | Sem conta ou STUDENT: seleção publicada; ADMIN: editorial apenas em authoring                  |
+| `POST .../:id/lessons`, `PUT .../:id/lessons/:slug/markdown` | ADMIN atual e todas as proteções locais anteriores; ausentes no perfil public                  |
+| `/practice/*`                                                | Sessão válida mais restrições anteriores; ausente no perfil public                             |
 
 JWT HS256 dura 10 minutos; payload é `sub`, `sid`, `iat`, `exp`, `iss`, `aud`. Assinatura, algoritmo, expiração, idade, emissor e audiência são conferidos. O access fica exclusivamente em memória e segue em Authorization Bearer. Não é salvo em localStorage, sessionStorage ou IndexedDB. O refresh nunca aparece no JSON HTTP: cookie host-only, HttpOnly, SameSite=Strict, Path=/api/auth, Secure em produção/HTTPS, expiração absoluta. O acesso direto a `/auth` com cookie automático de navegador não faz parte da topologia: o caminho externo é `/api/auth`.
 
@@ -116,13 +124,34 @@ A conta identifica a sessão. Rascunhos e atividade permanecem neste navegador, 
 
 Operações de autenticação por cookie exigem Origin exata autorizada, JSON e rejeitam Sec-Fetch-Site cross-site. CORS usa allowlist com credentials, nunca `*`. A topologia suporta aplicação e API na mesma origem; implantação cross-site exigiria redesenho explícito da política de cookie/CSRF. Erros JSON e exceções internas não retornam SQL, parâmetros, hashes ou credenciais. Conteúdo e auth usam no-store.
 
-Login/cadastro: 30 tentativas por IP/15 minutos e 10 por e-mail/15 minutos, inclusive falhas; no máximo quatro hashes em andamento por processo, com a vaga retida até o cálculo terminar mesmo que a conexão HTTP seja encerrada. Refresh/logout: 120/IP/minuto. Contadores em memória são limitados a 20 mil chaves, expiram e não confiam em X-Forwarded-For. Reiniciar o processo reinicia os contadores. Antes de escala horizontal, use limitador compartilhado/gateway; atrás de proxy todos podem compartilhar o IP observado, exigindo configuração validada de proxy confiável e limites externos. Não há banimento permanente de conta.
+Os limites são independentes e compartilhados no PostgreSQL, inclusive entre processos e reinícios, desde que usem o mesmo banco e segredo. Contam tentativas admitidas, inclusive sucessos, para proteger também o trabalho caro de credenciais válidas; não há reset por sucesso nem bloqueio permanente. A janela fixa começa na primeira tentativa. Requisições já bloqueadas não prolongam o prazo.
+
+| Dimensão                                                 | Limite inicial | Janela     |
+| -------------------------------------------------------- | -------------- | ---------- |
+| Login por IP                                             | 120            | 15 minutos |
+| Login por identificador normalizado                      | 10             | 15 minutos |
+| Login por UUID de conta, comum aos aliases               | 10             | 15 minutos |
+| Cadastro por IP                                          | 60             | 1 hora     |
+| Cadastro por e-mail e por usuário, independentemente     | 5              | 1 hora     |
+| Refresh por IP                                           | 600            | 1 minuto   |
+| Refresh por sessão, comum às rotações                    | 120            | 1 minuto   |
+| Logout, me e demais caminhos de auth, por IP e categoria | 300            | 1 minuto   |
+
+IP é verificado antes da consulta de identidade/hash; os limites por identificador/conta/cadastro são anteriores ao hash, e refresh por sessão antecede rotação. Contas ausentes também possuem contador de identificador. `BUNKERCODE_AUTH_LOGIN_IP_LIMIT` e `BUNKERCODE_AUTH_REGISTER_IP_LIMIT` permitem ajustar os limites de IP entre 1 e 10000, mantendo os demais independentes. Os valores padrão dão mais espaço a NATs; ainda podem exigir ajuste conforme uso real.
+
+`AuthThrottle` armazena somente chave HMAC-SHA256 com domínio próprio, contagem e expiração. Uma transação curta com advisory lock atualiza as dimensões atomicamente; hashes ficam fora desse lock. O tempo vem do epoch do banco, sem depender do fuso do driver/relógio do host. Há teto de 20 mil chaves, limpeza de até 100 expiradas por operação e falha fechada em capacidade esgotada. Não existe job ou infraestrutura adicional. Espera de transação/lock é limitada; contenção controlada responde 429. O lock global é uma escolha simples para este volume: precisa de medição/revisão antes de carga alta, não é promessa de escala ilimitada.
+
+Em cada processo, no máximo 32 verificações de contadores e 16 fluxos de login/cadastro ficam em andamento, sem fila própria. A vaga de fluxo só é liberada quando a operação termina, mesmo com desconexão HTTP. Mantém-se o teto de quatro hashes scrypt simultâneos, sem reduzir N=131072/r=8/p=1; a vaga do hash permanece ocupada até o cálculo terminar. Corpos auth são limitados a 4 KiB. Sobrecarga retorna erro controlado e permite recuperação. Não há garantia de memória do processo contra todo tráfego de rede: limites de conexões, TLS e volume bruto continuam responsabilidades do proxy/host.
+
+Por padrão Express ignora X-Forwarded-For. `BUNKERCODE_TRUSTED_PROXIES` aceita apenas IPs/CIDRs explícitos separados por vírgula, sem contagem de saltos/wildcards. Configure somente proxies administrados que limpam cabeçalhos externos e impeça acesso direto que os contorne. Express percorre a cadeia a partir do socket até o primeiro endereço não confiável; um prefixo forjado antes desse endereço não muda o cliente. Vite local pode compartilhar o loopback observado; não habilite confiança global para corrigir isso. Valide a topologia HTTPS real antes da publicação.
+
+Limites por conta podem ser usados para causar indisponibilidade temporária à vítima; a janela finita evita lockout permanente. Limites correlacionados entre aliases podem revelar correlação de identificadores sob ataque ativo, apesar de mensagens genéricas e trabalho de hash equivalente. Cadastro mantém EMAIL_TAKEN/USERNAME_TAKEN por decisão de UX e portanto permite enumeração limitada; quotas por IP/alvo reduzem automação sem eliminá-la. Não há garantia estatística de indistinguibilidade temporal, proteção contra botnet ilimitada ou conformidade integral de segurança. Nenhum payload, senha ou token foi adicionado a logs; contadores genéricos/Retry-After evitam logs de alto volume controlados por atacante.
 
 Curso e lição não entram no bundle; filesystem não é servido estaticamente. Anônimos e estudantes recebem somente Markdown/exercícios publicados. A seleção filtra também catálogo, contagem, módulos e navegação anterior/próxima; conteúdo omitido retorna 404 em GET/HEAD. Em authoring, ADMIN pode ler o acervo editorial integral. No perfil public, nem ADMIN amplia o snapshot. Esconder controles React é conveniência, e o guard continua obrigatório. Conteúdo legitimamente exibido pode ser copiado; não há DRM, pagamento ou licenciamento implementado.
 
 Dados locais existentes de prática, atividade, retomada e Studio passam a usar namespace por UUID para evitar exibição cruzada na UI. Dados antigos sem namespace permanecem intactos, sem importação automática. Isso não é sincronização nem uma barreira contra quem controla o navegador/DevTools. Temas e dimensões continuam preferências locais do navegador; não foram transformados em preferências de conta. Não há limpeza de bancos históricos.
 
-Antes de publicação: validar HTTPS/proxy/cookies em host real, provisionar PostgreSQL com mínimo privilégio, backups/restauração, política de retenção de sessões e operação de segredos; revisar MFA obrigatório para administradores, recuperação de conta, confirmação de e-mail e limitação distribuída. Sem confirmação de e-mail, o cadastro não comprova propriedade do endereço. Studio permanece local; autenticação não autoriza sua exposição remota nem altera o isolamento do runner. Não se afirma prontidão para produção.
+Antes de publicação: validar HTTPS/proxy/cookies em host real, provisionar PostgreSQL com mínimo privilégio, backups/restauração, política de retenção de sessões e operação de segredos; revisar MFA obrigatório para administradores, recuperação de conta, confirmação de e-mail e limites de borda para volume alto. Sem confirmação de e-mail, o cadastro não comprova propriedade do endereço. Studio permanece local; autenticação não autoriza sua exposição remota nem altera o isolamento do runner. Não se afirma prontidão para produção.
 
 ## Validação e Sprint 2
 

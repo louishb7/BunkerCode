@@ -4,11 +4,13 @@ export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 interface LoginCredentials {
-  email: string;
+  identifier: string;
   password: string;
 }
-interface RegistrationCredentials extends LoginCredentials {
+interface RegistrationCredentials {
+  email: string;
   username: string;
+  password: string;
 }
 export function credentials(
   body: unknown,
@@ -25,19 +27,40 @@ export function credentials(
   const allowed =
     action === "register"
       ? ["email", "username", "password"]
-      : ["email", "password"];
+      : ["identifier", "email", "password"];
   if (
     Object.keys(value).some((key) => !allowed.includes(key)) ||
-    !Object.hasOwn(value, "email") ||
+    (action === "register" && !Object.hasOwn(value, "email")) ||
     !Object.hasOwn(value, "password") ||
-    typeof value.email !== "string" ||
+    (action === "register" && typeof value.email !== "string") ||
     typeof value.password !== "string"
   )
     throw new BadRequestException("Dados de autenticação inválidos.");
-  const email = normalizeEmail(value.email);
+  if (action === "login") {
+    const canonical = Object.hasOwn(value, "identifier");
+    const legacy = Object.hasOwn(value, "email");
+    const input = canonical ? value.identifier : value.email;
+    if (canonical === legacy || typeof input !== "string")
+      throw new BadRequestException("Dados de autenticação inválidos.");
+    // Do not expose whether an identifier is well-formed or registered. Bound work,
+    // then let the same verifier handle both email and username, including misses.
+    if (
+      !input.trim() ||
+      input.length > 254 ||
+      !value.password ||
+      [...value.password].length > 128 ||
+      Buffer.byteLength(value.password) > 512
+    )
+      throw new BadRequestException(
+        "Não foi possível entrar. Confira seus dados.",
+      );
+    return { identifier: normalizeEmail(input), password: value.password };
+  }
+  const emailInput = value.email as string;
+  const email = normalizeEmail(emailInput);
   const [local = "", domain = ""] = email.split("@");
   if (
-    value.email.length > 254 ||
+    emailInput.length > 254 ||
     email.length > 254 ||
     !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(
       email,
@@ -63,7 +86,7 @@ export function credentials(
       code: "INVALID_PASSWORD",
       message: "Use uma senha de até 128 caracteres.",
     });
-  if (action === "register") {
+  {
     if (!Object.hasOwn(value, "username") || typeof value.username !== "string")
       throw new BadRequestException({
         statusCode: 400,
@@ -90,7 +113,6 @@ export function credentials(
       });
     return { email, username, password: value.password };
   }
-  return { email, password: value.password };
 }
 let activeHashes = 0;
 async function derive(password: string, salt: string): Promise<Buffer> {

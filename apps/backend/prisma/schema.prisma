@@ -35,3 +35,12 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
 }
+
+// Shared, expiring authentication counters; keys are keyed digests, not identifiers.
+model AuthThrottle {
+  key       String   @id @db.Char(64)
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

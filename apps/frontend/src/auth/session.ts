@@ -105,6 +105,7 @@ export class AuthError extends Error {
     message: string,
     readonly status: number,
     readonly field?: "email" | "username" | "password",
+    readonly retryAfter?: number,
   ) {
     super(message);
   }
@@ -123,7 +124,7 @@ export async function signIn(
       action,
       action === "register"
         ? { email, username, password }
-        : { email, password },
+        : { identifier: email, password },
     );
     if (
       !response.ok &&
@@ -162,6 +163,19 @@ export async function signIn(
         throw new AuthError(failure.message, response.status, failure.field);
       }
     }
+    if (response.status === 429) {
+      const seconds = Number(response.headers.get("Retry-After"));
+      const retryAfter =
+        Number.isFinite(seconds) && seconds > 0
+          ? Math.min(Math.ceil(seconds), 3600)
+          : 60;
+      throw new AuthError(
+        `Muitas tentativas. Tente novamente em ${retryAfter} segundos.`,
+        429,
+        undefined,
+        retryAfter,
+      );
+    }
     if (!response.ok)
       throw new AuthError(
         response.status === 409
@@ -171,9 +185,9 @@ export async function signIn(
             : response.status === 400
               ? action === "register"
                 ? "Confira os dados do cadastro."
-                : "Não foi possível entrar. Confira e-mail e senha."
+                : "Não foi possível entrar. Confira seus dados."
               : response.status === 401
-                ? "Não foi possível entrar. Confira e-mail e senha."
+                ? "Não foi possível entrar. Confira seus dados."
                 : "Serviço indisponível. Tente novamente.",
         response.status,
       );

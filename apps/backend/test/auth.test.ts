@@ -1,8 +1,9 @@
+import { request as httpRequest } from "node:http";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { randomBytes, randomUUID, createHash } from "node:crypto";
+import { randomBytes, randomUUID, createHash, createHmac } from "node:crypto";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -248,6 +249,34 @@ test(
           assert.equal(invalid.status, 401);
           assert.equal(unknown.status, 401);
           assert.deepEqual(await invalid.json(), await unknown.json());
+          for (const identifier of [
+            email.toUpperCase(),
+            username,
+            " " + username.toUpperCase() + " ",
+          ]) {
+            const response = await post("/auth/login", {
+              identifier,
+              password,
+            });
+            assert.equal(response.status, 200);
+            const value = (await response.json()) as Result;
+            assert.equal(value.user.id, a.user.id);
+            assert.equal(
+              (await post("/auth/refresh", {}, { Cookie: cookie(response) }))
+                .status,
+              200,
+            );
+          }
+          const absent = await post("/auth/login", {
+            identifier: `missing_${randomUUID().slice(0, 8)}`,
+            password,
+          });
+          assert.equal(absent.status, 401);
+          assert.deepEqual(await absent.json(), {
+            statusCode: 401,
+            message: "Não foi possível entrar. Confira seus dados.",
+            error: "Unauthorized",
+          });
           const login = await post("/auth/login", { email, password });
           assert.equal(login.status, 200);
           const payload = decodeJwt(a.accessToken);
@@ -676,6 +705,19 @@ test("strict credentials and production configuration fail closed", () => {
     ).password,
     "legacy-without-digits",
   );
+  for (const body of [
+    { identifier: "valid_user", email: valid.email, password: valid.password },
+    { identifier: "valid_user", password: valid.password, role: "ADMIN" },
+    { identifier: 123, password: valid.password },
+    { password: valid.password },
+    { identifier: "x".repeat(255), password: valid.password },
+  ])
+    assert.throws(() => credentials(body, "login"));
+  assert.equal(
+    credentials({ identifier: "  Mixed_User  ", password: "legacy" }, "login")
+      .identifier,
+    "mixed_user",
+  );
   const original = process.env.NODE_ENV,
     origins = process.env.BUNKERCODE_AUTH_ORIGINS,
     secret = process.env.BUNKERCODE_JWT_SECRET;
@@ -790,4 +832,496 @@ test("password hashing holds its concurrency budget until computation completes"
     assert.equal(error.getStatus(), 429);
   }
   assert.match(await hashPassword(randomUUID()), /^scrypt\$/);
+});
+
+test(
+  "shared authentication defenses use real HTTP and PostgreSQL across two instances",
+  { timeout: 90000 },
+  async (t) => {
+    const keys = [
+      "BUNKERCODE_TRUSTED_PROXIES",
+      "BUNKERCODE_AUTH_LOGIN_IP_LIMIT",
+      "BUNKERCODE_AUTH_REGISTER_IP_LIMIT",
+    ] as const;
+    const saved = keys.map((key) => process.env[key]);
+    process.env.BUNKERCODE_TRUSTED_PROXIES = "127.0.0.1/32";
+    process.env.BUNKERCODE_AUTH_LOGIN_IP_LIMIT = "4";
+    process.env.BUNKERCODE_AUTH_REGISTER_IP_LIMIT = "4";
+    // Unique client range per run; retained limiter data from earlier tests stays intact.
+    const network = `198.18.${randomBytes(1)[0]}`;
+    const directIp = `127.1.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0]! % 253)}`;
+    const apps = [await createApplication(true), await createApplication(true)];
+    const db = apps[0]!.get(PrismaService);
+    const secret = authConfig().secret;
+    const digest = (key: string) =>
+      createHmac("sha256", secret)
+        .update("bunkercode-auth-limit-v1\0")
+        .update(key)
+        .digest("hex");
+    const expire = async (values: string[]) =>
+      db.authThrottle.updateMany({
+        where: { key: { in: values.map(digest) } },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+    const uid = randomUUID().replaceAll("-", "").slice(0, 12);
+    const email = `security-${uid}@example.test`,
+      username = `security_${uid}`,
+      password = "abc123";
+    const storedHash = await hashPassword(password);
+    const user = await db.user.create({
+      data: { email, username, passwordHash: storedHash },
+    });
+    try {
+      await Promise.all(apps.map((app) => app.listen(0, "127.0.0.1")));
+      const bases = await Promise.all(apps.map((app) => app.getUrl()));
+      const post = (
+        index: number,
+        path: string,
+        body: unknown,
+        ip: string,
+        extra: Record<string, string> = {},
+      ) =>
+        fetch(bases[index]! + path, {
+          method: "POST",
+          headers: { ...headers, "X-Forwarded-For": ip, ...extra },
+          body: JSON.stringify(body),
+        });
+      await t.test(
+        "account quota survives aliases, independent trusted IPs and backend instances; cooldown recovers",
+        async () => {
+          for (let i = 0; i < 10; i++) {
+            const response = await post(
+              i % 2,
+              "/auth/login/",
+              {
+                identifier:
+                  i % 2 ? username.toUpperCase() : email.toUpperCase(),
+                password: "wrong123",
+              },
+              `${network}.${10 + i}`,
+            );
+            assert.equal(response.status, 401);
+            assert.equal(
+              ((await response.json()) as { message: string }).message,
+              "Não foi possível entrar. Confira seus dados.",
+            );
+          }
+          for (const identifier of [email, username]) {
+            const response = await post(
+              1,
+              "/auth/login",
+              { identifier, password },
+              `${network}.30`,
+            );
+            assert.equal(response.status, 429);
+            assert.ok(Number(response.headers.get("retry-after")) > 0);
+            assert.deepEqual(await response.json(), {
+              statusCode: 429,
+              message: "Muitas tentativas. Aguarde antes de tentar novamente.",
+            });
+          }
+          const require = createRequire(__filename);
+          const child = execFileSync(
+            process.execPath,
+            [
+              require.resolve("tsx/cli"),
+              "-e",
+              `
+            import {PrismaService} from "./src/auth/prisma.service";
+            import {AuthService} from "./src/auth/auth.service";
+            const db=new PrismaService();
+            new AuthService(db).login(${JSON.stringify({ identifier: username, password })})
+              .then(()=>process.stdout.write("200"),error=>process.stdout.write(String(error.status)))
+              .finally(()=>db.$disconnect());
+          `,
+            ],
+            {
+              cwd: join(__dirname, ".."),
+              env: process.env,
+              encoding: "utf8",
+              timeout: 15000,
+            },
+          );
+          assert.equal(
+            child,
+            "429",
+            "a separate process must retain the shared account quota",
+          );
+          await expire([
+            `login:account:${user.id}`,
+            `login:identifier:${email}`,
+            `login:identifier:${username}`,
+          ]);
+          const response = await post(
+            1,
+            "/auth/login",
+            { identifier: username, password },
+            `${network}.31`,
+          );
+          assert.equal(response.status, 200);
+          assert.equal(((await response.json()) as Result).user.id, user.id);
+          assert.equal(
+            (await db.user.findUniqueOrThrow({ where: { id: user.id } }))
+              .username,
+            username,
+          );
+        },
+      );
+      await t.test(
+        "unknown identifiers are independently bounded across IPs and both instances",
+        async () => {
+          const identifier = `unknown_${uid}`;
+          for (let i = 0; i < 10; i++)
+            assert.equal(
+              (
+                await post(
+                  i % 2,
+                  "/auth/login",
+                  { identifier, password },
+                  `${network}.${40 + i}`,
+                )
+              ).status,
+              401,
+            );
+          assert.equal(
+            (
+              await post(
+                1,
+                "/auth/login",
+                { identifier, password },
+                `${network}.51`,
+              )
+            ).status,
+            429,
+          );
+        },
+      );
+      await t.test(
+        "one trusted IP spraying different accounts reaches a shared endpoint limit and recovers",
+        async () => {
+          for (let i = 0; i < 4; i++)
+            assert.equal(
+              (
+                await post(
+                  i % 2,
+                  "/auth/login",
+                  { identifier: `spray_${uid}_${i}`, password },
+                  `${network}.60`,
+                )
+              ).status,
+              401,
+            );
+          const response = await post(
+            1,
+            "/auth/login",
+            { identifier: username, password },
+            `${network}.60`,
+          );
+          assert.equal(response.status, 429);
+          assert.ok(Number(response.headers.get("retry-after")) > 0);
+          assert.equal(
+            (
+              await post(
+                1,
+                "/auth/login",
+                { identifier: username, password },
+                `203.0.113.99, ${network}.60`,
+              )
+            ).status,
+            429,
+            "prepending a forged address cannot bypass the first untrusted client hop",
+          );
+          await expire([`ip:${network}.60:/login`]);
+          assert.equal(
+            (
+              await post(
+                0,
+                "/auth/login",
+                { identifier: email, password },
+                `${network}.60`,
+              )
+            ).status,
+            200,
+          );
+        },
+      );
+      await t.test(
+        "untrusted forwarding headers do not bypass limits",
+        async () => {
+          delete process.env.BUNKERCODE_TRUSTED_PROXIES;
+          const direct = await createApplication(true);
+          try {
+            await direct.listen(0, "127.0.0.1");
+            const target = (await direct.getUrl()) + "/auth/login";
+            const attempt = (forwarded: string) =>
+              new Promise<number>((resolve, reject) => {
+                const request = httpRequest(
+                  target,
+                  {
+                    method: "POST",
+                    localAddress: directIp,
+                    headers: { ...headers, "X-Forwarded-For": forwarded },
+                  },
+                  (response) => {
+                    response.resume();
+                    response.on("end", () => resolve(response.statusCode!));
+                  },
+                );
+                request.on("error", reject);
+                request.end(
+                  JSON.stringify({
+                    identifier: `forged_${uid}_${forwarded}`,
+                    password,
+                  }),
+                );
+              });
+            for (let i = 0; i < 4; i++)
+              assert.equal(await attempt(`203.0.113.${i + 1}`), 401);
+            assert.equal(await attempt("203.0.113.99"), 429);
+          } finally {
+            await direct.close();
+            process.env.BUNKERCODE_TRUSTED_PROXIES = "127.0.0.1/32";
+          }
+        },
+      );
+      await t.test(
+        "registration IP quotas include invalid requests, preserve records and expire",
+        async () => {
+          const before = await db.user.count();
+          for (let i = 0; i < 4; i++)
+            assert.equal(
+              (
+                await post(
+                  i % 2,
+                  "/auth/register",
+                  {
+                    email: `invalid-${uid}-${i}@example.test`,
+                    username: `invalid_${uid}`,
+                    password: "123456",
+                  },
+                  `${network}.70`,
+                )
+              ).status,
+              400,
+            );
+          assert.equal(
+            (await post(1, "/auth/register", {}, `${network}.70`)).status,
+            429,
+          );
+          assert.equal(await db.user.count(), before);
+          await expire([`ip:${network}.70:/register`]);
+          assert.equal(
+            (
+              await post(
+                1,
+                "/auth/register",
+                {
+                  email: `valid-${uid}@example.test`,
+                  username: `valid_${uid}`,
+                  password,
+                },
+                `${network}.70`,
+              )
+            ).status,
+            201,
+          );
+        },
+      );
+      await t.test(
+        "concurrent duplicate registration creates one user and safe conflicts",
+        async () => {
+          const data = {
+            email: `race-${uid}@example.test`,
+            username: `race_${uid}`,
+            password,
+          };
+          const responses = await Promise.all(
+            Array.from({ length: 3 }, (_, i) =>
+              post(i % 2, "/auth/register", data, `${network}.${80 + i}`),
+            ),
+          );
+          assert.deepEqual(
+            responses.map((r) => r.status).sort(),
+            [201, 409, 409],
+          );
+          assert.equal(
+            await db.user.count({ where: { email: data.email } }),
+            1,
+          );
+          for (const response of responses.filter((r) => r.status === 409))
+            assert.equal(
+              ((await response.json()) as { code: string }).code,
+              "USERNAME_TAKEN",
+            );
+        },
+      );
+      await t.test(
+        "repeated registration target cannot evade its quota by changing trusted IP",
+        async () => {
+          const data = {
+            email: `repeat-${uid}@example.test`,
+            username: `repeat_${uid}`,
+            password,
+          };
+          for (let i = 0; i < 5; i++)
+            assert.equal(
+              (
+                await post(
+                  i % 2,
+                  "/auth/register",
+                  data,
+                  `${network}.${90 + i}`,
+                )
+              ).status,
+              i === 0 ? 201 : 409,
+            );
+          assert.equal(
+            (await post(1, "/auth/register", data, `${network}.95`)).status,
+            429,
+          );
+        },
+      );
+      await t.test(
+        "refresh is session-limited even with changing tokens, IPs and instances",
+        async () => {
+          const response = await post(
+            0,
+            "/auth/login",
+            { identifier: email, password },
+            `${network}.100`,
+          );
+          assert.equal(response.status, 200);
+          const result = (await response.json()) as Result;
+          const sid = decodeJwt(result.accessToken).sid as string;
+          await db.authThrottle.create({
+            data: {
+              key: digest(`refresh:session:${sid}`),
+              count: 120,
+              expiresAt: new Date(Date.now() + 60000),
+            },
+          });
+          assert.equal(
+            (
+              await post(1, "/auth/refresh", {}, `${network}.101`, {
+                Cookie: cookie(response),
+              })
+            ).status,
+            429,
+          );
+          await expire([`refresh:session:${sid}`]);
+          assert.equal(
+            (
+              await post(1, "/auth/refresh", {}, `${network}.102`, {
+                Cookie: cookie(response),
+              })
+            ).status,
+            200,
+          );
+        },
+      );
+      await t.test(
+        "oversized and malformed payloads fail before identity queries or expensive work",
+        async () => {
+          assert.equal(
+            (
+              await post(
+                0,
+                "/auth/login",
+                { identifier: email, password: "x".repeat(5000) },
+                `${network}.110`,
+              )
+            ).status,
+            413,
+          );
+          for (const body of [
+            { identifier: username, email, password },
+            { identifier: username, password, role: "ADMIN" },
+          ])
+            assert.equal(
+              (await post(0, "/auth/login", body, `${network}.110`)).status,
+              400,
+            );
+        },
+      );
+      await t.test(
+        "bounded failed-login concurrency returns controlled responses and subsequently recovers",
+        async () => {
+          const responses = await Promise.all(
+            Array.from({ length: 12 }, (_, i) =>
+              post(
+                i % 2,
+                "/auth/login",
+                { identifier: `load_${uid}_${i}`, password: "wrong123" },
+                `${network}.${120 + i}`,
+              ),
+            ),
+          );
+          assert.ok(responses.some((response) => response.status === 429));
+          assert.ok(
+            responses.every((response) => [401, 429].includes(response.status)),
+          );
+          assert.equal(
+            (
+              await post(
+                0,
+                "/auth/login",
+                { identifier: username, password },
+                `${network}.140`,
+              )
+            ).status,
+            200,
+          );
+          assert.match(
+            (await db.user.findUniqueOrThrow({ where: { id: user.id } }))
+              .passwordHash,
+            /^scrypt\$131072\$8\$1\$/,
+          );
+        },
+      );
+    } finally {
+      await Promise.all(apps.map((app) => app.close()));
+      keys.forEach((key, i) => {
+        const value = saved[i];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      });
+    }
+  },
+);
+
+test("proxy trust and quota configuration reject broad or malformed values", () => {
+  const keys = [
+    "BUNKERCODE_TRUSTED_PROXIES",
+    "BUNKERCODE_AUTH_LOGIN_IP_LIMIT",
+    "BUNKERCODE_AUTH_REGISTER_IP_LIMIT",
+  ] as const;
+  const saved = keys.map((key) => process.env[key]);
+  try {
+    for (const value of [
+      "true",
+      "1",
+      "*",
+      "0.0.0.0/0",
+      "::/0",
+      "127.0.0.1/33",
+      "::1/129",
+      "127.0.0.1/",
+      "127.0.0.1/32/extra",
+    ]) {
+      process.env.BUNKERCODE_TRUSTED_PROXIES = value;
+      assert.throws(() => authConfig());
+    }
+    process.env.BUNKERCODE_TRUSTED_PROXIES = "127.0.0.1/32,::1/128";
+    assert.deepEqual(authConfig().trustedProxies, ["127.0.0.1/32", "::1/128"]);
+    for (const value of ["0", "-1", "1.5", "10001", ""]) {
+      process.env.BUNKERCODE_AUTH_LOGIN_IP_LIMIT = value;
+      assert.throws(() => authConfig());
+    }
+  } finally {
+    keys.forEach((key, i) => {
+      const value = saved[i];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
+  }
 });
