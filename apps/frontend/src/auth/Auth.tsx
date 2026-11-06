@@ -132,8 +132,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const [visible, setVisible] = useState(false);
   const [passwordValue, setPasswordValue] = useState("");
   const passwordRequirements = [
-    { label: "Pelo menos 6 caracteres", met: passwordValue.length >= 6 },
-    { label: "Pelo menos 1 número", met: /[0-9]/.test(passwordValue) },
+    { label: "Pelo menos 15 caracteres", met: [...passwordValue].length >= 15 },
   ];
   const feedback = useRef<HTMLParagraphElement>(null);
   const requested =
@@ -157,9 +156,9 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     if (!email || emailInput.validity.typeMismatch || email.length > 254)
       errors.email = "Informe um e-mail válido.";
     if (!password) errors.password = "Informe sua senha.";
-    else if (register && (password.length < 6 || !/[0-9]/.test(password)))
-      errors.password = "Use pelo menos 6 caracteres e 1 número na senha.";
-    else if (password.length > 128)
+    else if (register && [...password].length < 15)
+      errors.password = "Use pelo menos 15 caracteres na senha.";
+    else if ([...password].length > 128)
       errors.password = "Use até 128 caracteres na senha.";
     setFieldErrors(errors);
     setError("");
@@ -181,6 +180,13 @@ export function AuthPage({ register = false }: { register?: boolean }) {
           email: failure.message,
         });
         emailInput.focus();
+      } else if (
+        failure instanceof AuthError &&
+        register &&
+        failure.field === "password"
+      ) {
+        setFieldErrors({ password: failure.message });
+        (form.elements.namedItem("password") as HTMLInputElement).focus();
       } else {
         setError(
           failure instanceof AuthError
@@ -254,8 +260,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   name="password"
                   type={visible ? "text" : "password"}
                   required
-                  minLength={register ? 6 : undefined}
-                  maxLength={128}
                   value={passwordValue}
                   onChange={(event) => {
                     setPasswordValue(event.target.value);
@@ -270,6 +274,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   aria-describedby={
                     [
                       register ? "password-requirements" : "",
+                      register ? "password-guidance" : "",
                       fieldErrors.password ? "password-error" : "",
                     ]
                       .filter(Boolean)
@@ -312,6 +317,13 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                     </li>
                   ))}
                 </ul>
+              )}
+              {register && (
+                <p id="password-guidance" className="auth-password-guidance">
+                  Prefira uma frase única. Não é obrigatório usar números ou
+                  símbolos. Senhas comuns ou presentes na lista de vazamentos
+                  são recusadas ao criar a conta.
+                </p>
               )}
               {fieldErrors.password && (
                 <p id="password-error" className="auth-error" role="alert">

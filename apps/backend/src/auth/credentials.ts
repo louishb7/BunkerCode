@@ -1,5 +1,6 @@
 import { BadRequestException, HttpException } from "@nestjs/common";
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { validateRegistrationPassword } from "./password-policy";
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -33,19 +34,14 @@ export function credentials(
     local.includes("..") ||
     domain.split(".").some((label) => label.length > 63) ||
     value.password.length === 0 ||
-    value.password.length > 128 ||
+    [...value.password].length > 128 ||
     Buffer.byteLength(value.password) > 512
   )
     throw new BadRequestException(
       "Use e-mail válido e senha de até 128 caracteres.",
     );
-  if (
-    action === "register" &&
-    (value.password.length < 6 || !/[0-9]/.test(value.password))
-  )
-    throw new BadRequestException(
-      "Use pelo menos 6 caracteres e 1 número na senha.",
-    );
+  if (action === "register")
+    validateRegistrationPassword(value.password, email);
   return { email, password: value.password };
 }
 let activeHashes = 0;

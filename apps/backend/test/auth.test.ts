@@ -65,7 +65,7 @@ test(
     await app.listen(0, "127.0.0.1");
     const base = await app.getUrl();
     const email = `student-${randomUUID()}@example.test`,
-      password = "abcde1";
+      password = "vento cobre lua";
     const post = (
       path: string,
       body: unknown = {},
@@ -85,12 +85,16 @@ test(
     let a: Result, b: Result, firstCookie: string, currentCookie: string;
     try {
       await t.test(
-        "registration enforces both password requirements and login preserves legacy passwords",
+        "registration rejects short, breached and contextual passwords while login preserves legacy passwords",
         async () => {
           for (const invalid of [
-            "abcd1",
-            "abcdef",
-            "long-password-without-digits",
+            "123456",
+            "abcdefghijklmno".slice(0, 14),
+            "😀".repeat(14),
+            "123456789012345",
+            "passwordpassword",
+            "PASSWORDPASSWORD",
+            "bunkercode123456789",
           ])
             assert.equal(
               (
@@ -102,7 +106,7 @@ test(
               400,
             );
           const legacyEmail = `legacy-${randomUUID()}@example.test`;
-          const legacyPassword = "legacy-password-without-digits";
+          const legacyPassword = "abcde1";
           await db.user.create({
             data: {
               email: legacyEmail,
@@ -582,26 +586,41 @@ test("strict credentials and production configuration fail closed", () => {
     [],
     {},
     { email: "bad", password: "short" },
-    { email: "x..y@example.test", password: "abcde1" },
-    { email: ".x@example.test", password: "abcde1" },
-    { email: "x@" + "a".repeat(64) + ".test", password: "abcde1" },
+    { email: "x..y@example.test", password: "vento cobre lua" },
+    { email: ".x@example.test", password: "vento cobre lua" },
+    { email: "x@" + "a".repeat(64) + ".test", password: "vento cobre lua" },
     { email: "x@y.test", password: "a".repeat(128) + "1" },
     { email: "x@y.test", password: "abcd1" },
     { email: "x@y.test", password: "abcdef" },
-    { email: "x@y.test", password: "abcde1", role: "ADMIN" },
+    { email: "x@y.test", password: "123456" },
+    { email: "x@y.test", password: "123456789012345" },
+    { email: "x@y.test", password: "passwordpassword" },
+    { email: "x@y.test", password: "correct horse battery staple" },
+    { email: "x@y.test", password: "😀".repeat(14) },
+    { email: "x@y.test", password: "😀".repeat(129) },
+    { email: "nome-de-usuario@example.test", password: "nome-de-usuario" },
+    {
+      email: "nome-de-usuario@example.test",
+      password: "nome-de-usuario@example.test",
+    },
+    { email: "x@y.test", password: "vento cobre lua", role: "ADMIN" },
   ])
     assert.throws(() => credentials(body));
-  for (const password of ["abcde1", "123456", "a".repeat(127) + "1"])
+  for (const password of [
+    "vento cobre lua",
+    "😀".repeat(15),
+    Array.from({ length: 128 }, (_, index) =>
+      String.fromCodePoint(0x410 + index),
+    ).join(""),
+    "frase passwordpassword com floresta",
+  ])
     assert.equal(
       credentials({ email: "x@y.test", password }).password,
       password,
     );
   assert.equal(
-    credentials(
-      { email: "x@y.test", password: "legacy-without-digits" },
-      "login",
-    ).password,
-    "legacy-without-digits",
+    credentials({ email: "x@y.test", password: "abcde1" }, "login").password,
+    "abcde1",
   );
   const original = process.env.NODE_ENV,
     origins = process.env.BUNKERCODE_AUTH_ORIGINS,

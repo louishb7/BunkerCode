@@ -104,6 +104,7 @@ export class AuthError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly field?: "password",
   ) {
     super(message);
   }
@@ -118,6 +119,23 @@ export async function signIn(
   return sessionLock(async () => {
     generation++;
     const response = await post(action, { email, password });
+    if (!response.ok && action === "register" && response.status === 400) {
+      const value: unknown = await response.json().catch(() => null);
+      if (value && typeof value === "object" && "code" in value) {
+        if (value.code === "PASSWORD_TOO_SHORT")
+          throw new AuthError(
+            "Use pelo menos 15 caracteres na senha. Você pode usar uma frase, sem precisar de números ou símbolos.",
+            400,
+            "password",
+          );
+        if (value.code === "PASSWORD_BLOCKED")
+          throw new AuthError(
+            "Esta senha é comum, previsível ou consta da lista de senhas vazadas. Escolha uma frase única e mais longa; evite pequenas variações da mesma senha.",
+            400,
+            "password",
+          );
+      }
+    }
     if (!response.ok)
       throw new AuthError(
         response.status === 409
@@ -126,7 +144,7 @@ export async function signIn(
             ? "Muitas tentativas. Aguarde antes de tentar novamente."
             : response.status === 400
               ? action === "register"
-                ? "Confira o e-mail e use pelo menos 6 caracteres e 1 número na senha."
+                ? "Confira o e-mail e use uma senha única com pelo menos 15 caracteres."
                 : "Não foi possível entrar. Confira e-mail e senha."
               : response.status === 401
                 ? "Não foi possível entrar. Confira e-mail e senha."
