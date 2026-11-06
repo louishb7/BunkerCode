@@ -90,7 +90,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.siteTheme = theme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "light" ? "#f4f4f5" : "#111417");
+      ?.setAttribute("content", theme === "light" ? "#f4f4f5" : "#202328");
     persist(() => localStorage.setItem(siteKey, theme), setSiteError);
   }
   function setTone(value: number | null) {

@@ -233,7 +233,13 @@
   background-color: color-mix(in srgb, var(--accent) 3%, transparent);
 }
 .home-courses {
+  margin-top: 0;
+}
+.home-study-overview:not(:empty) + .home-courses {
   margin-top: 28px;
+}
+.home-register {
+  margin-top: 16px;
 }
 .collection-heading {
   display: flex;
@@ -389,35 +395,4 @@
 /* Course identity belongs to the logo; Light cards share one neutral surface. */
 :root[data-site-theme="light"] .course-card {
   background: var(--color-surface);
-}
-
-/* Public Home introduction shares the discovery column. */
-.visitor-introduction {
-  padding: 24px 0 40px;
-  max-width: 720px;
-}
-.visitor-introduction h1 {
-  color: var(--color-ink);
-  font-size: clamp(30px, 3.6vw, 46px);
-  line-height: 1.16;
-  font-weight: 650;
-  letter-spacing: -1.5px;
-  margin: 0 0 20px;
-}
-.visitor-introduction > p {
-  max-width: 55ch;
-  line-height: 1.7;
-  color: var(--color-subtle);
-}
-.visitor-actions {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin: 26px 0 12px;
-}
-.visitor-actions > a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
 }

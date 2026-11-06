@@ -6,16 +6,24 @@
 @import "./courses/workspace.css";
 @import "./courses/catalog.css";
 @theme {
-  --color-bunker: #111417;
-  --color-surface: #1a1e22;
-  --color-raised: #22272d;
-  --color-line: #343b42;
+  --color-bunker: #202328;
+  --color-surface: #2b3036;
+  --color-raised: #353b43;
+  --color-line: #4b515b;
   --color-ink: #f2f4f6;
   --color-subtle: #c2cad2;
   --color-gold: #e8bd68;
 }
 /* Site colors; reader tones and code surfaces own their local palettes. */
 :root {
+  --header-background: #272b30;
+  --brand-text: var(--color-ink);
+  --brand-orange: #eaaa70;
+  --panel-background: var(--color-surface);
+  --popover-background: var(--color-raised);
+  --sidebar-background: var(--color-surface);
+  --surface-hover: var(--color-raised);
+  --surface-active: #3d444e;
   --color-text: #e9edf1;
   --status-success: #9dceaa;
   --status-error: #efaaaa;
@@ -25,6 +33,8 @@
   --primary-hover: #f1cd87;
 }
 :root[data-site-theme="light"] {
+  --header-background: #f4f4f5;
+  --brand-orange: #b45412;
   --color-bunker: #f4f4f5;
   --color-surface: #ffffff;
   --color-raised: #e9e9ec;
@@ -61,8 +71,8 @@
   :root {
     --accent: #e8bd68;
     --text-muted: var(--color-subtle);
-    --control-background: #1b2224;
-    --control-border: #4e5655;
+    --control-background: var(--color-surface);
+    --control-border: #707985;
     --control-radius: 6px;
     --reading-width: 750px;
     --reading-heading-gap: 38px;
@@ -234,11 +244,12 @@ h1[tabindex="-1"]:focus {
   border-color: var(--control-border);
 }
 
-.brand-wordmark .text-gold {
-  color: #8c631d;
+.brand-wordmark {
+  color: var(--brand-text);
+  white-space: nowrap;
 }
-:root[data-site-theme="bunkercode"] .brand-wordmark .text-gold {
-  color: #e8bd68;
+.brand-code {
+  color: var(--brand-orange);
 }
 
 :root[data-site-theme="light"] input::placeholder,

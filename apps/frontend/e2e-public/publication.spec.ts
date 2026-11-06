@@ -423,11 +423,9 @@ anonymousTest(
     });
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "Aprenda programação",
+      "Início",
     );
-    await page
-      .getByRole("link", { name: "Explorar cursos", exact: true })
-      .click();
+    await page.getByRole("link", { name: /^Explorar cursos/ }).click();
     await expect(
       page.getByRole("heading", { name: "Cursos", exact: true }),
     ).toBeVisible();

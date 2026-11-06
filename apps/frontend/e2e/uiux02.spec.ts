@@ -248,7 +248,7 @@ test("invalid global preferences use the historical default without deleting dat
     await page.reload();
     await expect(page.locator("html")).toHaveCSS(
       "background-color",
-      "rgb(17, 20, 23)",
+      "rgb(32, 35, 40)",
     );
     expect(
       await page.evaluate(() => localStorage.getItem("bunkercode:site-theme")),

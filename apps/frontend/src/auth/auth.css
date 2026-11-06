@@ -26,7 +26,6 @@
   height: 88px;
 }
 .auth-emblem .brand-wordmark {
-  color: var(--color-ink);
   font-size: clamp(26px, 3vw, 36px);
   font-weight: 650;
   letter-spacing: -1px;

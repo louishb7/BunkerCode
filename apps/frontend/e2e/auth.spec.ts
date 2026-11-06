@@ -31,16 +31,12 @@ test("anonymous discovery, published reading and voluntary login preserve contex
     if (r.url().includes("/api/practice/")) privateRequests.push(r.url());
   });
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Aprenda programação",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Início");
   await page.screenshot({
     path: info.outputPath("visitor-home-light.png"),
     fullPage: true,
   });
-  await page
-    .getByRole("link", { name: "Explorar cursos", exact: true })
-    .click();
+  await page.getByRole("link", { name: /^Explorar cursos/ }).click();
   await expect(
     page.getByRole("heading", { name: "Cursos", exact: true }),
   ).toBeVisible();
@@ -130,7 +126,7 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   await expect(page.locator("#password-error")).toContainText("12 a 128");
   await page.setViewportSize({ width: 1280, height: 960 });
   await page
-    .locator(".site-header")
+    .locator(".auth-switch")
     .getByRole("link", { name: "Entrar", exact: true })
     .click();
   await selectSiteTheme(page, "bunkercode");

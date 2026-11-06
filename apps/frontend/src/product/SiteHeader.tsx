@@ -10,7 +10,7 @@ import {
 import { Link, NavLink, useLocation } from "react-router";
 import { BookOpen } from "lucide-react";
 type HeaderLesson = { course: { id: string; title: string } };
-import { Insignia } from "./Brand";
+import { Insignia, Wordmark } from "./Brand";
 import "./global-layout.css";
 
 const LessonNavigation = createContext<{
@@ -43,7 +43,7 @@ export function SiteHeader() {
   const { pathname } = useLocation();
   const learning = /^\/courses\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
   const editing = /^\/courses\/[^/]+\/lessons\/[^/]+\/edit\/?$/.test(pathname);
-  const auth = pathname === "/login" || pathname === "/register";
+  const auth = /^\/(?:login|register)\/?$/.test(pathname);
   return (
     <header className="site-header border-b border-line bg-bunker">
       <div className="site-header-content mx-auto flex min-h-16 max-w-[1720px] items-center gap-3 px-3 sm:gap-8 sm:px-8">
@@ -54,9 +54,7 @@ export function SiteHeader() {
             className="flex min-h-11 min-w-11 shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-ink no-underline sm:gap-2 sm:text-xl"
           >
             <Insignia />
-            <span className="brand-wordmark">
-              Bunker<span className="text-gold">Code</span>
-            </span>
+            <Wordmark />
           </Link>
         )}
         <nav

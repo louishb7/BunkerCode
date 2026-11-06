@@ -1,3 +1,11 @@
+export function Wordmark() {
+  return (
+    <span className="brand-wordmark">
+      Bunker<span className="brand-code">Code</span>
+    </span>
+  );
+}
+
 export function Insignia({ large = false }: { large?: boolean }) {
   return (
     <span

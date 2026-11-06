@@ -82,26 +82,7 @@ export function HomePage() {
   const firstCourse = courses?.find((course) => course.lessonCount > 0);
   return (
     <Page title="Início" className="product-page dashboard-page">
-      {user ? (
-        <h1 className="sr-only">Início</h1>
-      ) : (
-        <section
-          className="visitor-introduction"
-          aria-labelledby="visitor-title"
-        >
-          <h1 id="visitor-title">Aprenda programação.</h1>
-          <p>
-            Cursos e lições abertas para ler, experimentar e estudar no seu
-            ritmo.
-          </p>
-          <div className="visitor-actions">
-            <Link className="entry-primary" to="/courses">
-              Explorar cursos
-            </Link>
-            <Link to="/register">Criar conta</Link>
-          </div>
-        </section>
-      )}
+      <h1 className="sr-only">Início</h1>
       <div className="home-study-overview">
         {recent ? (
           <ContinueStudy recent={recent} fallback={firstCourse} />
@@ -133,6 +114,11 @@ export function HomePage() {
               <CourseCard key={course.id} course={course} />
             ))}
           </div>
+        )}
+        {!user && courses && courses.length > 0 && (
+          <Link className="collection-link home-register" to="/register">
+            Criar conta
+          </Link>
         )}
       </section>
     </Page>

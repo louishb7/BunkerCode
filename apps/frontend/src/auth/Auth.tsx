@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { Eye, EyeOff, ArrowLeft, Code2 } from "lucide-react";
-import { Insignia } from "../product/Brand";
+import { Insignia, Wordmark } from "../product/Brand";
 import { Page } from "../courses/Page";
 import {
   AuthError,
@@ -72,15 +72,14 @@ export function AccountControl() {
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  if (!user && /^\/(?:login|register)\/?$/.test(location.pathname)) return null;
   if (!user)
     return (
       <Link
         className="account-control"
         to={
-          location.pathname === "/login" || location.pathname === "/register"
-            ? "/login" + location.search
-            : "/login?next=" +
-              encodeURIComponent(location.pathname + location.search)
+          "/login?next=" +
+          encodeURIComponent(location.pathname + location.search)
         }
       >
         Entrar
@@ -195,9 +194,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         >
           <div className="auth-emblem">
             <Insignia large />
-            <span className="brand-wordmark">
-              Bunker<span className="text-gold">Code</span>
-            </span>
+            <Wordmark />
           </div>
           <figure className="auth-code-example">
             <figcaption>

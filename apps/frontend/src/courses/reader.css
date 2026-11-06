@@ -534,9 +534,6 @@
   line-height: 1;
 }
 @media (max-width: 599px) {
-  .site-header-content > a > .brand-wordmark {
-    display: none;
-  }
   .header-global-nav {
     gap: 8px;
     font-size: 12px;

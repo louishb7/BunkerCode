@@ -405,11 +405,11 @@ export async function checkGlobalAppearance(
       await expect(page.locator(ready!).first()).toBeAttached();
       await expect(page.locator("html")).toHaveCSS(
         "background-color",
-        theme === "light" ? "rgb(244, 244, 245)" : "rgb(17, 20, 23)",
+        theme === "light" ? "rgb(244, 244, 245)" : "rgb(32, 35, 40)",
       );
       await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
         "content",
-        theme === "light" ? "#f4f4f5" : "#111417",
+        theme === "light" ? "#f4f4f5" : "#202328",
       );
       const global = page.getByRole("button", {
         name: "Tema do site",
@@ -823,7 +823,31 @@ export async function checkPublicShell(page: Page, info: TestInfo) {
       page
         .locator(".site-header")
         .getByRole("link", { name: "Entrar", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(name === "login" || name === "register" ? 0 : 1);
+    await expect(page.locator(".brand-wordmark")).toHaveText("BunkerCode");
+    await expect(page.locator(".brand-code")).toHaveCSS(
+      "color",
+      "rgb(180, 84, 18)",
+    );
+    await expectRenderedContrast(page.locator(".brand-code"));
+    await expect(page.locator('img[src="/brand/bunker.png"]')).toHaveCount(1);
+    if (name === "home") {
+      await expect(page.locator(".visitor-introduction")).toHaveCount(0);
+      await expect(
+        page.getByRole("link", { name: /^Explorar cursos/ }),
+      ).toHaveCount(1);
+      await expect(
+        page.getByRole("link", { name: "Criar conta", exact: true }),
+      ).toHaveCount(1);
+      expect(
+        (await page.locator(".home-courses").boundingBox())!.y,
+      ).toBeLessThan(160);
+    }
+    if (name === "login" || name === "register")
+      await expect(page.locator(".auth-switch a")).toHaveAttribute(
+        "href",
+        new RegExp(name === "login" ? "^/register\\?next=" : "^/login\\?next="),
+      );
     await expect(
       page.getByRole("button", { name: "Tema do site", exact: true }),
     ).toHaveCount(1);
@@ -857,33 +881,65 @@ export async function checkPublicShell(page: Page, info: TestInfo) {
     path: info.outputPath("home-dark.png"),
     fullPage: true,
   });
-  for (const route of ["/login", "/register"]) {
-    await page.goto(route);
+  for (const [name, route, ready] of routes.filter(([name]) =>
+    ["course", "tactics", "login", "register"].includes(name!),
+  )) {
+    await page.goto(route!);
+    await expect(page.locator(ready!).first()).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute(
       "data-site-theme",
       "bunkercode",
     );
     await expectRenderedContrast(
-      page.locator(".header-global-nav a, .auth-form-area label, .auth-submit"),
+      page.locator(
+        ".header-global-nav a, .brand-code, .auth-form-area label, .auth-submit",
+      ),
     );
+    await expect(page.locator(".brand-code")).toHaveCSS(
+      "color",
+      "rgb(234, 170, 112)",
+    );
+    await expect(page.locator(".site-header")).toHaveCSS(
+      "background-color",
+      "rgb(39, 43, 48)",
+    );
+    if (name === "login" || name === "register") {
+      await expect(page.locator(".site-header .account-control")).toHaveCount(
+        0,
+      );
+      await expect(page.locator(".auth-form-area")).toHaveCSS(
+        "background-color",
+        "rgb(43, 48, 54)",
+      );
+      await expect(page.locator("#auth-email")).toHaveCSS(
+        "background-color",
+        "rgb(32, 35, 40)",
+      );
+    }
     await page.screenshot({
-      path: info.outputPath(`${route.slice(1)}-dark.png`),
+      path: info.outputPath(`${name}-dark.png`),
       fullPage: true,
     });
   }
   await selectSiteTheme(page, "light");
   for (const width of [375, 320, 800]) {
     await page.setViewportSize({ width, height: width === 800 ? 450 : 844 });
-    for (const route of ["/login", "/register"]) {
+    for (const route of ["/", "/login", "/register"]) {
       await page.goto(route);
-      await expect(page.getByLabel("E-mail", { exact: true })).toBeVisible();
+      if (route === "/")
+        await expect(page.locator(".course-card").first()).toBeVisible();
+      else
+        await expect(page.getByLabel("E-mail", { exact: true })).toBeVisible();
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBe(width);
-      await expect(page.locator(".auth-emblem")).toBeVisible();
+      await expect(page.locator(".brand-wordmark")).toBeVisible();
+      await expectRenderedContrast(page.locator(".brand-code"));
       if (width === 375)
         await page.screenshot({
-          path: info.outputPath(`${route.slice(1)}-mobile.png`),
+          path: info.outputPath(
+            `${route === "/" ? "home" : route.slice(1)}-mobile.png`,
+          ),
           fullPage: true,
         });
     }
