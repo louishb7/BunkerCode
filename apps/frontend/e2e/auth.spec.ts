@@ -123,7 +123,9 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   await page.getByLabel("Senha", { exact: true }).fill("short");
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
-  await expect(page.locator("#password-error")).toContainText("12 a 128");
+  await expect(page.locator("#password-error")).toContainText(
+    "6 caracteres e 1 número",
+  );
   await page.setViewportSize({ width: 1280, height: 960 });
   await page
     .locator(".auth-switch")
@@ -147,6 +149,78 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   }
   await page.goto(lesson + "/edit");
   await expect(page).toHaveURL(/\/login\?next=/);
+});
+
+test("registration shows independent password requirements and accepts a six-character password with a digit", async ({
+  page,
+}, info) => {
+  await page.goto("/register");
+  const email = `six-${randomUUID()}@example.test`;
+  const requirements = page.getByRole("list", { name: "Requisitos da senha" });
+  const length = requirements
+    .getByRole("listitem")
+    .filter({ hasText: "Pelo menos 6 caracteres" });
+  const digit = requirements
+    .getByRole("listitem")
+    .filter({ hasText: "Pelo menos 1 número" });
+  const input = page.getByLabel("Senha", { exact: true });
+  await expect(input).toHaveAttribute(
+    "aria-describedby",
+    "password-requirements",
+  );
+  await expect(length).toContainText("Pendente:");
+  await expect(digit).toContainText("Pendente:");
+  await input.fill("1");
+  await expect(length).toContainText("Pendente:");
+  await expect(digit).toContainText("Cumprido:");
+  await input.fill("abcdef");
+  await expect(length).toContainText("Cumprido:");
+  await expect(digit).toContainText("Pendente:");
+  await selectSiteTheme(page, "light");
+  await expectRenderedContrast(requirements.getByRole("listitem"));
+  await page.screenshot({
+    path: info.outputPath("password-requirements-partial-light.png"),
+    fullPage: true,
+  });
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  await expect(input).toBeFocused();
+  await expect(page.locator("#password-error")).toContainText(
+    "6 caracteres e 1 número",
+  );
+  await input.fill("abcde1");
+  await expect(length).toContainText("Cumprido:");
+  await expect(digit).toContainText("Cumprido:");
+  await expect(page.locator("#password-error")).toHaveCount(0);
+  await input.fill("abcd1");
+  await expect(length).toContainText("Pendente:");
+  await expect(digit).toContainText("Cumprido:");
+  await input.fill("abcde1");
+  await selectSiteTheme(page, "bunkercode");
+  await expectRenderedContrast(requirements.getByRole("listitem"));
+  await page.screenshot({
+    path: info.outputPath("password-requirements-complete-dark.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    375,
+  );
+  await page.screenshot({
+    path: info.outputPath("password-requirements-mobile.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await expect(
+    page.getByRole("list", { name: "Requisitos da senha" }),
+  ).toHaveCount(0);
+  await page.getByLabel("Senha", { exact: true }).fill("abcde1");
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
 });
 
 test("student registers, survives reload and concurrent tabs, cannot use Studio, and logout revokes the cookie", async ({

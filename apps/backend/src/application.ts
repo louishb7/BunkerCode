@@ -6,6 +6,7 @@ import { NestFactory } from "@nestjs/core";
 import { json, type NextFunction, type Request, type Response } from "express";
 import { AppModule } from "./app.module";
 import { operationalConfig } from "./operational-profile";
+import { StartupError } from "./startup-error";
 const loopbackHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
 function studioOrigin() {
   const configured =
@@ -24,11 +25,29 @@ function studioOrigin() {
   return configured;
 }
 export async function createApplication(quiet = false) {
-  const config = operationalConfig();
+  let config: ReturnType<typeof operationalConfig>;
+  try {
+    config = operationalConfig();
+  } catch (error) {
+    throw new StartupError(
+      "content/profile configuration",
+      "Check BUNKERCODE_PROFILE (authoring/public), content access and BUNKERCODE_PUBLICATION_FILE. Public mode requires BUNKERCODE_CONTENT_DIR pointing to a valid read-only snapshot; see docs/publication.md.",
+      { cause: error },
+    );
+  }
   const auth = authConfig();
-  const allowedOrigin =
-    config.profile === "authoring" ? studioOrigin() : undefined;
+  let allowedOrigin: string | undefined;
+  try {
+    allowedOrigin = config.profile === "authoring" ? studioOrigin() : undefined;
+  } catch (error) {
+    throw new StartupError(
+      "studio configuration",
+      "BUNKERCODE_STUDIO_ORIGIN must be an exact HTTP loopback origin; default http://127.0.0.1:5173.",
+      { cause: error },
+    );
+  }
   const app = await NestFactory.create(await AppModule.configure(config), {
+    abortOnError: false,
     logger: quiet ? false : ["log", "warn"],
     bodyParser: false,
   });

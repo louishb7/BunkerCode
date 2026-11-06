@@ -6,6 +6,7 @@ import {
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authConfig } from "./config";
+import { databaseStartupError } from "../startup-error";
 @Injectable()
 export class PrismaService
   extends PrismaClient
@@ -29,7 +30,7 @@ export class PrismaService
       await this.session.findFirst({ select: { id: true } });
     } catch (error) {
       await this.$disconnect();
-      throw error;
+      throw databaseStartupError(error);
     }
   }
   async onApplicationShutdown() {

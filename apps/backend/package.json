@@ -3,17 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm build && BUNKERCODE_PROFILE=authoring tsx watch src/main.ts",
+    "dev": "pnpm build && BUNKERCODE_PROFILE=authoring tsx watch --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "test": "pnpm build && BUNKERCODE_PROFILE=authoring tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
     "start:authoring": "BUNKERCODE_PROFILE=authoring node dist/main.js",
     "start:public": "BUNKERCODE_PROFILE=public node dist/main.js",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:generate": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js generate",
+    "db:migrate": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "admin:grant": "tsx src/auth/provision-admin.ts"
+    "admin:grant": "tsx src/auth/provision-admin.ts",
+    "db:deploy:local": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate deploy",
+    "db:status:local": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate status",
+    "admin:grant:local": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local src/auth/provision-admin.ts"
   },
   "dependencies": {
     "@bunkercode/content": "workspace:*",

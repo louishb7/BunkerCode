@@ -52,7 +52,7 @@ export class AuthService {
     }
   }
   async login(body: unknown) {
-    const { email, password } = credentials(body);
+    const { email, password } = credentials(body, "login");
     const user = await this.db.user.findUnique({ where: { email } });
     const valid = await verifyPassword(
       password,

@@ -122,6 +122,27 @@
   margin: 0;
   color: var(--status-error);
 }
+.auth-password-requirements {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-subtle);
+}
+.auth-password-requirements li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-password-requirements svg {
+  flex-shrink: 0;
+}
+.auth-password-requirements [data-met="true"] {
+  color: var(--status-success);
+}
 .auth-submit {
   width: 100%;
 }

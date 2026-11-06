@@ -7,7 +7,14 @@ import {
   type ReactNode,
 } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
-import { Eye, EyeOff, ArrowLeft, Code2 } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  Code2,
+  Circle,
+  CircleCheck,
+} from "lucide-react";
 import { Insignia, Wordmark } from "../product/Brand";
 import { Page } from "../courses/Page";
 import {
@@ -123,6 +130,11 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   }>({});
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
+  const passwordRequirements = [
+    { label: "Pelo menos 6 caracteres", met: passwordValue.length >= 6 },
+    { label: "Pelo menos 1 número", met: /[0-9]/.test(passwordValue) },
+  ];
   const feedback = useRef<HTMLParagraphElement>(null);
   const requested =
     new URLSearchParams(location.search).get("next") ?? "/courses";
@@ -145,8 +157,10 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     if (!email || emailInput.validity.typeMismatch || email.length > 254)
       errors.email = "Informe um e-mail válido.";
     if (!password) errors.password = "Informe sua senha.";
-    else if (register && (password.length < 12 || password.length > 128))
-      errors.password = "Use de 12 a 128 caracteres na senha.";
+    else if (register && (password.length < 6 || !/[0-9]/.test(password)))
+      errors.password = "Use pelo menos 6 caracteres e 1 número na senha.";
+    else if (password.length > 128)
+      errors.password = "Use até 128 caracteres na senha.";
     setFieldErrors(errors);
     setError("");
     if (errors.email || errors.password) {
@@ -162,15 +176,9 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       await signIn(register ? "register" : "login", email, password);
       navigate(next, { replace: true });
     } catch (failure) {
-      if (
-        failure instanceof AuthError &&
-        (failure.status === 409 || (register && failure.status === 400))
-      ) {
+      if (failure instanceof AuthError && failure.status === 409) {
         setFieldErrors({
-          email:
-            failure.status === 409
-              ? failure.message
-              : "Confira o formato do e-mail informado.",
+          email: failure.message,
         });
         emailInput.focus();
       } else {
@@ -246,12 +254,26 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   name="password"
                   type={visible ? "text" : "password"}
                   required
-                  minLength={register ? 12 : undefined}
+                  minLength={register ? 6 : undefined}
                   maxLength={128}
+                  value={passwordValue}
+                  onChange={(event) => {
+                    setPasswordValue(event.target.value);
+                    if (fieldErrors.password)
+                      setFieldErrors((current) => ({
+                        ...current,
+                        password: undefined,
+                      }));
+                  }}
                   autoComplete={register ? "new-password" : "current-password"}
                   aria-invalid={!!fieldErrors.password}
                   aria-describedby={
-                    fieldErrors.password ? "password-error" : undefined
+                    [
+                      register ? "password-requirements" : "",
+                      fieldErrors.password ? "password-error" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
                   }
                 />
                 <button
@@ -268,6 +290,29 @@ export function AuthPage({ register = false }: { register?: boolean }) {
                   )}
                 </button>
               </div>
+              {register && (
+                <ul
+                  id="password-requirements"
+                  className="auth-password-requirements"
+                  aria-label="Requisitos da senha"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {passwordRequirements.map(({ label, met }) => (
+                    <li key={label} data-met={met}>
+                      {met ? (
+                        <CircleCheck size={16} aria-hidden="true" />
+                      ) : (
+                        <Circle size={16} aria-hidden="true" />
+                      )}
+                      <span className="sr-only">
+                        {met ? "Cumprido: " : "Pendente: "}
+                      </span>
+                      <span>{label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {fieldErrors.password && (
                 <p id="password-error" className="auth-error" role="alert">
                   {fieldErrors.password}

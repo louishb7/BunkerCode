@@ -65,7 +65,7 @@ test(
     await app.listen(0, "127.0.0.1");
     const base = await app.getUrl();
     const email = `student-${randomUUID()}@example.test`,
-      password = randomUUID();
+      password = "abcde1";
     const post = (
       path: string,
       body: unknown = {},
@@ -84,6 +84,42 @@ test(
     const lesson = "/content/courses/demo/lessons/first";
     let a: Result, b: Result, firstCookie: string, currentCookie: string;
     try {
+      await t.test(
+        "registration enforces both password requirements and login preserves legacy passwords",
+        async () => {
+          for (const invalid of [
+            "abcd1",
+            "abcdef",
+            "long-password-without-digits",
+          ])
+            assert.equal(
+              (
+                await post("/auth/register", {
+                  email: `invalid-${randomUUID()}@example.test`,
+                  password: invalid,
+                })
+              ).status,
+              400,
+            );
+          const legacyEmail = `legacy-${randomUUID()}@example.test`;
+          const legacyPassword = "legacy-password-without-digits";
+          await db.user.create({
+            data: {
+              email: legacyEmail,
+              passwordHash: await hashPassword(legacyPassword),
+            },
+          });
+          const response = await post("/auth/login", {
+            email: legacyEmail,
+            password: legacyPassword,
+          });
+          assert.equal(response.status, 200);
+          assert.equal(
+            ((await response.json()) as Result).user.email,
+            legacyEmail,
+          );
+        },
+      );
       await t.test(
         "two normalized students register; duplicate and role injection are rejected; only safe identity fields leave API",
         async () => {
@@ -546,13 +582,27 @@ test("strict credentials and production configuration fail closed", () => {
     [],
     {},
     { email: "bad", password: "short" },
-    { email: "x..y@example.test", password: "a".repeat(12) },
-    { email: ".x@example.test", password: "a".repeat(12) },
-    { email: "x@" + "a".repeat(64) + ".test", password: "a".repeat(12) },
-    { email: "x@y.test", password: "a".repeat(129) },
-    { email: "x@y.test", password: "a".repeat(12), role: "ADMIN" },
+    { email: "x..y@example.test", password: "abcde1" },
+    { email: ".x@example.test", password: "abcde1" },
+    { email: "x@" + "a".repeat(64) + ".test", password: "abcde1" },
+    { email: "x@y.test", password: "a".repeat(128) + "1" },
+    { email: "x@y.test", password: "abcd1" },
+    { email: "x@y.test", password: "abcdef" },
+    { email: "x@y.test", password: "abcde1", role: "ADMIN" },
   ])
     assert.throws(() => credentials(body));
+  for (const password of ["abcde1", "123456", "a".repeat(127) + "1"])
+    assert.equal(
+      credentials({ email: "x@y.test", password }).password,
+      password,
+    );
+  assert.equal(
+    credentials(
+      { email: "x@y.test", password: "legacy-without-digits" },
+      "login",
+    ).password,
+    "legacy-without-digits",
+  );
   const original = process.env.NODE_ENV,
     origins = process.env.BUNKERCODE_AUTH_ORIGINS,
     secret = process.env.BUNKERCODE_JWT_SECRET;

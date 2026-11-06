@@ -1,3 +1,5 @@
+import { StartupError } from "../startup-error";
+
 export interface AuthConfig {
   databaseUrl: string;
   secret: Uint8Array;
@@ -15,20 +17,53 @@ export function authConfig(): AuthConfig {
   const secure =
     process.env.NODE_ENV === "production" ||
     !!origins?.some((origin) => origin.startsWith("https://"));
-  if (
-    !databaseUrl ||
-    !/^postgres(ql)?:\/\//.test(databaseUrl) ||
-    !secret ||
-    Buffer.byteLength(secret) < 32 ||
-    !origins?.length ||
-    !issuer ||
-    !audience
-  )
-    throw new Error(
-      "Configure DATABASE_URL, BUNKERCODE_JWT_SECRET (32+ bytes), BUNKERCODE_JWT_ISSUER, BUNKERCODE_JWT_AUDIENCE and BUNKERCODE_AUTH_ORIGINS.",
+  const missing = [
+    "DATABASE_URL",
+    "BUNKERCODE_JWT_SECRET",
+    "BUNKERCODE_JWT_ISSUER",
+    "BUNKERCODE_JWT_AUDIENCE",
+    "BUNKERCODE_AUTH_ORIGINS",
+  ].filter((key) => !process.env[key]);
+  if (missing.length)
+    throw new StartupError(
+      "auth configuration",
+      `Missing required variables: ${missing.join(", ")}. For pnpm dev, fill .env or .env.local at the repository root using .env.example; see docs/authentication.md. Production/tests require explicit environment configuration.`,
+    );
+  // Explicit guards keep the validated values narrowed without asserting unknown input.
+  if (!databaseUrl || !secret || !origins || !issuer || !audience)
+    throw new StartupError(
+      "auth configuration",
+      "Required authentication configuration is empty.",
+    );
+  try {
+    const url = new URL(databaseUrl);
+    if (
+      !/^postgres(ql)?:$/.test(url.protocol) ||
+      !url.hostname ||
+      url.pathname.length < 2
+    )
+      throw new Error("Invalid database URL");
+  } catch {
+    throw new StartupError(
+      "auth configuration",
+      "DATABASE_URL must be a valid PostgreSQL URL with a host and database name. Check .env.example; credentials are never logged.",
+    );
+  }
+  if (Buffer.byteLength(secret) < 32)
+    throw new StartupError(
+      "auth configuration",
+      "BUNKERCODE_JWT_SECRET must contain at least 32 bytes. Generate and save a secret once during initial setup; do not regenerate it on startup.",
     );
   for (const value of origins) {
-    const origin = new URL(value);
+    let origin: URL;
+    try {
+      origin = new URL(value);
+    } catch {
+      throw new StartupError(
+        "auth configuration",
+        "BUNKERCODE_AUTH_ORIGINS must contain exact origins separated by commas.",
+      );
+    }
     if (
       origin.origin !== value ||
       origin.username ||
@@ -38,8 +73,9 @@ export function authConfig(): AuthConfig {
           origin.protocol !== "http:" ||
           !["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname)))
     )
-      throw new Error(
-        "Auth origins must be exact HTTPS origins (HTTP loopback only in development).",
+      throw new StartupError(
+        "auth configuration",
+        "BUNKERCODE_AUTH_ORIGINS must contain exact HTTPS origins (HTTP loopback only in development).",
       );
   }
   return Object.freeze({

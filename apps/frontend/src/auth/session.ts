@@ -126,7 +126,7 @@ export async function signIn(
             ? "Muitas tentativas. Aguarde antes de tentar novamente."
             : response.status === 400
               ? action === "register"
-                ? "Use e-mail válido e senha de 12 a 128 caracteres."
+                ? "Confira o e-mail e use pelo menos 6 caracteres e 1 número na senha."
                 : "Não foi possível entrar. Confira e-mail e senha."
               : response.status === 401
                 ? "Não foi possível entrar. Confira e-mail e senha."

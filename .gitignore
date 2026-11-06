@@ -3,7 +3,8 @@ dist/
 dist-public/
 coverage/
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
 *.tsbuildinfo
 .bunkercode/

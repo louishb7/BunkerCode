@@ -10,8 +10,11 @@ Requisitos: Node.js 24.11+ (linha 24) ou 26+, pnpm 11 e PostgreSQL. Configure as
 
     pnpm install
     pnpm --filter @bunkercode/backend db:generate
-    pnpm --filter @bunkercode/backend db:deploy
+    pnpm --filter @bunkercode/backend db:status:local
+    pnpm --filter @bunkercode/backend db:deploy:local
     pnpm dev
+
+Crie a configuração local uma vez conforme o guia: o backend de `pnpm dev` carrega `.env` e `.env.local` da raiz automaticamente, preservando variáveis do shell. Não precisa de `source` nem exports a cada sessão. Startup não cria banco nem aplica migrations.
 
 Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar o catálogo e a leitura públicos, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
 
