@@ -75,7 +75,7 @@
     --control-border: #707985;
     --control-radius: 6px;
     --reading-width: 750px;
-    --reading-heading-gap: 38px;
+    --reading-heading-gap: 24px;
     --reading-gutter: 28px;
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     color: var(--color-text);
@@ -174,7 +174,7 @@
   @media (max-width: 700px) {
     :root {
       --reading-gutter: 20px;
-      --reading-heading-gap: 24px;
+      --reading-heading-gap: 20px;
     }
   }
 }

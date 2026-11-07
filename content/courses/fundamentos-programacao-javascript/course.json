@@ -8,6 +8,11 @@
       "slug": "o-que-significa-programar",
       "title": "O que significa programar?",
       "moduleId": "antes-do-codigo"
+    },
+    {
+      "slug": "voce-sabe-fazer-mas-sabe-explicar",
+      "title": "Você sabe fazer. Mas sabe explicar?",
+      "moduleId": "antes-do-codigo"
     }
   ],
   "modules": [

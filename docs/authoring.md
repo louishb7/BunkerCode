@@ -30,6 +30,8 @@ Os dois exemplos iniciais do curso TypeScript estão identificados como demonstr
 
 ## Visualizar
 
+O título principal e os headings do leitor usam uma escala proporcional ao corpo: alterar o tamanho em **Ajustar leitura** também ajusta a hierarquia. A prévia do Studio usa a mesma escala editorial sobre seu corpo padrão. Parágrafos têm separação mais curta; seções, notas, exemplos e quizzes conservam pausas mais fortes. A continuidade do texto depende também de agrupar no Markdown as frases que desenvolvem a mesma ideia.
+
     pnpm dev
 
 Abra http://127.0.0.1:5173, selecione TypeScript e a lição. A API fica em 127.0.0.1:3001.

@@ -45,7 +45,7 @@ async function geometry(page: Page) {
       article: bounds(".study-explanation"),
       header: bounds(".site-header"),
       footer: bounds(".lesson-navigation-bar"),
-      home: bounds(".header-home"),
+      home: bounds('.site-header a[aria-label="BunkerCode — Início"]'),
       tools: bounds(".header-reading-tools"),
       articleOverflow: article.scrollWidth > article.clientWidth,
     };
@@ -59,7 +59,13 @@ async function geometry(page: Page) {
   expect(result.header.y).toBe(0);
   expect(result.footer.y).toBe(result.header.bottom);
   expect(result.footer.height).toBe(result.viewport.width < 600 ? 45 : 41); // Compact bar; larger touch targets on phones.
-  expect(result.home.right).toBeLessThan(result.tools.x);
+  // The authenticated header may wrap its tools onto another row on phones.
+  if (
+    result.home.y < result.tools.bottom &&
+    result.tools.y < result.home.bottom
+  )
+    expect(result.home.right).toBeLessThanOrEqual(result.tools.x);
+  else expect(result.home.bottom).toBeLessThanOrEqual(result.tools.y);
   return result;
 }
 
@@ -206,11 +212,43 @@ for (const viewport of [
     await geometry(page);
 
     const footer = page.locator(".lesson-navigation-bar");
-    await expect(footer.locator(".lesson-nav-position")).toHaveText("01/01");
-    for (const name of ["Lição anterior", "Próxima lição"])
-      await expect(
-        footer.getByRole("button", { name, exact: true }),
-      ).toBeDisabled();
+    await expect(footer.locator(".lesson-nav-position")).toHaveText("01/02");
+    await expect(
+      footer.getByRole("button", { name: "Lição anterior", exact: true }),
+    ).toBeDisabled();
+    await footer
+      .getByRole("link", { name: "Próxima lição", exact: true })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Você sabe fazer. Mas sabe explicar?",
+    );
+    await page.reload();
+    await expect(footer.locator(".lesson-nav-position")).toHaveText("02/02");
+    await expect(
+      footer.getByRole("button", { name: "Próxima lição", exact: true }),
+    ).toBeDisabled();
+    await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
+      3,
+    );
+    const secondQuiz = page.locator(".inline-quiz");
+    await expect(secondQuiz.getByRole("radio")).toHaveCount(3);
+    await secondQuiz.getByRole("radio").nth(1).check();
+    await secondQuiz
+      .getByRole("button", { name: "Verificar resposta" })
+      .click();
+    await expect(secondQuiz.getByRole("status")).toContainText(
+      "Resposta correta",
+    );
+    await expect(secondQuiz.getByRole("status")).toContainText(
+      "a mochila precisa estar aberta",
+    );
+    await geometry(page);
+    await footer
+      .getByRole("link", { name: "Lição anterior", exact: true })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "O que significa programar?",
+    );
     const menu = footer.getByRole("button", { name: "Lições", exact: true });
     await menu.focus();
     await page.keyboard.press("Enter");
@@ -218,15 +256,14 @@ for (const viewport of [
       name: "Lições do curso",
       exact: true,
     });
-    await expect(dialog.locator("[data-lesson-choice]")).toHaveCount(1);
-    await expect(dialog.locator("[data-lesson-choice]")).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(dialog.locator("[data-lesson-choice]")).toHaveCount(2);
+    await expect(
+      dialog.locator("[data-lesson-choice]").first(),
+    ).toHaveAttribute("aria-current", "page");
     await page.keyboard.press("Escape");
     await expect(menu).toBeFocused();
     await menu.click();
-    await dialog.locator("[data-lesson-choice]").click();
+    await dialog.locator("[data-lesson-choice]").first().click();
     await expect(dialog).not.toBeVisible();
 
     const appearance = page.getByRole("button", {

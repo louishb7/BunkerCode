@@ -174,15 +174,17 @@
 }
 .lesson-heading h1,
 .reading-title {
-  font-size: clamp(32px, 4.5vw, 44px);
+  font-size: calc(var(--prose-size, 17px) * 1.8);
+  line-height: 1.25;
   font-weight: 650;
-  letter-spacing: -1.2px;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 .lesson-heading h1 {
-  margin: 16px 0;
+  margin: 0.45em 0;
 }
 .reading-title {
-  margin: 16px 0 var(--reading-heading-gap);
+  margin: 0.45em 0 var(--reading-heading-gap);
 }
 .edit-lesson-link {
   display: grid;
@@ -200,23 +202,26 @@
 
 .prose {
   font-size: 17px;
-  line-height: 1.85;
+  line-height: 1.8;
   overflow-wrap: anywhere;
 }
 .prose p {
-  margin: 18px 0;
+  margin: 0.8em 0;
 }
 .prose h1 {
-  font-size: 32px;
+  font-size: 1.8em;
+  line-height: 1.25;
 }
 .prose h2 {
-  font-size: 25px;
-  letter-spacing: -0.4px;
-  margin: 44px 0 16px;
+  font-size: 1.35em;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  margin: 1.5em 0 0.6em;
 }
 .prose h3 {
-  font-size: 20px;
-  margin: 30px 0 14px;
+  font-size: 1.18em;
+  line-height: 1.4;
+  margin: 1.5em 0 0.6em;
 }
 .prose li {
   margin: 8px 0;
@@ -233,7 +238,7 @@
   color: var(--quote-text, #c3c5bd);
   background: var(--quote-background, #1b1d1c);
   border-radius: 0 6px 6px 0;
-  font-size: 15px;
+  font-size: 0.94em;
 }
 .prose code {
   font:
@@ -362,12 +367,6 @@
 .prose img {
   max-width: 100%;
 }
-@media (max-width: 700px) {
-  .prose h2 {
-    font-size: 22px;
-  }
-}
-
 .study-explanation > .prose {
   font-size: var(--prose-size, 17px);
 }

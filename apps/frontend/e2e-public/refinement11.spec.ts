@@ -43,10 +43,13 @@ for (const viewport of [
     await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
       2,
     );
-    await expect(page.locator(".lesson-nav-position")).toHaveText("01/01");
+    await expect(page.locator(".lesson-nav-position")).toHaveText("01/02");
     await expect(
-      page.getByRole("button", { name: "Próxima lição", exact: true }),
-    ).toBeDisabled();
+      page.getByRole("link", { name: "Próxima lição", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      "/courses/fundamentos-programacao-javascript/lessons/voce-sabe-fazer-mas-sabe-explicar",
+    );
     await page.screenshot({
       path: info.outputPath(`public-reading-${viewport.width}.png`),
     });
@@ -75,6 +78,28 @@ for (const viewport of [
     });
     await page.reload();
     await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);
+
+    await page
+      .getByRole("link", { name: "Próxima lição", exact: true })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Você sabe fazer. Mas sabe explicar?",
+    );
+    await page.reload();
+    await expect(page.locator(".lesson-nav-position")).toHaveText("02/02");
+    await expect(
+      page.getByRole("button", { name: "Próxima lição", exact: true }),
+    ).toBeDisabled();
+    await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
+      3,
+    );
+    await expect(quiz.getByRole("radio")).toHaveCount(3);
+    await quiz.getByRole("radio").nth(1).check();
+    await quiz.getByRole("button", { name: "Verificar resposta" }).click();
+    await expect(quiz.getByRole("status")).toContainText("Resposta correta");
+    await expect(quiz.getByRole("status")).toContainText(
+      "a mochila precisa estar aberta",
+    );
 
     await page.goto("/courses/typescript/lessons/values-and-types");
     await expect(page.locator(".lesson-heading h1")).toHaveText(

@@ -196,6 +196,24 @@ for (const width of [390, 1280, 1440, 1920])
       "font-size",
       "19px",
     );
+    const hierarchy = await page
+      .locator(".study-explanation")
+      .evaluate((node) => {
+        const prose = node.querySelector(".prose")!;
+        const size = (element: Element) =>
+          parseFloat(getComputedStyle(element).fontSize);
+        const body = size(prose);
+        return {
+          title: size(node.querySelector(".lesson-heading h1")!) / body,
+          section: size(prose.querySelector("h2")!) / body,
+          titles: node.querySelectorAll("h1").length,
+        };
+      });
+    expect(hierarchy.title).toBeGreaterThanOrEqual(1.6);
+    expect(hierarchy.title).toBeLessThanOrEqual(1.9);
+    expect(hierarchy.section).toBeGreaterThanOrEqual(1.25);
+    expect(hierarchy.section).toBeLessThanOrEqual(1.45);
+    expect(hierarchy.titles).toBe(1);
     const heading = (await page.locator(".lesson-heading").boundingBox())!;
     const prose = (await page
       .locator(".study-explanation > .prose")
@@ -222,6 +240,19 @@ for (const width of [390, 1280, 1440, 1920])
       path: info.outputPath(`studio-${width}.png`),
       fullPage: true,
     });
+    await studioView(page, "Prévia");
+    const preview = page.getByRole("region", { name: "Prévia da lição" });
+    await expect(preview.getByRole("heading", { level: 2 })).toHaveCount(2);
+    const previewRatio = await preview.evaluate((node) => {
+      const size = (element: Element) =>
+        parseFloat(getComputedStyle(element).fontSize);
+      return (
+        size(node.querySelector(".reading-title")!) /
+        size(node.querySelector(".prose")!)
+      );
+    });
+    expect(previewRatio).toBeGreaterThanOrEqual(1.6);
+    expect(previewRatio).toBeLessThanOrEqual(1.9);
   });
 test("public test is read-only and Submit assesses each exact snapshot without prior Run", async ({
   page,

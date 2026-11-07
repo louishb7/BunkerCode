@@ -317,8 +317,11 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
       await article.evaluate((node) => node.scrollWidth <= node.clientWidth),
     ).toBe(true);
     await expect(
-      page.getByRole("button", { name: "Próxima lição", exact: true }),
-    ).toBeDisabled();
+      page.getByRole("link", { name: "Próxima lição", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      "/courses/fundamentos-programacao-javascript/lessons/voce-sabe-fazer-mas-sabe-explicar",
+    );
     if (tone === 3) {
       await openAppearance(page);
       await selectReadingTone(page, 4);
