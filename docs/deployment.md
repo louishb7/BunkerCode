@@ -1,4 +1,4 @@
-# Migrations automáticas no deploy
+# Deploy, migrations e recuperação
 
 O deploy usa as migrations SQL versionadas de `apps/backend/prisma/migrations`. `pnpm start` e `pnpm start:public`, na raiz, passam pelo launcher `scripts/deploy-backend.mjs`: ele verifica o banco configurado, executa **`prisma migrate deploy`** e só inicia o backend após sucesso. Uma falha encerra com código não zero, sem abrir HTTP. Reiniciar reaplica somente migrations pendentes, sem duplicar as já registradas.
 
@@ -49,3 +49,25 @@ Essa estrutura automatiza a etapa de migrations para PostgreSQL local ou hospeda
 Os testes de startup cobrem duas inicializações concorrentes com migrations já aplicadas, falha real da CLI sem abertura HTTP, ausência de URL e proteção dos logs. O pacote de evidências da sprint complementa com bancos descartáveis vazios, upgrade com usuário/sessão existentes, repetição idempotente e histórico de migration falha. Nenhum teste deve usar `bunkercode_dev` como fixture.
 
 Referências oficiais: [migrate deploy e advisory locking](https://www.prisma.io/docs/orm/v7/prisma-migrate/workflows/development-and-production), [conexão direta e pooler](https://www.prisma.io/docs/postgres/database/connecting-to-your-database). O primeiro descreve também os limites: deploy aplica arquivos versionados, não detecta todo drift e não gera o client.
+
+## Recuperação e backups
+
+O Git recupera o código, conteúdo editorial e migrations que receberam commit. Um remoto como GitHub só guarda o que foi enviado para ele; não inclui alterações locais, `.env`, PostgreSQL ou rascunhos do navegador. Migrations recriam a estrutura do banco, não seus usuários, progresso e soluções.
+
+| Material                                                         | Onde preservar                                                        | Como recuperar                                                                                     |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Código, Markdown/JSON, docs, lockfile e migrations               | Git e remoto do autor; cópia separada de trabalho ainda não commitado | Obter a revisão desejada e conferir `git status` antes de sobrepor qualquer arquivo                |
+| `node_modules`, `.venv`, `dist`, `dist-public` e caches          | Normalmente não precisam de backup                                    | Reinstalar dependências e gerar os builds pelos comandos versionados                               |
+| `.env`, `.env.local` e segredos de hospedagem                    | Cofre ou backup privado, separado do Git                              | Reconfigurar a partir de `.env.example` e dos valores privados preservados                         |
+| PostgreSQL ativo                                                 | Backup privado do banco e procedimento de restauração testado         | Restaurar em banco separado, validar versão e histórico de migrations antes de apontar a aplicação |
+| Rascunhos IndexedDB, journal de Studio e dados locais históricos | Cópia/exportação privada quando necessário                            | Recuperar o perfil/origem correta ou o texto exportado; a conta não sincroniza todos os rascunhos  |
+
+Sequência recomendada após perda do ambiente:
+
+1. Obtenha uma cópia do repositório e a revisão correspondente ao backup. Preserve qualquer trabalho local sobrevivente antes de restaurar por cima.
+2. Reinstale Node/PNPM nas versões suportadas, execute `pnpm install --frozen-lockfile` e gere o Prisma Client. Reconstitua a configuração privada seguindo [configuração local](authentication.md). Não copie credenciais de produção para testes.
+3. Para PostgreSQL, use um backup consistente, como um dump lógico em formato custom (`pg_dump -Fc`) ou o mecanismo de snapshots/PITR do provedor. Guarde também as informações necessárias para reconstruir permissões e extensões. Um dump de banco não preserva automaticamente papéis globais do cluster. Não copie o diretório de um servidor ativo como se fosse um backup válido.
+4. Restaure primeiro em uma instância ou banco separado, sem sobrescrever o único exemplar. Valide acesso, contagens e fluxos de conta/progresso, além de conferir o histórico Prisma. Só depois decida quais migrations pendentes aplicar e faça a troca de conexão. Rollback do código não desfaz migrations.
+5. Execute os builds e valide leitura, autenticação e uma recuperação de solução. Para publicação, reconstrua o snapshot autorizado e configure novamente proxy/origens. Um ensaio de restauração é o que demonstra a utilidade do backup.
+
+Defina frequência, retenção, criptografia e cópia fora da máquina conforme a perda de trabalho aceitável. O repositório não automatiza backups nem garante recuperação pontual. `.bunkercode`, `.bunkerlab` e `.backendlab` permanecem ignorados e preservados; seus bancos aposentados não devem ser abertos ou migrados durante manutenção corrente. Dados pessoais, dumps e segredos não entram em ZIPs de evidências.

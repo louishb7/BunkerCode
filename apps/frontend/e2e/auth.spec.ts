@@ -683,7 +683,7 @@ test("student journey persists completion, continuation and preferences across d
     "bunkercode",
   );
   await page
-    .getByRole("button", { name: "Ajustar leitura", exact: true })
+    .getByRole("button", { name: "Ajustar lição", exact: true })
     .click();
   for (const tone of [
     "BunkerCode",
@@ -763,7 +763,7 @@ test("student journey persists completion, continuation and preferences across d
     );
     await expect(other.locator(".reading-theme")).toHaveClass(/reading-tone-5/);
     await other
-      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .getByRole("button", { name: "Ajustar lição", exact: true })
       .click();
     await expect(other.getByLabel("Tamanho do texto")).toHaveValue("20");
     await other.screenshot({
@@ -941,7 +941,7 @@ test("delayed account preferences cannot populate a new identity", async ({
   await register(page, `stale-${randomUUID()}@example.test`, password());
   await selectSiteTheme(page, "light");
   await page
-    .getByRole("button", { name: "Ajustar leitura", exact: true })
+    .getByRole("button", { name: "Ajustar lição", exact: true })
     .click();
   await page.getByRole("button", { name: "Névoa azul", exact: true }).click();
   const saved = page.waitForResponse(
@@ -994,7 +994,7 @@ test("delayed account preferences cannot populate a new identity", async ({
       "bunkercode",
     );
     await page
-      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .getByRole("button", { name: "Ajustar lição", exact: true })
       .click();
     await expect(page.getByLabel("Tamanho do texto")).toHaveValue("17");
   } finally {

@@ -385,7 +385,7 @@ test("divider moves both ways, limits expansion and reclamps after viewport resi
   });
   expect(shortHalf).toBeGreaterThan(100);
   const theme = page.getByRole("button", {
-    name: "Ajustar leitura",
+    name: "Ajustar lição",
     exact: true,
   });
   const themeBox = (await theme.boundingBox())!;

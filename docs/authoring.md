@@ -2,7 +2,7 @@
 
 ## Criar uma lição
 
-Com Node 24+ e dependências instaladas:
+Com Node 24.11+ na linha 24 ou 26+ e dependências instaladas:
 
     pnpm lesson:new --course typescript --slug narrowing --title "Narrowing"
 
@@ -30,13 +30,13 @@ Os dois exemplos iniciais do curso TypeScript estão identificados como demonstr
 
 ## Visualizar
 
-O título principal e os headings do leitor usam uma escala proporcional ao corpo: alterar o tamanho em **Ajustar leitura** também ajusta a hierarquia. A prévia do Studio usa a mesma escala editorial sobre seu corpo padrão. Parágrafos têm separação mais curta; seções, notas, exemplos e quizzes conservam pausas mais fortes. A continuidade do texto depende também de agrupar no Markdown as frases que desenvolvem a mesma ideia.
+O título principal e os headings do leitor usam uma escala proporcional ao corpo: alterar o tamanho em **Ajustar lição** também ajusta a hierarquia. A prévia do Studio usa a mesma escala editorial sobre seu corpo padrão. Parágrafos têm separação mais curta; seções, notas, exemplos e quizzes conservam pausas mais fortes. A continuidade do texto depende também de agrupar no Markdown as frases que desenvolvem a mesma ideia.
 
     pnpm dev
 
 Abra http://127.0.0.1:5173, selecione TypeScript e a lição. A API fica em 127.0.0.1:3001.
 
-**Tema** na navegação geral alterna Dark/Light, inclusive no Studio. **Ajustar leitura**, dentro do artigo, oferece diretamente seis tonalidades e tamanho do texto. Uma escolha local permanece independente do site; **Usar tema do site** volta à herança sem alterar o tamanho. **Restaurar leitura** também restaura 17px, preservando o tema global. As preferências ficam no navegador e não modificam Markdown. Nas lições, o header principal mantém Início/Cursos/Táticas. A barra secundária compacta mostra módulo/curso, lição atual e anterior/próxima; o dropdown lista títulos completos e permite voltar à página do curso. Mais de um módulo real habilita sua seleção; cursos sem módulos usam uma lista plana. Escape devolve o foco e Tab ou clique fora fecham o dropdown. O Workspace começa em 55/45 sem preferência válida; divisórias ajustam largura e altura por arrasto ou teclado, sem menu de presets.
+**Tema** na navegação geral alterna Dark/Light, inclusive no Studio. **Ajustar lição** oferece seis tonalidades para todo o ambiente da lição, incluindo editor e resultados, e tamanho do texto editorial. O controle fica no artigo; no mobile, ao selecionar Código, passa para a faixa Lição/Código. Uma escolha local permanece independente do site; **Usar tema do site** volta à herança sem alterar o tamanho. **Restaurar lição** também restaura 17px, preservando o tema global. As preferências ficam no navegador e não modificam Markdown. Nas lições, o header principal mantém Início/Cursos/Táticas. A barra secundária compacta mostra módulo/curso, lição atual e anterior/próxima; o dropdown lista títulos completos e permite voltar à página do curso. Mais de um módulo real habilita sua seleção; cursos sem módulos usam uma lista plana. Escape devolve o foco e Tab ou clique fora fecham o dropdown. O Workspace começa em 55/45 sem preferência válida; divisórias ajustam largura e altura por arrasto ou teclado, sem menu de presets.
 
 Se você editou no VS Code, salve o Markdown e recarregue a página. O backend lê o arquivo sob demanda; não precisa reiniciar a API nem rebuild. Mudanças no manifesto aparecem após refresh. Cursos novos ficam disponíveis pela API e rota direta; a seleção da Home/catálogo segue a [política editorial de visibilidade](product/course-visibility.md). No Studio, a prévia usa o rascunho; somente o botão de salvamento escreve no disco.
 

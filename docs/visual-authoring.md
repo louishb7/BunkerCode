@@ -42,13 +42,15 @@ De 2 a 12 alternativas, uma correta, IDs de até 80 caracteres em minúsculas/n�
 
 Variantes: `info`, `tip`, `warning`.
 
+Para uma fala do personagem Otto, inicie o texto exatamente com `**Otto**`, uma linha em branco e o comentário: `"text": "**Otto**\n\nO comentário do personagem."`. O leitor e a prévia do Studio apresentam o nome uma única vez e o avatar local; mencionar Otto no meio de outra nota não muda sua identidade. É uma convenção editorial explícita, sem novo campo ou variante no JSON. O texto continua sanitizado. O avatar, decorativo ao lado do nome acessível, vem do [Robot do SVG Repo](https://www.svgrepo.com/svg/159845/robot), identificado pela fonte como CC0; o arquivo integral está em `apps/frontend/public/characters/otto.svg`, sem dependência remota em produção.
+
 ```bunker-exercise
 {
   "kind": "exercise"
 }
 ```
 
-Esse marcador posiciona o enunciado de `exercise.json`; não duplica nem edita sua definição. Só pode aparecer uma vez. Na ausência dele, o enunciado fica após o texto. O editor de prática permanece na coluna direita, ou abaixo da leitura em telas estreitas.
+Esse marcador posiciona o enunciado de `exercise.json`; não duplica nem edita sua definição. Só pode aparecer uma vez. Na ausência dele, o enunciado fica após o texto. O editor de prática permanece na coluna direita, ou na vista Código em telas estreitas.
 
 ## Preservação e fallback
 

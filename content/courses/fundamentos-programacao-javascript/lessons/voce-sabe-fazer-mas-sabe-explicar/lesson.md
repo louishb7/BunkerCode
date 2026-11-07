@@ -9,7 +9,7 @@ E não é nada pessoal. O Otto só tem um pequeno problema: ele é uma máquina 
 ```bunker-note
 {
   "kind": "info",
-  "text": "**Nota do Otto**\n\nEu não sou uma máquina burra. Vocês, humanos, precisam ter mais certeza sobre o que querem."
+  "text": "**Otto**\n\nEu não sou uma máquina burra. Vocês, humanos, precisam ter mais certeza sobre o que querem."
 }
 ```
 
@@ -28,7 +28,7 @@ Acontece que a garrafa estava cheia de água, mas destampada. A tampa também es
 ```bunker-note
 {
   "kind": "info",
-  "text": "**Nota do Otto**\n\nVocê pediu para guardar a garrafa. Não pediu para fechá-la. Não me culpe por sua desatenção."
+  "text": "**Otto**\n\nVocê pediu para guardar a garrafa. Não pediu para fechá-la. Não me culpe por sua desatenção."
 }
 ```
 
@@ -124,6 +124,6 @@ E, antes mesmo de decidir a ordem das instruções, teríamos um novo desafio: d
 ```bunker-note
 {
   "kind": "info",
-  "text": "**Nota do Otto**\n\nUma mudança inteira? Escolham outra coisa. Vocês não estavam resolvendo a bagunça nem de uma mochila."
+  "text": "**Otto**\n\nUma mudança inteira? Escolham outra coisa. Vocês não estavam resolvendo a bagunça nem de uma mochila."
 }
 ```

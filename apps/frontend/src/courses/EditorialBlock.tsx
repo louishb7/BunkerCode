@@ -101,14 +101,36 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
   );
 }
 export function NoteBlock({ note }: { note: Note }) {
+  // An explicit editorial signature, not every note or mention of the character.
+  const otto = /^\*\*Otto\*\*(?:\r?\n){2}/.exec(note.text);
+  const text = otto ? note.text.slice(otto[0].length) : note.text;
   return (
     <aside
       className={`editorial-note editorial-comment note-${note.kind}`}
-      aria-label="Nota"
+      aria-label={otto ? "Otto" : "Nota"}
     >
-      <MessageSquareText className="note-symbol" size={18} aria-hidden="true" />
+      {otto ? (
+        <img
+          className="otto-avatar"
+          src="/characters/otto.svg"
+          width="56"
+          height="56"
+          alt=""
+        />
+      ) : (
+        <MessageSquareText
+          className="note-symbol"
+          size={18}
+          aria-hidden="true"
+        />
+      )}
       <div className="editorial-note-content">
-        <EditorialText text={note.text} />
+        {otto && (
+          <p className="otto-name">
+            <strong>Otto</strong>
+          </p>
+        )}
+        <EditorialText text={text} />
       </div>
     </aside>
   );

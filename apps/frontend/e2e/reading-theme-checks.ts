@@ -22,12 +22,12 @@ export const readingToneLabels = [
 ];
 export function readingToneButton(page: Page, tone: number) {
   return page
-    .getByRole("group", { name: "Tonalidade da leitura", exact: true })
+    .getByRole("group", { name: "Tonalidade da lição", exact: true })
     .getByRole("button", { name: readingToneLabels[tone]!, exact: true });
 }
 export async function expandReadingSettings(page: Page) {
   const trigger = page.getByRole("button", {
-    name: "Ajustar leitura",
+    name: "Ajustar lição",
     exact: true,
   });
   if (
@@ -73,6 +73,7 @@ export async function expectRenderedContrast(
     pseudo?: string;
     foreground?: "outlineColor";
     minimum?: number;
+    background?: string;
   } = {},
 ) {
   const ratios = await locator.evaluateAll((nodes, options) => {
@@ -116,6 +117,8 @@ export async function expectRenderedContrast(
       const style = getComputedStyle(node, options.pseudo);
       if (options.pseudo)
         background = over(rgba(style.backgroundColor), background);
+      if (options.background)
+        background = over(rgba(options.background), background);
       const foreground = over(
         rgba(style[options.foreground ?? "color"]),
         background,
@@ -125,6 +128,8 @@ export async function expectRenderedContrast(
       );
       return {
         text: node.textContent?.slice(0, 60),
+        foreground,
+        background,
         ratio: (values[1]! + 0.05) / (values[0]! + 0.05),
       };
     });
@@ -142,7 +147,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   const article = page.locator(".study-explanation");
   await expect(article).toHaveClass(/reading-tone-0/);
   const appearance = page.getByRole("button", {
-    name: "Ajustar leitura",
+    name: "Ajustar lição",
     exact: true,
   });
   const backgrounds = new Set<string>();
@@ -353,7 +358,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   await expect(article).toHaveClass(/reading-tone-5/);
   await openAppearance(page);
   await page
-    .getByRole("button", { name: "Restaurar leitura", exact: true })
+    .getByRole("button", { name: "Restaurar lição", exact: true })
     .click();
   await page.reload();
   await expect(article).toHaveClass(/reading-tone-0/);
@@ -367,7 +372,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
 }
 
 const themeTrigger = (page: Page) =>
-  page.getByRole("button", { name: "Ajustar leitura", exact: true });
+  page.getByRole("button", { name: "Ajustar lição", exact: true });
 async function openAppearance(page: Page) {
   const trigger = themeTrigger(page);
   if ((await trigger.getAttribute("aria-expanded")) !== "true")
@@ -486,7 +491,7 @@ export async function checkGlobalAppearance(
         ).toBeVisible();
       const sitePanel = await openSiteAppearance(page);
       await expect(
-        sitePanel.getByText("Tonalidade da leitura", { exact: true }),
+        sitePanel.getByText("Tonalidade da lição", { exact: true }),
       ).toHaveCount(0);
       const siteBounds = (await sitePanel.boundingBox())!;
       expect(siteBounds.x).toBeGreaterThanOrEqual(0);
@@ -522,12 +527,12 @@ export async function checkGlobalAppearance(
         await expect(
           page
             .locator(".study-explanation")
-            .getByRole("button", { name: "Ajustar leitura", exact: true }),
+            .getByRole("button", { name: "Ajustar lição", exact: true }),
         ).toBeVisible();
         await expect(
           page
             .locator(".study-code")
-            .getByRole("button", { name: "Ajustar leitura", exact: true }),
+            .getByRole("button", { name: "Ajustar lição", exact: true }),
         ).toHaveCount(0);
         await expect(
           page.locator(".learning-footer, .appearance-bar, .panel-settings"),
@@ -560,7 +565,7 @@ export async function checkGlobalAppearance(
         );
         await expect(
           panel.getByRole("group", {
-            name: "Tonalidade da leitura",
+            name: "Tonalidade da lição",
             exact: true,
           }),
         ).toBeVisible();
@@ -584,7 +589,7 @@ export async function checkGlobalAppearance(
           await page
             .getByRole("button", { name: "Código", exact: true })
             .click();
-          await expect(themeTrigger(page)).not.toBeVisible();
+          await expect(themeTrigger(page)).toBeVisible();
         }
       }
       if (name === "studio")
@@ -698,7 +703,7 @@ export async function checkThemeHierarchy(
   ).toBeDisabled();
   await selectReadingTone(page, 4);
   await page
-    .getByRole("button", { name: "Restaurar leitura", exact: true })
+    .getByRole("button", { name: "Restaurar lição", exact: true })
     .click();
   await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
   await expect(article.locator(":scope > .prose")).toHaveCSS(
@@ -733,7 +738,7 @@ export async function checkThemeHierarchy(
   );
   await expect(page.locator(".cm-editor")).toHaveCSS(
     "background-color",
-    "rgb(35, 39, 44)",
+    "rgb(238, 241, 244)",
   );
   if ([1440, 320].includes(page.viewportSize()!.width)) {
     await editor.focus();
@@ -747,7 +752,7 @@ export async function checkThemeHierarchy(
     await expect(completion).toBeVisible();
     await expect(page.locator(".cm-tooltip-autocomplete")).toHaveCSS(
       "background-color",
-      "rgb(255, 255, 255)",
+      "rgb(229, 234, 240)",
     );
     await expectRenderedContrast(completion);
     await page.screenshot({
@@ -761,7 +766,7 @@ export async function checkThemeHierarchy(
     await expect(search).toBeVisible();
     await expect(page.locator(".cm-panels")).toHaveCSS(
       "background-color",
-      "rgb(255, 255, 255)",
+      "rgb(229, 234, 240)",
     );
     await search.locator("input.cm-textfield").first().fill("preserved");
     await expectRenderedContrast(
@@ -966,4 +971,183 @@ export async function checkPublicShell(page: Page, info: TestInfo) {
         });
     }
   }
+}
+
+// Real lesson/editor surfaces in both profiles; no simulated execution or DOM colors.
+export async function checkLessonWorkspaceThemes(page: Page, info: TestInfo) {
+  await page.goto("/courses/typescript/lessons/values-and-types");
+  const narrow = page.viewportSize()!.width < 1000;
+  if (narrow)
+    await page.getByRole("button", { name: "Código", exact: true }).click();
+  const editor = page.getByRole("textbox", {
+    name: "Código da solução",
+    exact: true,
+  });
+  await expect(editor).toBeVisible();
+  const code =
+    '// Preserved across tones\nconst answer: number = 42;\nconst label = "Otto";\nconsole.log(answer, label);';
+  await editor.fill(code);
+  await editor.evaluate((node) =>
+    node.setAttribute("data-preserved-editor", "true"),
+  );
+  const run = page.getByRole("button", { name: "Run", exact: true });
+  if (await run.count()) {
+    await run.click();
+    await page.getByText("Detalhes da verificação", { exact: true }).click();
+    await page.getByText("JavaScript gerado", { exact: true }).click();
+    await expect(page.locator(".result-output").first()).toContainText(
+      "answer",
+    );
+  }
+  const samples: unknown[] = [];
+  for (const site of ["light", "bunkercode"]) {
+    await selectSiteTheme(page, site);
+    const headerColor = await page
+      .locator(".site-header")
+      .evaluate((n) => getComputedStyle(n).backgroundColor);
+    for (let tone = 0; tone < 6; tone++) {
+      await selectReadingTone(page, tone);
+      await page.keyboard.press("Escape");
+      await expect(page.locator(".lesson-theme")).toHaveClass(
+        new RegExp(`reading-tone-${tone}\\b`),
+      );
+      await expect(editor).toHaveAttribute("data-preserved-editor", "true");
+      await expect.poll(() => editor.innerText()).toBe(code);
+      await expect(page.locator(".site-header")).toHaveCSS(
+        "background-color",
+        headerColor,
+      );
+      const colors = await page.locator(".lesson-theme").evaluate((root) => {
+        const style = getComputedStyle(root);
+        return {
+          background: style.backgroundColor,
+          surface: style.getPropertyValue("--color-surface").trim(),
+          raised: style.getPropertyValue("--color-raised").trim(),
+          scheme: style.colorScheme,
+        };
+      });
+      await expect(page.locator(".cm-editor").first()).toHaveCSS(
+        "background-color",
+        colors.background,
+      );
+      await expect(page.locator(".cm-editor").first()).toHaveCSS(
+        "color-scheme",
+        colors.scheme,
+      );
+      for (const selector of [
+        ".workspace-tabs",
+        ".editor-toolbar",
+        ".workspace-results",
+        ".cm-gutters",
+      ]) {
+        const matching = await page
+          .locator(selector)
+          .first()
+          .evaluate((node, surface) => {
+            const sample = document.createElement("span");
+            sample.style.backgroundColor = surface;
+            node.append(sample);
+            const equal =
+              getComputedStyle(node).backgroundColor ===
+              getComputedStyle(sample).backgroundColor;
+            sample.remove();
+            return equal;
+          }, colors.surface);
+        expect(matching, selector).toBe(true);
+      }
+      const contrast = await expectRenderedContrast(
+        page.locator(
+          ".cm-line, .cm-line span, .cm-gutterElement, .result-heading, .results-panel p, .result-output:visible, .editor-files button:not(:disabled), .editor-actions button:not(:disabled)",
+        ),
+      );
+      await editor.focus();
+      await editor.press("ControlOrMeta+a");
+      const selection = page.locator(".cm-selectionBackground").first();
+      await expect(selection).toBeVisible();
+      const selectionBackground = await selection.evaluate(
+        (n) => getComputedStyle(n).backgroundColor,
+      );
+      const selectionContrast = await expectRenderedContrast(
+        page.locator(".cm-line span"),
+        { background: selectionBackground },
+      );
+      await editor.press("ArrowRight");
+      await page
+        .getByRole("button", { name: "Ajustar lição", exact: true })
+        .focus();
+      samples.push({ site, tone, colors, contrast, selectionContrast });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      if (site === "light" || tone === 3)
+        await page.screenshot({
+          path: info.outputPath(
+            `workspace-${site}-tone-${tone}-${page.viewportSize()!.width}.png`,
+          ),
+        });
+    }
+  }
+  // Reconfiguration preserves editing history, then refresh preserves the draft/tone.
+  await editor.focus();
+  await editor.press("ControlOrMeta+z");
+  await expect(editor).not.toContainText("Preserved across tones");
+  await editor.press(
+    process.platform === "darwin" ? "Meta+Shift+z" : "Control+y",
+  );
+  await expect.poll(() => editor.innerText()).toBe(code);
+  await page.reload();
+  await expect(page.locator(".lesson-theme")).toHaveClass(/reading-tone-5/);
+  if (narrow)
+    await page.getByRole("button", { name: "Código", exact: true }).click();
+  await expect.poll(() => editor.innerText()).toBe(code);
+  if (narrow) {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(
+      page
+        .locator(".study-explanation")
+        .getByRole("button", { name: "Ajustar lição", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("#reading-appearance-panel")).toHaveCount(0);
+  }
+  console.log("LESSON_WORKSPACE_CONTRAST", JSON.stringify(samples));
+}
+
+export async function checkOttoNotes(page: Page, info: TestInfo) {
+  await page.goto(
+    "/courses/fundamentos-programacao-javascript/lessons/voce-sabe-fazer-mas-sabe-explicar",
+  );
+  const notes = page.getByRole("complementary", { name: "Otto", exact: true });
+  await expect(notes).toHaveCount(3);
+  const quiz = page.locator(".inline-quiz").first();
+  await quiz.getByRole("radio").first().check();
+  await quiz.getByRole("button", { name: "Verificar resposta" }).click();
+  const feedback = await quiz.locator(".quiz-feedback").innerText();
+  await expect(page.getByText(/nota do otto/i)).toHaveCount(0);
+  for (let tone = 0; tone < 6; tone++) {
+    await selectReadingTone(page, tone);
+    await page.keyboard.press("Escape");
+    for (const note of await notes.all()) {
+      await expect(note.locator(".otto-name")).toHaveText("Otto");
+      const avatar = note.locator("img");
+      await expect(avatar).toHaveAttribute("src", "/characters/otto.svg");
+      expect(
+        await avatar.evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+        ),
+      ).toBe(true);
+      expect(await note.evaluate((n) => n.scrollWidth <= n.clientWidth)).toBe(
+        true,
+      );
+    }
+    await expectRenderedContrast(notes.locator("p"));
+    await expect(quiz.locator(".quiz-feedback")).toHaveText(feedback, {
+      useInnerText: true,
+    });
+  }
+  await notes.first().scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath(`otto-${page.viewportSize()!.width}.png`),
+  });
 }

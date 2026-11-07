@@ -214,18 +214,16 @@ h1[tabindex="-1"]:focus {
   outline: none;
 }
 
-/* Editor text stays Darcula; its search and completion UI follows the site. */
-:root[data-site-theme="light"]
-  .code-editor
+/* Search and completion use the lesson palette, or the light site palette in Studio. */
+:is(:root[data-site-theme="light"] .code-editor, .lesson-theme .code-editor)
   .cm-editor
   :is(.cm-panels, .cm-tooltip) {
   background: var(--color-surface);
   color: var(--color-text);
   border-color: var(--color-line);
-  color-scheme: light;
+  color-scheme: inherit;
 }
-:root[data-site-theme="light"]
-  .code-editor
+:is(:root[data-site-theme="light"] .code-editor, .lesson-theme .code-editor)
   .cm-tooltip-autocomplete
   li[aria-selected="true"] {
   color: var(--color-ink);
@@ -233,12 +231,16 @@ h1[tabindex="-1"]:focus {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
-:root[data-site-theme="light"] .code-editor .cm-search .cm-textfield {
+:is(:root[data-site-theme="light"] .code-editor, .lesson-theme .code-editor)
+  .cm-search
+  .cm-textfield {
   color: var(--color-text);
   background: var(--color-bunker);
   border-color: var(--control-border);
 }
-:root[data-site-theme="light"] .code-editor .cm-search button {
+:is(:root[data-site-theme="light"] .code-editor, .lesson-theme .code-editor)
+  .cm-search
+  button {
   color: var(--color-text);
   background: var(--color-raised);
   border-color: var(--control-border);
@@ -255,5 +257,10 @@ h1[tabindex="-1"]:focus {
 :root[data-site-theme="light"] input::placeholder,
 :root[data-site-theme="light"] textarea::placeholder {
   color: #596169;
+  opacity: 1;
+}
+
+.lesson-theme .code-editor .cm-search input::placeholder {
+  color: var(--reading-muted);
   opacity: 1;
 }

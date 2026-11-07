@@ -186,7 +186,7 @@ for (const width of [390, 1280, 1440, 1920])
     ).toBeVisible();
     const reading = page.getByRole("button", { name: "Lição", exact: true });
     if (await reading.isVisible()) await reading.click();
-    await page.getByRole("button", { name: "Ajustar leitura" }).click();
+    await page.getByRole("button", { name: "Ajustar lição" }).click();
     await selectReadingTone(page, 1);
     expect(
       await page
@@ -198,7 +198,7 @@ for (const width of [390, 1280, 1440, 1920])
         .locator(".workspace-code-slot .cm-editor")
         .first()
         .evaluate((node) => getComputedStyle(node).backgroundColor),
-    ).toBe("rgb(35, 39, 44)");
+    ).toBe("rgb(17, 27, 42)");
     await page.reload();
     await expect(page.locator(".cm-editor")).toHaveCount(1);
     if (await switcher.isVisible()) await switcher.click();

@@ -75,6 +75,7 @@ export default defineConfig(({ command, isPreview }) => {
                   "favicon.png",
                   "favicon.svg",
                   "brand/bunker.png",
+                  "characters/otto.svg",
                   ...[
                     "nodejs",
                     "postgresql",

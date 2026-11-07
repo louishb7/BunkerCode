@@ -4,9 +4,9 @@ import { useAuth } from "../auth/Auth";
 import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
 import { validateEditorial } from "@bunkercode/content";
-import { ReadingArticle, StudySplit } from "./ReadingTools";
+import { LessonAppearance, ReadingArticle, StudySplit } from "./ReadingTools";
 import { recordActivity } from "../product/activity-store";
-import { memo, lazy, Suspense, useEffect, useState } from "react";
+import { memo, lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { parseExercise } from "../practice/exercise-api";
 import { rememberLesson } from "../product/recent";
 import { Link, useParams } from "react-router";
@@ -134,24 +134,30 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   } catch {
     /* Invalid blocks are displayed explicitly by the renderer. */
   }
-  const exercisePrompt = exercise && (
-    <section aria-labelledby="exercise-title" className="inline-exercise">
-      <p className="eyebrow mt-0">Prática de escrita</p>
-      <h2 id="exercise-title" className="text-xl">
-        {exercise.title}
-      </h2>
-      <p className="text-sm leading-relaxed text-subtle">
-        {exercise.objective}
-      </p>
-      <p className="whitespace-pre-wrap text-base leading-relaxed">
-        {exercise.instructions}
-      </p>
-      <h3 className="text-base">O que observar</h3>
-      <p className="text-sm leading-relaxed text-subtle">{exercise.expected}</p>
-    </section>
+  const exercisePrompt = useMemo(
+    () =>
+      exercise && (
+        <section aria-labelledby="exercise-title" className="inline-exercise">
+          <p className="eyebrow mt-0">Prática de escrita</p>
+          <h2 id="exercise-title" className="text-xl">
+            {exercise.title}
+          </h2>
+          <p className="text-sm leading-relaxed text-subtle">
+            {exercise.objective}
+          </p>
+          <p className="whitespace-pre-wrap text-base leading-relaxed">
+            {exercise.instructions}
+          </p>
+          <h3 className="text-base">O que observar</h3>
+          <p className="text-sm leading-relaxed text-subtle">
+            {exercise.expected}
+          </p>
+        </section>
+      ),
+    [exercise],
   );
   return (
-    <div className={`reader-layout ${exercise ? "practice-layout" : ""}`}>
+    <LessonAppearance practice={!!exercise}>
       <LessonNavigation lesson={lesson} />
       <Page
         title={`${lesson.title} · ${lesson.course.title}`}
@@ -175,6 +181,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             >
               Código
             </button>
+            <div id="mobile-lesson-appearance" />
           </div>
         )}
         <StudySplit
@@ -183,6 +190,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           mobileView={mobileView}
           left={
             <ReadingArticle
+              codeView={mobileView === "code"}
               tools={
                 capabilities.authoring &&
                 user?.role === "ADMIN" && (
@@ -288,6 +296,6 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           }
         />
       </Page>
-    </div>
+    </LessonAppearance>
   );
 }

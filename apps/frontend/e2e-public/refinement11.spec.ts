@@ -1,3 +1,8 @@
+import { test as anonymousTest } from "@playwright/test";
+import {
+  checkLessonWorkspaceThemes,
+  checkOttoNotes,
+} from "../e2e/reading-theme-checks";
 import {
   checkGlobalAppearance,
   checkThemeHierarchy,
@@ -90,9 +95,9 @@ for (const viewport of [
     await expect(
       page.getByRole("button", { name: "Próxima lição", exact: true }),
     ).toBeDisabled();
-    await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
-      3,
-    );
+    await expect(
+      page.getByRole("complementary", { name: "Otto", exact: true }),
+    ).toHaveCount(3);
     await expect(quiz.getByRole("radio")).toHaveCount(3);
     await quiz.getByRole("radio").nth(1).check();
     await quiz.getByRole("button", { name: "Verificar resposta" }).click();
@@ -196,4 +201,21 @@ for (const viewport of readingViewports) {
     await page.setViewportSize(viewport);
     await checkThemeHierarchy(page, info, false);
   });
+}
+
+for (const width of [1440, 320]) {
+  anonymousTest(
+    `lesson-wide tones preserve editor and contrast at ${width}`,
+    async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await checkLessonWorkspaceThemes(page, info);
+    },
+  );
+  anonymousTest(
+    `Otto avatar and editorial signature reflow at ${width}`,
+    async ({ page }, info) => {
+      await page.setViewportSize({ width, height: 900 });
+      await checkOttoNotes(page, info);
+    },
+  );
 }

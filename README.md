@@ -1,65 +1,39 @@
 # BunkerCode
 
-Plataforma autoral para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
+BunkerCode é uma plataforma educacional independente para aprender programação com explicações, exemplos e prática. É construída por um desenvolvedor que também está aprendendo: estudar, organizar o próprio raciocínio e transformar esse entendimento em lições faz parte do projeto.
 
-Stack: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, PostgreSQL, Prisma, Node.js e PNPM. Conteúdo continua em Markdown/JSON; identidade, sessões e jornada de aprendizagem ficam no PostgreSQL. Gratuidade inicial não define licença open source.
+A proposta é ajudar adultos iniciantes a entender o que um programa faz e por que ele funciona. O conteúdo nasce dos estudos e das decisões pedagógicas do criador. Ferramentas de IA auxiliam implementação, análise, testes e revisão técnica; a responsabilidade pela autoria educacional permanece com ele.
 
-## Iniciar
+## Como se aprende aqui
 
-Requisitos: Node.js 24.11+ (linha 24) ou 26+, pnpm 11 e PostgreSQL. Configure as variáveis e o banco conforme [autenticação e instalação](docs/authentication.md) antes de iniciar.
+As lições combinam texto, exemplos de código, perguntas com feedback e, quando previsto, um editor para experimentar. Otto, o robô que aparece em algumas notas, participa dos exemplos para chamar atenção ao que uma instrução realmente diz. Não é um assistente de conversa.
 
-    pnpm install
-    pnpm --filter @bunkercode/backend db:generate
-    pnpm --filter @bunkercode/backend db:status:local
-    pnpm --filter @bunkercode/backend db:deploy:local
-    pnpm dev
+O leitor pode ajustar a aparência da lição e o tamanho do texto. Nos exercícios, o rascunho fica neste navegador. A leitura publicada é aberta; uma conta permite guardar progresso, retomar estudos e sincronizar preferências. A conclusão de uma lição com exercício depende de uma solução aprovada pelos testes configurados, não apenas de abrir a página ou responder um quiz.
 
-Crie a configuração local uma vez conforme o guia: o backend de `pnpm dev` carrega `.env` e `.env.local` da raiz automaticamente, preservando variáveis do shell. Não precisa de `source` nem exports a cada sessão. O fluxo local não aplica migrations; `pnpm start`/`start:public` aplicam as migrations versionadas antes de abrir HTTP. Veja [deploy e banco na nuvem](docs/deployment.md).
+O ambiente local de autoria também oferece compilação, execução isolada quando disponível e avaliação dos exercícios configurados. No perfil público atual, o editor permite escrever e formatar, mas não oferece execução remota. Essas diferenças e os limites da recuperação de soluções estão no [guia da jornada de aprendizagem](docs/learning-state.md).
 
-Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar o catálogo e a leitura públicos, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
+## Estado e direção
 
-## Escrever uma lição
+O projeto está em desenvolvimento. O curso autoral de Fundamentos de Programação com JavaScript está em produção editorial; outros cursos permanecem em preparação ou com exemplos demonstrativos identificados. A seleção pública versionada está limitada à primeira lição. Não há deploy público confirmado neste repositório.
 
-    pnpm lesson:new --course typescript --slug narrowing --title "Narrowing"
+Já existem catálogo, leitura, prática, Studio de autoria, identidade e progresso por conta. A área experimental **Táticas** trabalha raciocínio sobre programas pequenos com atividades estruturadas. A direção é consolidar a experiência e produzir conteúdo progressivamente, apoiados por um backend seguro e compreensível. Isso não representa um catálogo de cursos completo nem uma promessa de calendário.
 
-Entre com uma conta provisionada como ADMIN, abra a lição no site e clique em **Editar lição** para escrever no Studio visual com Tiptap, inserir código, notas e quizzes e salvar no próprio lesson.md. No Studio, o seletor percorre as lições do curso e **Nova lição** cria um documento vazio sem terminal. **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior. Você também pode editar o arquivo no VS Code. Confira git diff e faça seu commit manualmente; não há rebuild nem commit automático. Também é possível criar o Markdown e inserir a entrada no course.json manualmente. A ordem do manifesto define a navegação. No Leitor, **Lições** e anterior/próxima ficam no footer permanente. O leitor organiza artigo, sumário e prática conforme o conteúdo, com preferências de leitura e divisores acessíveis. Veja [autoria visual e avaliação](docs/visual-authoring.md).
+## Desenvolver e escrever
 
-Para outro curso, crie content/courses/<id>/course.json com id, title, description e lessons. A API privada descobre a pasta automaticamente; no ambiente público é necessária seleção explícita. Cursos podem declarar módulos opcionais em `modules`, associando cada lição por `moduleId`. Veja o [guia de autoria](docs/authoring.md) para formato, exemplos e limites.
+O frontend usa React/Vite e CodeMirror; o backend é um monólito NestJS com PostgreSQL/Prisma. Lições e ordem dos cursos ficam em Markdown/JSON versionados. Contas e progresso ficam no banco; rascunhos locais não são substituídos por essa persistência.
 
-No perfil privado, Home e catálogo apresentam Fundamentos de Programação com JavaScript, TypeScript, Node.js e NestJS, nesta ordem. O novo curso contém o Módulo 00 — Antes do Código e a Lição 01 — O que significa programar? Os três cursos em preparação permanecem locais. JavaScript Essencial, PostgreSQL, Git, Linux e Docker foram retirados do acervo ativo; suas cópias de teste existem apenas nas fixtures do navegador. A seleção explícita prepara uma candidata local somente com a primeira lição autoral; não há deploy. [Política do catálogo](docs/product/course-visibility.md) e [planejamento editorial](docs/editorial/fundamentos-programacao-javascript.md).
+Para iniciar, siga [instalação e configuração local](docs/authentication.md). São necessários Node.js 24.11+ na linha 24 ou 26+, PNPM 11 e PostgreSQL. Depois de configurar o ambiente, `pnpm dev` inicia o site em `http://127.0.0.1:5173` e a API em `127.0.0.1:3001`. O perfil de autoria é local e não deve ser exposto à internet.
 
-## Organização
+O conteúdo pode ser escrito no editor de sua preferência ou no Studio com uma conta ADMIN. Salvar no Studio altera o arquivo; o commit continua manual. Comece pelo [guia de autoria](docs/authoring.md) e pelos [blocos editoriais](docs/visual-authoring.md).
 
-- apps/frontend: Home, catálogo, leitor Markdown, editor de prática e Studio local.
-- apps/backend: um monólito NestJS para leitura de cursos e escrita editorial segura.
-- content/courses: manifestos ordenados e lições Markdown.
-- packages/tactics-core: geração determinística e avaliação local, consumidas pelo laboratório experimental em `/lab/tactics`. [API, laboratório e limites](docs/tactics-core.md).
-- scripts: ferramentas de autoria; docs: arquitetura atual e histórico.
+## Guias do projeto
 
-[Arquitetura atual](docs/architecture/overview.md) · [Histórico da consolidação](docs/implementation/consolidation-mvp.md)
+- [Arquitetura atual](docs/architecture/overview.md): responsabilidades e decisões técnicas.
+- [Publicação](docs/publication.md): seleção de conteúdo e separação dos perfis.
+- [Deploy e recuperação](docs/deployment.md): migrations, configuração e o que precisa de backup além do Git.
+- [Táticas](docs/tactics-core.md): mecânicas, avaliação e limites do experimento.
+- [História selecionada](docs/history/README.md): decisões anteriores, sem valor de backlog ou arquitetura vigente.
 
-## Validar
+Para validar alterações: `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build`. Os testes de backend e navegador exigem PostgreSQL exclusivo de testes e configuração explícita; nunca use o banco de desenvolvimento como fixture. E2E usa `pnpm test:browser` e `pnpm test:browser:public`; veja [requisitos e isolamento](docs/authentication.md#separação-de-desenvolvimento-testes-e-produção) e [validação dos perfis](docs/publication.md#validação).
 
-    pnpm lint
-    pnpm typecheck
-    pnpm test
-    pnpm build
-    pnpm test:browser
-
-Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. Backend e E2E exigem configuração de autenticação e PostgreSQL exclusivo de testes com migrations aplicadas; as fixtures criam contas aleatórias. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo fora do checkout, limpas pelo supervisor da execução. `playwright --list` não cria fixtures; diretórios fornecidos explicitamente por ambiente são preservados. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
-
-O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. Para visitantes, a Home apresenta a proposta e prioriza **Explorar cursos**, com cadastro opcional. Contas autenticadas veem início/retomada de uma lição válida. Cursos e lições publicados podem ser lidos sem conta; somente ADMIN acessa conteúdo editorial não publicado. Não apresenta heatmap, consulta por data ou métricas substitutas; os registros locais de estudo permanecem preservados e visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit com avaliação local quando há teste público definido. A Sprint 2 sincroniza conclusões, última visita, tema e leitura por conta; somente Submit aprovado pelo backend persiste a solução exata, preservando os rascunhos locais. [Regras e limites da jornada persistente](docs/learning-state.md). Blocos Markdown continuam inertes. Não há banco editorial.
-
-Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.
-
-## Run local
-
-Run requer Docker Linux acessível ao processo do backend, cgroup v2 e seccomp. Instale previamente a imagem oficial fixada (o backend não baixa imagens):
-
-    docker pull node@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
-
-Reinicie/abra a prática com Docker ativo. `BUNKERCODE_RUNNER_ENABLED=0` desativa Run. Sem os requisitos, Run e Submit compilam e explicam a indisponibilidade, sem afirmar avaliação completa. Não altere permissões do socket Docker apenas para contornar um erro.
-
-Cada execução usa um container novo: sem rede, sem volumes do produto/socket Docker, filesystem da imagem somente de leitura, usuário 65534, capabilities removidas, no-new-privileges, 96 MiB de memória sem swap extra, 0,5 CPU, 32 processos, timeout de 5 s e saída até 32 KiB. `/tmp` é efêmero e limitado a 1 MiB. Run compila um arquivo ES2022 sem imports, DOM ou tipos Node; não é uma IDE de projeto. Submit preserva código/revisão/timestamp; com teste público recompila a fonte no backend, compara stdout ou chama a função com casos JSON e registra passed/failed. Sem critério ou execução completa, registra unassessed. [Contratos e limites](docs/architecture/overview.md#refinamento-01-atividade-editor-e-execução).
-
-Táticas está disponível pela Home e pela navegação em `/tactics`. A sessão v3 alterna intervenção, organização e investigação de programas com traces estruturados, sem backend nem execução do código apresentado. Links antigos em `/lab/tactics` e sessões v1/v2 continuam reproduzíveis. [Núcleo, seeds e versões](docs/tactics-core.md).
+Git preserva apenas o que foi versionado. Segredos, banco de dados e rascunhos no navegador exigem cuidados próprios de recuperação. Gratuidade inicial não define uma licença open source.

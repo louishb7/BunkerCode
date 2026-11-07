@@ -398,6 +398,7 @@ export default function PracticePanel({
             <div hidden={file !== "solution"}>
               {draft.ready ? (
                 <CodeEditor
+                  lessonAppearance
                   code={draft.code}
                   language={exercise.language}
                   onChange={draft.change}
@@ -415,6 +416,7 @@ export default function PracticePanel({
             </div>
             {exercise.tests && file === "tests" && (
               <CodeEditor
+                lessonAppearance
                 code={JSON.stringify(exercise.tests, null, 2)}
                 language="javascript"
                 readOnly

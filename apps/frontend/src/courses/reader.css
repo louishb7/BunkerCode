@@ -493,6 +493,7 @@
 }
 .editorial-note-content {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .editorial-note-content > p {
   white-space: pre-wrap;
@@ -539,9 +540,38 @@
   }
 }
 
-/* These colors belong to the lesson article and its reading controls. Studio
-   uses site colors; Darcula code blocks retain their own palette. */
+/* Lesson-local palettes. Studio uses site colors; inert Markdown code blocks
+   retain Darcula. Persisted tone IDs are shared by reader and workspace. */
+.lesson-theme,
 .reading-theme {
+  --color-bunker: var(--reading-background);
+  --color-text: var(--reading-text);
+  --color-ink: var(--reading-heading);
+  --color-gold: var(--accent);
+  --panel-background: var(--color-surface);
+  --popover-background: var(--color-raised);
+  --surface-hover: var(--color-raised);
+  --surface-active: var(--color-raised);
+  --status-success: var(--reading-success);
+  --status-error: var(--reading-error);
+  --status-warning: var(--accent);
+  --success-border: var(--reading-success-border);
+  --error-border: var(--reading-error-border);
+  --primary-hover: var(--accent);
+  --editor-surface: var(--color-surface);
+  --editor-muted: var(--reading-muted);
+  --editor-line: var(--color-line);
+  --editor-accent: var(--accent);
+  --editor-raised: var(--color-raised);
+  --editor-keyword: #e89450;
+  --editor-string: #91c777;
+  --editor-number: #85b5db;
+  --editor-type: #ebb662;
+  --editor-property: #bf93d8;
+  --editor-function: #f7d064;
+  --editor-comment: #a8adb3;
+  --editor-variable: var(--reading-text);
+  --editor-selection: #293849;
   --reading-background: #191e23;
   --reading-text: #e9edf1;
   --reading-heading: #f2f4f6;
@@ -595,6 +625,14 @@
 .reading-tone-3,
 .reading-tone-4,
 .reading-tone-5 {
+  --editor-keyword: #8b3c12;
+  --editor-string: #326124;
+  --editor-number: #275a82;
+  --editor-type: #79501c;
+  --editor-property: #75438c;
+  --editor-function: #79501c;
+  --editor-comment: #52606e;
+  --editor-selection: #d5e1ee;
   --reading-text: #293542;
   --reading-heading: #152331;
   --reading-muted: #52606e;
@@ -787,4 +825,25 @@
 }
 .lesson-progress button {
   min-height: 44px;
+}
+
+.otto-avatar {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+.editorial-note-content > .otto-name {
+  margin: 0 0 8px;
+  color: var(--reading-heading, var(--color-ink));
+}
+@media (max-width: 599px) {
+  .editorial-comment:has(.otto-avatar) {
+    padding: 16px 12px;
+    gap: 10px;
+  }
+  .otto-avatar {
+    width: 44px;
+    height: 44px;
+  }
 }

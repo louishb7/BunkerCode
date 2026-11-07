@@ -1,3 +1,7 @@
+import {
+  checkLessonWorkspaceThemes,
+  checkOttoNotes,
+} from "./reading-theme-checks";
 import { test as anonymousTest } from "@playwright/test";
 import { selectSiteTheme } from "./reading-theme-checks";
 import {
@@ -51,7 +55,7 @@ for (const width of [390, 1280, 1440, 1920]) {
         page.getByRole("navigation", { name: "Navegação entre lições" }),
       ).toHaveCount(1);
       const appearance = page.getByRole("button", {
-        name: "Ajustar leitura",
+        name: "Ajustar lição",
         exact: true,
       });
       await appearance.click();
@@ -198,7 +202,7 @@ anonymousTest(
       /reading-tone-0/,
     );
     await page
-      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .getByRole("button", { name: "Ajustar lição", exact: true })
       .click();
     await selectSiteTheme(page, "light");
     await expect(page.locator("html")).toHaveCSS(
@@ -303,3 +307,18 @@ test("lesson arrival preserves focus inside the appearance panel", async ({
   await page.keyboard.press("Escape");
   await expect(appearance).toBeFocused();
 });
+
+for (const width of [1440, 320]) {
+  test(`lesson-wide tones preserve editor and contrast at ${width}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await checkLessonWorkspaceThemes(page, info);
+  });
+  test(`Otto avatar and editorial signature reflow at ${width}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await checkOttoNotes(page, info);
+  });
+}

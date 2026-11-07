@@ -1,3 +1,4 @@
+import { useAppearance } from "../appearance/Appearance";
 import {
   autocompletion,
   closeBrackets,
@@ -31,46 +32,72 @@ import {
 } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 const darcula = HighlightStyle.define([
-  { tag: [tags.keyword, tags.bool], color: "#db7e32" },
-  { tag: tags.string, color: "#7cb961" },
-  { tag: tags.number, color: "#6897bb" },
-  { tag: [tags.typeName, tags.className], color: "#ebb662" },
-  { tag: tags.propertyName, color: "#bf93d8" },
-  { tag: tags.function(tags.variableName), color: "#f7d064" },
-  { tag: tags.comment, color: "#909090" },
-  { tag: tags.variableName, color: "#a9b7c6" },
-]);
-const theme = EditorView.theme(
+  { tag: [tags.keyword, tags.bool], color: "var(--editor-keyword, #db7e32)" },
+  { tag: tags.string, color: "var(--editor-string, #7cb961)" },
+  { tag: tags.number, color: "var(--editor-number, #6897bb)" },
   {
-    "&": { backgroundColor: "#23272c", color: "#d4d4d4", fontSize: "14px" },
-    ".cm-content": {
-      fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
-      padding: "18px 0",
-      minHeight: "420px",
-      caretColor: "#e8bd68",
-    },
-    ".cm-scroller": {
-      overflow: "auto",
-      lineHeight: "1.7",
-      height: "clamp(360px, 50dvh, 650px)",
-    },
-    ".cm-gutters": {
-      backgroundColor: "#202429",
-      color: "#a0a5ac",
-      borderRight: "1px solid #343b42",
-    },
-    ".cm-activeLine": { backgroundColor: "#ffffff05" },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: "#455163",
-    },
-    "&.cm-focused": { outline: "2px solid #e8bd68", outlineOffset: "-2px" },
+    tag: [tags.typeName, tags.className],
+    color: "var(--editor-type, #ebb662)",
   },
-  { dark: true },
-);
+  { tag: tags.propertyName, color: "var(--editor-property, #bf93d8)" },
+  {
+    tag: tags.function(tags.variableName),
+    color: "var(--editor-function, #f7d064)",
+  },
+  { tag: tags.comment, color: "var(--editor-comment, #909090)" },
+  { tag: tags.variableName, color: "var(--editor-variable, #a9b7c6)" },
+]);
+const theme = (dark: boolean) =>
+  EditorView.theme(
+    {
+      "&": {
+        backgroundColor: "var(--reading-background, #23272c)",
+        color: "var(--reading-text, #d4d4d4)",
+        fontSize: "14px",
+      },
+      ".cm-content": {
+        fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
+        padding: "18px 0",
+        minHeight: "420px",
+        caretColor: "var(--editor-accent, #e8bd68)",
+      },
+      ".cm-scroller": {
+        overflow: "auto",
+        lineHeight: "1.7",
+        height: "clamp(360px, 50dvh, 650px)",
+      },
+      ".cm-gutters": {
+        backgroundColor: "var(--editor-surface, #202429)",
+        color: "var(--editor-muted, #a0a5ac)",
+        borderRight: "1px solid var(--editor-line, #343b42)",
+      },
+      ".cm-cursor, .cm-dropCursor": {
+        borderLeftColor: "var(--editor-accent, #e8bd68)",
+      },
+      "& .cm-matchingBracket, & .cm-selectionMatch": {
+        backgroundColor: "var(--editor-raised, #353b43)",
+        outline: "1px solid var(--editor-accent, #e8bd68)",
+      },
+      ".cm-searchMatch, .cm-searchMatch.cm-searchMatch-selected": {
+        backgroundColor: "var(--editor-selection, #455163)",
+        outline: "1px solid var(--editor-accent, #e8bd68)",
+      },
+      ".cm-activeLine": { backgroundColor: "var(--editor-surface, #ffffff05)" },
+      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground": {
+        backgroundColor: "var(--editor-selection, #455163)",
+      },
+      "&.cm-focused": {
+        outline: "2px solid var(--editor-accent, #e8bd68)",
+        outlineOffset: "-2px",
+      },
+    },
+    { dark },
+  );
 export function CodeEditor({
   code,
   language,
   variant = "practice",
+  lessonAppearance = false,
   onChange,
   formatRequest,
   onFormatState,
@@ -79,6 +106,7 @@ export function CodeEditor({
 }: {
   code: string;
   variant?: "practice" | "example";
+  lessonAppearance?: boolean;
   readOnly?: boolean;
   label?: string;
   language: string;
@@ -86,6 +114,11 @@ export function CodeEditor({
   formatRequest: number;
   onFormatState: (busy: boolean, message: string) => void;
 }) {
+  const { effectiveTone } = useAppearance();
+  const dark = !lessonAppearance || effectiveTone < 3;
+  const themeConfig = useRef(new Compartment());
+  const initialDark = useRef(dark);
+  initialDark.current = dark;
   const languageConfig = useRef(new Compartment());
   const initialLanguage = useRef(language);
   initialLanguage.current = language;
@@ -125,7 +158,7 @@ export function CodeEditor({
               : [],
           ),
           syntaxHighlighting(darcula),
-          theme,
+          themeConfig.current.of(theme(initialDark.current)),
           ...(variant === "example"
             ? [
                 EditorView.theme({
@@ -170,6 +203,11 @@ export function CodeEditor({
       editor.destroy();
     };
   }, [readOnly, label, variant]);
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: themeConfig.current.reconfigure(theme(dark)),
+    });
+  }, [dark]);
   useEffect(() => {
     view.current?.dispatch({
       effects: languageConfig.current.reconfigure(

@@ -306,7 +306,7 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
           ref={trigger}
           type="button"
           className="appearance-trigger"
-          aria-label={reading ? "Ajustar leitura" : "Tema do site"}
+          aria-label={reading ? "Ajustar lição" : "Tema do site"}
           aria-expanded={open}
           aria-controls={
             reading ? "reading-appearance-panel" : "site-appearance-panel"
@@ -320,14 +320,14 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
           ) : (
             <Moon size={18} aria-hidden="true" />
           )}
-          <span>{reading ? "Ajustar leitura" : "Tema"}</span>
+          <span>{reading ? "Ajustar lição" : "Tema"}</span>
         </button>
         {open && (
           <div
             id={reading ? "reading-appearance-panel" : "site-appearance-panel"}
             className="appearance-panel"
             role="group"
-            aria-label={reading ? "Preferências de leitura" : "Tema global"}
+            aria-label={reading ? "Preferências da lição" : "Tema global"}
           >
             {!reading && (
               <div
@@ -360,7 +360,7 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
             )}
             {reading && (
               <fieldset>
-                <legend>Tonalidade da leitura</legend>
+                <legend>Tonalidade da lição</legend>
                 <div className="reading-tone-options">
                   {readingTones.map((label, value) => (
                     <button
@@ -399,8 +399,8 @@ export function AppearanceControl({ reading }: { reading: boolean }) {
                 <button
                   className="reading-reset"
                   type="button"
-                  aria-label="Restaurar leitura"
-                  title="Restaurar leitura"
+                  aria-label="Restaurar lição"
+                  title="Restaurar lição"
                   onClick={appearance.resetReading}
                 >
                   <RotateCcw size={16} aria-hidden="true" />

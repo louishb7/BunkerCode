@@ -180,7 +180,7 @@ for (const width of [390, 1280, 1440, 1920])
     await page.goto(url);
     await expect(page.locator(".study-explanation")).toBeVisible();
     await page
-      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .getByRole("button", { name: "Ajustar lição", exact: true })
       .click();
     await selectReadingTone(page, 2);
     await expandReadingSettings(page);
@@ -610,7 +610,7 @@ test("reading themes keep links, quotes and lists legible without changing Studi
   const samples: unknown[] = [];
   for (let tone = 0; tone < 6; tone++) {
     await page
-      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .getByRole("button", { name: "Ajustar lição", exact: true })
       .click();
     await selectReadingTone(page, tone);
     await page.keyboard.press("Escape");
@@ -641,4 +641,46 @@ test("reading themes keep links, quotes and lists legible without changing Studi
     "rgb(232, 189, 104)",
   );
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+});
+
+test("Otto signature uses the same safe avatar in Studio preview and reader", async ({
+  page,
+}) => {
+  const note = JSON.stringify({
+    kind: "info",
+    text: "**Otto**\n\nUm comentário com **ênfase**. <script>window.ottoUnsafe = true</script>",
+  });
+  const generic = JSON.stringify({
+    kind: "tip",
+    text: "Uma nota comum menciona Otto sem atribuir sua voz.",
+  });
+  await writeFile(
+    file,
+    source +
+      "\n```bunker-note\n" +
+      note +
+      "\n```\n\n```bunker-note\n" +
+      generic +
+      "\n```\n",
+  );
+  await page.goto(url + "/edit");
+  await studioView(page, "Prévia");
+  await expect(
+    page
+      .getByRole("complementary", { name: "Otto", exact: true })
+      .locator(".otto-avatar"),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Nota", exact: true })
+      .locator(".otto-avatar"),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => "ottoUnsafe" in window)).toBe(false);
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Otto", exact: true })
+      .locator(".otto-avatar"),
+  ).toBeVisible();
+  expect(await page.evaluate(() => "ottoUnsafe" in window)).toBe(false);
 });

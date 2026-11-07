@@ -34,6 +34,16 @@ Código, identificadores, nomes técnicos e testes em inglês. Documentação e 
 
 README conciso e verdadeiro. Atualizar docs quando mudar comportamento, contratos, estrutura ou comandos. Não gerar documentos redundantes; distinguir estado atual de história e fatos de interpretação.
 
+## Gate de relevância documental
+
+Ao concluir uma mudança, avaliar se ela torna a documentação existente materialmente incorreta, incompleta ou enganosa para quem usa, desenvolve ou opera o projeto. Este é um gate de avaliação, não uma obrigação de editar documentos em toda tarefa.
+
+Atualizar quando houver mudança relevante de experiência educacional, identidade do produto, arquitetura, segurança, autenticação, persistência, recuperação ou instruções essenciais de desenvolvimento/operação. O README apresenta o produto e sua direção; uma vez correto, não deve ser reescrito por nova lição, componente, endpoint, ajuste visual ou refactor interno. Preferir corrigir o guia existente, explicando o motivo da decisão e suas consequências práticas, sem duplicar relatórios.
+
+README, guias humanos em docs, decisões arquiteturais e explicações devem usar português brasileiro acessível a quem está aprendendo desenvolvimento. Preservar precisão, detalhes de segurança, comandos, contratos e termos técnicos. Código, identificadores e Conventional Commits permanecem em inglês. Distinguir capacidade implementada, plano e registro histórico; IA auxilia engenharia, não substitui a autoria educacional do criador.
+
+Registrar brevemente na entrega: **Atualização necessária e concluída**, **Atualização necessária, adiada com justificativa** ou **Nenhuma atualização necessária**. Quando o acervo exigir revisão maior, delimitar o que foi corrigido e o que foi adiado, sem reescrita geral nem exclusão de decisões históricas.
+
 ## Validação e entrega
 
 Novos testes E2E devem preferencialmente ampliar os grupos funcionais existentes. Criar outro arquivo somente com razão objetiva de organização, isolamento ou manutenção; não criar automaticamente um arquivo numerado por refinamento. Excluir ou consolidar testes exige demonstrar equivalência integral da cobertura e conferir descoberta e execução nos runners correspondentes.

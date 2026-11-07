@@ -227,9 +227,9 @@ for (const viewport of [
     await expect(
       footer.getByRole("button", { name: "Próxima lição", exact: true }),
     ).toBeDisabled();
-    await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
-      3,
-    );
+    await expect(
+      page.getByRole("complementary", { name: "Otto", exact: true }),
+    ).toHaveCount(3);
     const secondQuiz = page.locator(".inline-quiz");
     await expect(secondQuiz.getByRole("radio")).toHaveCount(3);
     await secondQuiz.getByRole("radio").nth(1).check();
@@ -267,7 +267,7 @@ for (const viewport of [
     await expect(dialog).not.toBeVisible();
 
     const appearance = page.getByRole("button", {
-      name: "Ajustar leitura",
+      name: "Ajustar lição",
     });
     await appearance.click();
     await expandReadingSettings(page);
@@ -286,7 +286,7 @@ for (const viewport of [
     );
     await geometry(page);
     await expect(
-      appearance.getByText("Ajustar leitura", { exact: true }),
+      appearance.getByText("Ajustar lição", { exact: true }),
     ).toBeVisible();
     // Quiz answers are intentionally in memory; reload starts a fresh attempt.
     await expect(quiz.locator(".quiz-feedback")).toHaveCount(0);

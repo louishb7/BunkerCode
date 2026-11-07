@@ -18,17 +18,52 @@ function preference(key: string, fallback: number, min: number, max: number) {
     return fallback;
   }
 }
+// Keep preference updates at the visual boundary: lesson content and quiz state
+// must not be recreated just because the surrounding palette changed.
+export function LessonAppearance({
+  children,
+  practice,
+}: {
+  children: ReactNode;
+  practice: boolean;
+}) {
+  const { effectiveTone } = useAppearance();
+  return (
+    <div
+      className={`reader-layout lesson-theme reading-tone-${effectiveTone} ${practice ? "practice-layout" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
 export function ReadingArticle({
   children,
   tools,
+  codeView = false,
 }: {
   children: ReactNode;
   tools?: ReactNode;
+  codeView?: boolean;
 }) {
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setToolbar(document.getElementById("reading-tools"));
   }, []);
+  const [appearanceHost, setAppearanceHost] = useState<HTMLElement | null>(
+    null,
+  );
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 999px)");
+    const update = () =>
+      setAppearanceHost(
+        codeView && mobile.matches
+          ? document.getElementById("mobile-lesson-appearance")
+          : null,
+      );
+    update();
+    mobile.addEventListener("change", update);
+    return () => mobile.removeEventListener("change", update);
+  }, [codeView]);
   const { size, effectiveTone: tone } = useAppearance();
   return (
     <article
@@ -36,7 +71,11 @@ export function ReadingArticle({
       style={{ "--prose-size": `${size}px` } as CSSProperties}
     >
       {toolbar && tools && createPortal(tools, toolbar)}
-      <AppearanceControl reading />
+      {appearanceHost ? (
+        createPortal(<AppearanceControl reading />, appearanceHost)
+      ) : (
+        <AppearanceControl reading />
+      )}
       {children}
     </article>
   );
