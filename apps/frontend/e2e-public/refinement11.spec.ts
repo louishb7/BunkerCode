@@ -22,6 +22,9 @@ for (const viewport of [
       if (
         request.url().includes("/api/") &&
         !request.url().includes("/api/auth/") &&
+        !/\/api\/learning\/(preferences|courses\/[^/]+\/lessons\/[^/]+\/visit)$/.test(
+          request.url(),
+        ) &&
         request.method() !== "GET"
       )
         mutations.push(request.url());
@@ -140,6 +143,9 @@ for (const viewport of readingViewports) {
       if (
         request.url().includes("/api/") &&
         !request.url().includes("/api/auth/") &&
+        !/\/api\/learning\/(preferences|courses\/[^/]+\/lessons\/[^/]+\/visit)$/.test(
+          request.url(),
+        ) &&
         request.method() !== "GET"
       )
         mutations.push(request.url());

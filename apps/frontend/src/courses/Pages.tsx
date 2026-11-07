@@ -1,3 +1,4 @@
+import { useLearning } from "../learning/Learning";
 import { useAuth } from "../auth/Auth";
 import { Link, useNavigate, useParams } from "react-router";
 import { lazy, Suspense, useState } from "react";
@@ -35,13 +36,22 @@ function LessonLink({
   lesson: LessonEntry;
   index: number;
 }) {
+  const { summary } = useLearning();
+  const completed = summary?.courses
+    .find((c) => c.courseId === courseId)
+    ?.completed.includes(lesson.slug);
   return (
     <li>
       <Link className="course-lesson" to={lessonPath(courseId, lesson.slug)}>
         <span className="lesson-number">
           {String(index + 1).padStart(2, "0")}
         </span>
-        <span className="course-lesson-title">{lesson.title}</span>
+        <span className="course-lesson-title">
+          {lesson.title}
+          {completed && (
+            <span className="text-sm text-subtle"> · Concluída</span>
+          )}
+        </span>
       </Link>
     </li>
   );
@@ -95,6 +105,8 @@ export function CoursePage() {
   const { user } = useAuth();
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const { summary, error: progressError } = useLearning();
+  const progress = summary?.courses.find((c) => c.courseId === id);
   const [creating, setCreating] = useState(false);
   const { data: course, error } = useContent(
     "/" + encodeURIComponent(id),
@@ -119,6 +131,13 @@ export function CoursePage() {
             {course.lessons.length === 1 ? "lição" : "lições"}
           </p>
         </header>
+        {progress && (
+          <p className="text-sm text-subtle">
+            {progress.completed.length} de {progress.total} lições publicadas
+            concluídas
+          </p>
+        )}
+        {user && progressError && <p role="status">{progressError}</p>}
         <section aria-labelledby="lessons-title" className="course-lessons">
           <h2 id="lessons-title">Lições</h2>
           {course.lessons.length === 0 ? (

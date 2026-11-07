@@ -12,6 +12,7 @@ export interface RunResult {
   stderr: string;
   exitCode: number | null;
   assessment?: "passed" | "failed";
+  approved?: boolean;
   revision: string;
   testReport?: TestReport;
 }
@@ -70,13 +71,17 @@ export async function runSolution(
     javascript: string;
   },
   signal: AbortSignal,
+  submit = false,
 ): Promise<RunResult> {
-  const response = await apiFetch("/api/practice/runs", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(value),
-    signal,
-  });
+  const response = await apiFetch(
+    submit ? "/api/practice/submissions" : "/api/practice/runs",
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(value),
+      signal,
+    },
+  );
   const result: unknown = await response.json();
   if (!response.ok)
     throw new Error(
@@ -93,6 +98,9 @@ export async function runSolution(
     (r.assessment !== undefined &&
       r.assessment !== "passed" &&
       r.assessment !== "failed") ||
+    (submit && typeof r.approved !== "boolean") ||
+    (r.approved === true &&
+      (r.assessment !== "passed" || r.state !== "success")) ||
     r.id !== value.id ||
     r.revision !== value.revision ||
     typeof r.sourceHash !== "string" ||

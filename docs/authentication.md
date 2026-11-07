@@ -1,6 +1,6 @@
 # Identidade, sessões e leitura pública
 
-Esta sprint adiciona PostgreSQL/Prisma e autenticação à plataforma existente. Conteúdo continua canônico em Markdown/JSON; gratuidade não atribui licença open source. Não há progresso, preferências remotas, soluções persistidas ou dashboard individual. Não houve deploy público.
+Esta sprint adiciona PostgreSQL/Prisma e autenticação à plataforma existente. Conteúdo continua canônico em Markdown/JSON; gratuidade não atribui licença open source. A Sprint 2 acrescenta progresso, preferências e soluções aprovadas por conta; veja [jornada persistente](learning-state.md). Não houve deploy público.
 
 ## Configuração local
 
@@ -50,9 +50,9 @@ REVOKE ALL ON DATABASE bunkercode_dev FROM PUBLIC;
 
 ### Separação de desenvolvimento, testes e produção
 
-`dev`, `db:generate`, `db:migrate`, `db:deploy:local`, `db:status:local` e `admin:grant:local` carregam os arquivos locais explicitamente pelos scripts. `db:deploy`, `admin:grant`, `start`, `start:authoring` e `start:public` preservam a configuração exclusivamente fornecida pelo ambiente do operador; use um gerenciador de segredos no deploy. Não use comandos `*:local` em produção. A configuração Prisma 7 recebe `DATABASE_URL` do processo, sem loader implícito adicional.
+`dev`, `db:generate`, `db:migrate`, `db:deploy:local`, `db:status:local` e `admin:grant:local` carregam os arquivos locais explicitamente pelos scripts. `db:deploy`, `admin:grant`, `start`, `start:authoring` e `start:public` preservam a configuração exclusivamente fornecida pelo ambiente do operador; use um gerenciador de segredos no deploy. Não use comandos `*:local` em produção. A configuração Prisma 7 recebe `DIRECT_URL`, quando fornecida, ou `DATABASE_URL` do processo, sem loader implícito adicional; a aplicação usa `DATABASE_URL`.
 
-`pnpm test` e E2E não carregam arquivos locais. Forneça explicitamente as cinco variáveis de autenticação apontando para **PostgreSQL exclusivo de testes**, com migrations aplicadas, e inclua as origens de teste. Nunca exporte a URL de desenvolvimento para rodar a suíte: as fixtures gravam contas/sessões. Não há geração automática de segredos ou aplicação de migrations no startup.
+`pnpm test` e E2E não carregam arquivos locais. Forneça explicitamente as cinco variáveis de autenticação apontando para **PostgreSQL exclusivo de testes**, com migrations aplicadas, e inclua as origens de teste. Nunca exporte a URL de desenvolvimento para rodar a suíte: as fixtures gravam contas/sessões. Não há geração automática de segredos. O launcher de deploy aplica migrations antes de abrir HTTP; o desenvolvimento e a entrada direta continuam sem essa etapa. Veja [deployment.md](deployment.md).
 
 `db:migrate --name descricao` é reservado ao desenvolvimento do schema e exige shadow database/permissões correspondentes. Deploy usa `db:deploy` com ambiente explícito; desenvolvimento local usa `db:deploy:local`; migrations devem ser revistas antes de aplicação. `db:generate` não aplica migrations. O Prisma conecta no ciclo de inicialização do Nest e desconecta no encerramento; falhas impedem o servidor de ficar pronto. O banco precisa estar disponível também para autorizar requests privados.
 

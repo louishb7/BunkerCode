@@ -2,7 +2,7 @@
 
 Plataforma autoral para estudar programação, praticar e transformar entendimento em conteúdo autoral. O autor é o primeiro usuário: estuda em outra fonte, escreve uma lição Markdown, revisa no site e faz commit.
 
-Stack: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, PostgreSQL, Prisma, Node.js e PNPM. Conteúdo continua em Markdown/JSON; identidade e sessões ficam no PostgreSQL. Gratuidade inicial não define licença open source.
+Stack: React/Vite, Tailwind CSS v4, CodeMirror 6, NestJS, PostgreSQL, Prisma, Node.js e PNPM. Conteúdo continua em Markdown/JSON; identidade, sessões e jornada de aprendizagem ficam no PostgreSQL. Gratuidade inicial não define licença open source.
 
 ## Iniciar
 
@@ -14,7 +14,7 @@ Requisitos: Node.js 24.11+ (linha 24) ou 26+, pnpm 11 e PostgreSQL. Configure as
     pnpm --filter @bunkercode/backend db:deploy:local
     pnpm dev
 
-Crie a configuração local uma vez conforme o guia: o backend de `pnpm dev` carrega `.env` e `.env.local` da raiz automaticamente, preservando variáveis do shell. Não precisa de `source` nem exports a cada sessão. Startup não cria banco nem aplica migrations.
+Crie a configuração local uma vez conforme o guia: o backend de `pnpm dev` carrega `.env` e `.env.local` da raiz automaticamente, preservando variáveis do shell. Não precisa de `source` nem exports a cada sessão. O fluxo local não aplica migrations; `pnpm start`/`start:public` aplicam as migrations versionadas antes de abrir HTTP. Veja [deploy e banco na nuvem](docs/deployment.md).
 
 Abra [BunkerCode](http://127.0.0.1:5173). Um único comando inicia frontend e backend; API local em 127.0.0.1:3001. O comando seleciona explicitamente o perfil privado `authoring`; não exponha esse ambiente publicamente. Para preparar o catálogo e a leitura públicos, consulte [perfis e publicação](docs/publication.md): `pnpm build:public`, seleção explícita da Lição 01 em `config/publication.json`, snapshot somente leitura e `pnpm start:public`. Não houve deploy.
 
@@ -48,7 +48,7 @@ No perfil privado, Home e catálogo apresentam Fundamentos de Programação com 
 
 Os testes do backend compilam e iniciam o servidor real sem herdar NODE_PATH, com conteúdo isolado. Backend e E2E exigem configuração de autenticação e PostgreSQL exclusivo de testes com migrations aplicadas; as fixtures criam contas aleatórias. E2E requer Chromium instalado; cenários de Run também requerem o Docker e a imagem fixada abaixo. Para usar outro Chromium existente: BROWSER_PATH=/caminho/do/navegador pnpm test:browser. Os testes usam o build de produção com Vite preview, portas 3012/5184 e cópias descartáveis de conteúdo fora do checkout, limpas pelo supervisor da execução. `playwright --list` não cria fixtures; diretórios fornecidos explicitamente por ambiente são preservados. Cada rodada de navegador grava capturas em um novo diretório .bunkercode/browser-results-*, preservando as anteriores.
 
-O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. Para visitantes, a Home apresenta a proposta e prioriza **Explorar cursos**, com cadastro opcional. Contas autenticadas veem início/retomada de uma lição válida. Cursos e lições publicados podem ser lidos sem conta; somente ADMIN acessa conteúdo editorial não publicado. Não apresenta heatmap, consulta por data ou métricas substitutas; os registros locais de estudo permanecem preservados e visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit com avaliação local quando há teste público definido. Blocos Markdown continuam inertes. Não há banco editorial.
+O MVP 03 oferece Home, Cursos, percurso de lições, Leitor, prática de escrita com CodeMirror e Studio. Para visitantes, a Home apresenta a proposta e prioriza **Explorar cursos**, com cadastro opcional. Contas autenticadas veem início/retomada de uma lição válida. Cursos e lições publicados podem ser lidos sem conta; somente ADMIN acessa conteúdo editorial não publicado. Não apresenta heatmap, consulta por data ou métricas substitutas; os registros locais de estudo permanecem preservados e visitas não representam conclusão. Exercícios explícitos preservam rascunhos no IndexedDB deste navegador, separados do Markdown editorial. O editor oferece autocomplete local, Prettier sob demanda, compilação TypeScript/JavaScript com análise sintática e semântica ES2022, Run isolado quando Docker estiver disponível e Submit com avaliação local quando há teste público definido. A Sprint 2 sincroniza conclusões, última visita, tema e leitura por conta; somente Submit aprovado pelo backend persiste a solução exata, preservando os rascunhos locais. [Regras e limites da jornada persistente](docs/learning-state.md). Blocos Markdown continuam inertes. Não há banco editorial.
 
 Dados anteriores em .bunkercode/, .bunkerlab/ e .backendlab/, incluindo SQLite e capturas, permanecem no disco e ignorados pelo Git. O produto não abre nem migra os bancos dos exercícios aposentados; o código anterior pode ser recuperado pelo histórico Git.
 

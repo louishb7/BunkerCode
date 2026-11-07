@@ -12,13 +12,17 @@ enum Role {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique @db.VarChar(254)
-  username     String?   @unique @db.VarChar(30)
-  passwordHash String
-  role         Role      @default(STUDENT)
-  createdAt    DateTime  @default(now())
-  sessions     Session[]
+  id                String               @id @default(uuid()) @db.Uuid
+  email             String               @unique @db.VarChar(254)
+  username          String?              @unique @db.VarChar(30)
+  passwordHash      String
+  role              Role                 @default(STUDENT)
+  createdAt         DateTime             @default(now())
+  sessions          Session[]
+  completions       LessonCompletion[]
+  lastVisit         LastLessonVisit?
+  preferences       LearningPreferences?
+  approvedSolutions ApprovedSolution[]
 }
 
 model Session {
@@ -43,4 +47,43 @@ model AuthThrottle {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+model LessonCompletion {
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String   @db.VarChar(100)
+  lessonSlug  String   @db.VarChar(100)
+  completedAt DateTime @default(now())
+
+  @@id([userId, courseId, lessonSlug])
+}
+
+model LastLessonVisit {
+  userId     String   @id @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String   @db.VarChar(100)
+  lessonSlug String   @db.VarChar(100)
+  visitedAt  DateTime @default(now())
+}
+
+model LearningPreferences {
+  userId      String @id @db.Uuid
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteTheme   String @default("bunkercode") @db.VarChar(10)
+  readingTone Int?
+  readingSize Int    @default(17)
+}
+
+model ApprovedSolution {
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String   @db.VarChar(100)
+  lessonSlug String   @db.VarChar(100)
+  exerciseId String   @db.VarChar(100)
+  revision   String   @db.Char(64)
+  source     String
+  approvedAt DateTime @default(now())
+
+  @@id([userId, courseId, lessonSlug, exerciseId, revision])
 }

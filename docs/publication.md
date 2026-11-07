@@ -51,6 +51,8 @@ Os arquivos gerados têm modo `0444` e diretórios `0555`. O bootstrap público 
 
 ## Build e revisão pública local
 
+`pnpm start:public` passa pelo launcher de deploy e aplica migrations pendentes antes de abrir HTTP. O banco deve estar provisionado e as variáveis devem ser fornecidas pelo ambiente. `pnpm start` usa esse mesmo perfil público. Build gera o Prisma Client sem conectar ao banco. [Contrato de deploy, DIRECT_URL e release job](deployment.md).
+
 ```sh
 pnpm build:public
 BUNKERCODE_CONTENT_DIR=/tmp/bunkercode-public-launch-01 pnpm start:public
@@ -61,25 +63,28 @@ Antes de iniciar o backend para esse preview, inclua `http://127.0.0.1:5174` em 
 
 O build público fica em `apps/frontend/dist-public`, separado de `dist`. O backend continua ouvindo somente `127.0.0.1:3001`. O preview é uma ferramenta de revisão local, não o servidor de hospedagem recomendado. O build público impede Studio/Tiptap no grafo dos chunks, não registra a rota `/courses/:id/lessons/:slug/edit` e remove o link de edição. Acesso direto ou reload dessa rota mostra página inexistente. O backend mantém a fronteira de segurança mesmo se um cliente usar o build errado ou enviar requisições manualmente.
 
-O leitor mantém Markdown sanitizado, navegação contextual, lições/módulos, responsividade, CodeMirror, formatação e rascunhos IndexedDB locais. Não oferece Run, cancelamento ou Submit que acionaria análise/execução remota; explica a limitação no painel existente, sem mudar seu layout. O painel público não consulta `/practice/runtime`. Os contratos de rascunhos, submissões e atividade permanecem locais, agora com namespace por identidade. Registros antigos sem namespace ficam preservados, sem importação automática. Táticas usa seu avaliador estruturado no navegador, sem executar o texto apresentado e sem backend.
+O leitor mantém Markdown sanitizado, navegação contextual, lições/módulos, responsividade, CodeMirror, formatação e rascunhos IndexedDB locais. Não oferece Run, cancelamento ou Submit que acionaria análise/execução remota; explica a limitação no painel existente, sem mudar seu layout. O painel público não consulta `/practice/runtime`. Rascunhos, histórico local de envios e atividade permanecem locais, com namespace por identidade. Progresso, retomada, preferências e recuperação de soluções previamente aprovadas usam a conta em PostgreSQL, conforme a [jornada persistente](learning-state.md). Registros antigos sem namespace ficam preservados, sem importação automática. Táticas usa seu avaliador estruturado no navegador, sem executar o texto apresentado e sem backend.
 
 O painel público afirma explicitamente que o código não é executado, enviado nem avaliado. Escrever e formatar não representam avaliação ou entrega. Nos dois perfis, a Home de visitante apresenta a proposta e **Explorar cursos** como ação principal; login/cadastro são voluntários. A Home autenticada mantém início/retomada e catálogo, sem calendário ou consulta por data. Registros locais continuam preservados, sem migração ou limpeza. **Painéis** mantém os presets locais de largura/altura, sem comandos remotos; os controles do Workspace mobile têm alvos de 44px. A aparência de leitura mantém as seis tonalidades existentes e o tamanho de texto persistido.
 
 ## HTTP
 
-| Caminho                                                 | Público                                                    | Autoria                    |
-| ------------------------------------------------------- | ---------------------------------------------------------- | -------------------------- |
-| `GET/HEAD /content/courses`                             | Somente seleção do snapshot                                | Seleção; ADMIN vê todos     |
-| `GET/HEAD /content/courses/:id`                         | 200 selecionado; 404 restante                              | Seleção; ADMIN vê todos    |
-| `GET/HEAD /content/courses/:id/lessons/:slug`           | Sem conta; somente seleção | Seleção; ADMIN vê todos    |
-| `GET/HEAD /content/courses/:id/lessons/:slug/exercise`  | Sem conta; mesma seleção; exercício opcional         | Seleção; ADMIN vê todos    |
-| `POST /content/courses/:id/lessons`                     | 403, controller ausente                                    | ADMIN e criação protegida  |
-| `PUT /content/courses/:id/lessons/:slug/markdown`       | 403, controller ausente                                    | ADMIN e gravação protegida |
-| `GET /practice/runtime`                                 | 404, controller ausente                                    | Sessão válida; disponibilidade local |
-| `POST /practice/runs`                                   | 403, controller ausente                                    | Sessão válida; exercício autorizado e execução protegida |
-| `DELETE /practice/runs/:id`                             | 403, controller ausente                                    | Sessão válida; cancelamento protegido |
-| Outras mutações sob `/content/courses*` ou `/practice*` | 403 pela defesa central                                    | Proteção local e/ou 404    |
-| Rotas aposentadas, arquivos internos e outras rotas     | 404                                                        | 404                        |
+| Caminho                                                 | Público                                      | Autoria                                                                     |
+| ------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET/HEAD /content/courses`                             | Somente seleção do snapshot                  | Seleção; ADMIN vê todos                                                     |
+| `GET/HEAD /content/courses/:id`                         | 200 selecionado; 404 restante                | Seleção; ADMIN vê todos                                                     |
+| `GET/HEAD /content/courses/:id/lessons/:slug`           | Sem conta; somente seleção                   | Seleção; ADMIN vê todos                                                     |
+| `GET/HEAD /content/courses/:id/lessons/:slug/exercise`  | Sem conta; mesma seleção; exercício opcional | Seleção; ADMIN vê todos                                                     |
+| `POST /content/courses/:id/lessons`                     | 403, controller ausente                      | ADMIN e criação protegida                                                   |
+| `PUT /content/courses/:id/lessons/:slug/markdown`       | 403, controller ausente                      | ADMIN e gravação protegida                                                  |
+| `GET /practice/runtime`                                 | 404, controller ausente                      | Sessão válida; disponibilidade local                                        |
+| `POST /practice/runs`                                   | 403, controller ausente                      | Sessão válida; exercício autorizado e execução protegida                    |
+| `POST /practice/submissions`                            | 403, controller ausente                      | Sessão válida; avaliação real e persistência somente de aprovação publicada |
+| `GET /learning*`                                        | Sessão válida; dados próprios publicados     | Sessão válida; mesma projeção publicada                                     |
+| `POST/PUT /learning*`                                   | Sessão válida; Origin/JSON; dados próprios   | Mesmas proteções; sem progresso de prévia                                   |
+| `DELETE /practice/runs/:id`                             | 403, controller ausente                      | Sessão válida; cancelamento protegido                                       |
+| Outras mutações sob `/content/courses*` ou `/practice*` | 403 pela defesa central                      | Proteção local e/ou 404                                                     |
+| Rotas aposentadas, arquivos internos e outras rotas     | 404                                          | 404                                                                         |
 
 Respostas de conteúdo continuam `Cache-Control: no-store`. Headers Host, Origin, `x-bunkercode-client`, `x-bunkercode-profile`, query e body não alteram o perfil capturado no bootstrap. O processo público não importa controllers de autoria/prática, Studio server-side ou runner; `BUNKERCODE_RUNNER_ENABLED=1` não os habilita. As rotas `/auth/*` operam em ambos os perfis; não há endpoint público para conceder ADMIN.
 

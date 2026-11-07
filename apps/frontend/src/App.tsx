@@ -1,3 +1,4 @@
+import { LearningProvider } from "./learning/Learning";
 import { AuthPage, RequireSession, SessionBoundary } from "./auth/Auth";
 import { HomePage } from "./product/HomePage";
 import { SiteHeader, LessonNavigationProvider } from "./product/SiteHeader";
@@ -95,22 +96,24 @@ export function App() {
   return (
     <BrowserRouter>
       <SessionBoundary>
-        <ScrollRestoration />
-        <a
-          className="skip-link"
-          href="#main-content"
-          onClick={(event) => {
-            event.preventDefault();
-            const main = document.getElementById("main-content");
-            main?.focus({ preventScroll: true });
-            main?.scrollIntoView();
-          }}
-        >
-          Pular para o conteúdo
-        </a>
-        <LessonNavigationProvider>
-          <ApplicationShell />
-        </LessonNavigationProvider>
+        <LearningProvider>
+          <ScrollRestoration />
+          <a
+            className="skip-link"
+            href="#main-content"
+            onClick={(event) => {
+              event.preventDefault();
+              const main = document.getElementById("main-content");
+              main?.focus({ preventScroll: true });
+              main?.scrollIntoView();
+            }}
+          >
+            Pular para o conteúdo
+          </a>
+          <LessonNavigationProvider>
+            <ApplicationShell />
+          </LessonNavigationProvider>
+        </LearningProvider>
       </SessionBoundary>
     </BrowserRouter>
   );

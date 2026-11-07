@@ -1,3 +1,4 @@
+import { test as anonymousTest } from "@playwright/test";
 import { selectSiteTheme } from "./reading-theme-checks";
 import {
   checkGlobalAppearance,
@@ -134,90 +135,98 @@ for (const viewport of readingViewports) {
   });
 }
 
-test("legacy and invalid reading preferences remain safe without rewriting storage", async ({
-  page,
-}) => {
-  await page.goto(reading);
-  await page.evaluate(() =>
-    localStorage.setItem("bunkercode:site-theme", "light"),
-  );
-  for (const saved of [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "invalid",
-    "1.5",
-    "99",
-    "-1",
-  ]) {
-    await page.evaluate(
-      (value) => localStorage.setItem("bunkercode:reading-tone", value),
-      saved,
+anonymousTest(
+  "legacy and invalid reading preferences remain safe without rewriting storage",
+  async ({ page }) => {
+    await page.goto(
+      "/courses/fundamentos-programacao-javascript/lessons/o-que-significa-programar",
     );
-    await page.reload();
-    const expected = ["0", "1", "2", "3", "4", "5"].includes(saved)
-      ? saved
-      : "3";
-    await expect(page.locator(".study-explanation")).toHaveClass(
-      new RegExp(`reading-tone-${expected}\\b`),
+    await page.evaluate(() =>
+      localStorage.setItem("bunkercode:site-theme", "light"),
     );
-    expect(
-      await page.evaluate(() =>
-        localStorage.getItem("bunkercode:reading-tone"),
-      ),
-    ).toBe(saved);
-  }
-});
+    for (const saved of [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "invalid",
+      "1.5",
+      "99",
+      "-1",
+    ]) {
+      await page.evaluate(
+        (value) => localStorage.setItem("bunkercode:reading-tone", value),
+        saved,
+      );
+      await page.reload();
+      const expected = ["0", "1", "2", "3", "4", "5"].includes(saved)
+        ? saved
+        : "3";
+      await expect(page.locator(".study-explanation")).toHaveClass(
+        new RegExp(`reading-tone-${expected}\\b`),
+      );
+      expect(
+        await page.evaluate(() =>
+          localStorage.getItem("bunkercode:reading-tone"),
+        ),
+      ).toBe(saved);
+    }
+  },
+);
 
-test("reading appearance stays usable when local storage is denied", async ({
-  page,
-}) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(Storage.prototype, "getItem", {
-      value() {
-        throw new Error("Storage denied");
-      },
+anonymousTest(
+  "reading appearance stays usable when local storage is denied",
+  async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Storage.prototype, "getItem", {
+        value() {
+          throw new Error("Storage denied");
+        },
+      });
+      Object.defineProperty(Storage.prototype, "setItem", {
+        value() {
+          throw new Error("Storage denied");
+        },
+      });
     });
-    Object.defineProperty(Storage.prototype, "setItem", {
-      value() {
-        throw new Error("Storage denied");
-      },
-    });
-  });
-  await page.goto(reading);
-  await expect(page.locator(".study-explanation")).toHaveClass(
-    /reading-tone-0/,
-  );
-  await page
-    .getByRole("button", { name: "Ajustar leitura", exact: true })
-    .click();
-  await selectSiteTheme(page, "light");
-  await expect(page.locator("html")).toHaveCSS(
-    "background-color",
-    "rgb(244, 244, 245)",
-  );
-  await selectReadingTone(page, 3);
-  await expect(page.locator(".study-explanation")).toHaveClass(
-    /reading-tone-3/,
-  );
-  await expect(
-    page.locator("#reading-appearance-panel").getByRole("status"),
-  ).toHaveCount(1);
-  await expect(
-    page.locator("#reading-appearance-panel").getByRole("status").first(),
-  ).toContainText("armazenamento indisponível");
-  await page.getByRole("button", { name: "Tema do site", exact: true }).click();
-  await expect(
-    page.locator("#site-appearance-panel").getByRole("status"),
-  ).toContainText("armazenamento indisponível");
-  await page.reload();
-  await expect(page.locator(".study-explanation")).toHaveClass(
-    /reading-tone-0/,
-  );
-});
+    await page.goto(
+      "/courses/fundamentos-programacao-javascript/lessons/o-que-significa-programar",
+    );
+    await expect(page.locator(".study-explanation")).toHaveClass(
+      /reading-tone-0/,
+    );
+    await page
+      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .click();
+    await selectSiteTheme(page, "light");
+    await expect(page.locator("html")).toHaveCSS(
+      "background-color",
+      "rgb(244, 244, 245)",
+    );
+    await selectReadingTone(page, 3);
+    await expect(page.locator(".study-explanation")).toHaveClass(
+      /reading-tone-3/,
+    );
+    await expect(
+      page.locator("#reading-appearance-panel").getByRole("status"),
+    ).toHaveCount(1);
+    await expect(
+      page.locator("#reading-appearance-panel").getByRole("status").first(),
+    ).toContainText("armazenamento indisponível");
+    await page
+      .getByRole("button", { name: "Tema do site", exact: true })
+      .click();
+    await expect(
+      page.locator("#site-appearance-panel").getByRole("status"),
+    ).toContainText("armazenamento indisponível");
+    await page.reload();
+    await expect(page.locator(".study-explanation")).toHaveClass(
+      /reading-tone-0/,
+    );
+  },
+);
 
 for (const viewport of readingViewports) {
   test(`global appearance across routes at ${viewport.width}x${viewport.height}`, async ({
@@ -236,25 +245,28 @@ for (const viewport of readingViewports) {
   });
 }
 
-test("invalid global preferences use the historical default without deleting data", async ({
-  page,
-}) => {
-  await page.goto("/");
-  for (const saved of ["invalid", "0", "LIGHT", ""]) {
-    await page.evaluate(
-      (value) => localStorage.setItem("bunkercode:site-theme", value),
-      saved,
-    );
-    await page.reload();
-    await expect(page.locator("html")).toHaveCSS(
-      "background-color",
-      "rgb(32, 35, 40)",
-    );
-    expect(
-      await page.evaluate(() => localStorage.getItem("bunkercode:site-theme")),
-    ).toBe(saved);
-  }
-});
+anonymousTest(
+  "invalid global preferences use the historical default without deleting data",
+  async ({ page }) => {
+    await page.goto("/");
+    for (const saved of ["invalid", "0", "LIGHT", ""]) {
+      await page.evaluate(
+        (value) => localStorage.setItem("bunkercode:site-theme", value),
+        saved,
+      );
+      await page.reload();
+      await expect(page.locator("html")).toHaveCSS(
+        "background-color",
+        "rgb(32, 35, 40)",
+      );
+      expect(
+        await page.evaluate(() =>
+          localStorage.getItem("bunkercode:site-theme"),
+        ),
+      ).toBe(saved);
+    }
+  },
+);
 
 test("lesson arrival preserves focus inside the appearance panel", async ({
   page,

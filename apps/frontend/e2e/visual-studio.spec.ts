@@ -264,7 +264,10 @@ test("public test is read-only and Submit assesses each exact snapshot without p
   });
   if (runtime.available)
     await expect(
-      page.getByText("Testes aprovados · progresso local.", { exact: true }),
+      page.getByText(
+        "Testes aprovados · prévia editorial, sem progresso na conta.",
+        { exact: true },
+      ),
     ).toBeVisible();
   else
     await expect(page.getByText(/Não avaliada automaticamente/)).toBeVisible();

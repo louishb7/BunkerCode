@@ -780,3 +780,12 @@
     gap: 8px;
   }
 }
+
+.lesson-progress {
+  margin-block: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-subtle);
+}
+.lesson-progress button {
+  min-height: 44px;
+}

@@ -14,7 +14,9 @@
     "publication:prepare": "pnpm --filter @bunkercode/content build && pnpm --filter @bunkercode/backend build && node scripts/prepare-publication.mjs",
     "start:public": "pnpm --filter @bunkercode/backend start:public",
     "preview:public": "pnpm --filter @bunkercode/frontend preview:public",
-    "test:browser:public": "pnpm build:public && pnpm --filter @bunkercode/frontend test:browser:public"
+    "test:browser:public": "pnpm build:public && pnpm --filter @bunkercode/frontend test:browser:public",
+    "deploy:migrate": "pnpm --filter @bunkercode/backend db:deploy",
+    "start": "pnpm start:public"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

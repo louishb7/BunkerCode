@@ -210,7 +210,14 @@ export async function signOut() {
 }
 export async function apiFetch(input: string, init: RequestInit = {}) {
   const epoch = generation;
+  const owner = state.user?.id;
   const request = () => {
+    if (
+      epoch !== generation ||
+      owner !== state.user?.id ||
+      init.signal?.aborted
+    )
+      throw new DOMException("Session changed", "AbortError");
     const headers = new Headers(init.headers);
     if (token) headers.set("Authorization", "Bearer " + token);
     return fetch(input, { ...init, headers, credentials: "same-origin" });

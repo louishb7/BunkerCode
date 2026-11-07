@@ -119,7 +119,10 @@ test("Submit uses real readiness delivered while its real compilation is pending
   let actual: { available: boolean; reason: string } | undefined;
   const runs: { source: string }[] = [];
   page.on("request", (request) => {
-    if (request.method() === "POST" && request.url().endsWith("/practice/runs"))
+    if (
+      request.method() === "POST" &&
+      /\/practice\/(runs|submissions)$/.test(request.url())
+    )
       runs.push(request.postDataJSON());
   });
   await page.route("**/api/practice/runtime", async (route) => {
@@ -178,7 +181,10 @@ const submit = (page: Page) =>
 function countRuns(page: Page) {
   const requests: { source: string; lesson: string }[] = [];
   page.on("request", (request) => {
-    if (request.method() === "POST" && request.url().endsWith("/practice/runs"))
+    if (
+      request.method() === "POST" &&
+      /\/practice\/(runs|submissions)$/.test(request.url())
+    )
       requests.push(request.postDataJSON());
   });
   return requests;
@@ -263,7 +269,7 @@ test("network error remains unassessed and a deliberate retry uses the real runn
   await page.unroute("**/api/practice/runtime");
   await submit(page).click();
   await expect(results(page)).toContainText(
-    "Concluída pelos testes configurados",
+    "Aprovada nos testes configurados",
     { timeout: 30000 },
   );
   expect((await submissions(page)).map((value) => value.state).sort()).toEqual([
@@ -344,7 +350,7 @@ test("cancelling a pending check permits a fresh Submit and ignores the old unav
     expect(await submissions(page)).toEqual([]);
     await submit(page).click();
     await expect(results(page)).toContainText(
-      "Concluída pelos testes configurados",
+      "Aprovada nos testes configurados",
       { timeout: 30000 },
     );
     held.release.resolve();
@@ -380,7 +386,7 @@ test("unmount during readiness aborts the old Submit and returning starts a fres
     await expect(editor(page)).toBeVisible();
     await submit(page).click();
     await expect(results(page)).toContainText(
-      "Concluída pelos testes configurados",
+      "Aprovada nos testes configurados",
       { timeout: 30000 },
     );
     expect(runs).toHaveLength(1);
@@ -399,7 +405,7 @@ test("changing exercises during a real run cannot apply or submit the old result
     release = deferred(),
     delivered = deferred();
   let first = true;
-  await page.route("**/api/practice/runs", async (route) => {
+  await page.route("**/api/practice/{runs,submissions}", async (route) => {
     if (!first) {
       await route.continue();
       return;
@@ -427,7 +433,7 @@ test("changing exercises during a real run cannot apply or submit the old result
     await editor(page).fill(source);
     await submit(page).click();
     await expect(results(page)).toContainText(
-      "Concluída pelos testes configurados",
+      "Aprovada nos testes configurados",
       { timeout: 30000 },
     );
     expect(runs).toHaveLength(2);

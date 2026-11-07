@@ -67,6 +67,27 @@ export async function createApplication(quiet = false) {
     allowedHeaders: ["Authorization", "Content-Type", "X-Bunkercode-Client"],
   });
   app.use(
+    "/learning",
+    (req: Request, res: Response, next: NextFunction) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        if (
+          !auth.origins.includes(req.header("origin") ?? "") ||
+          req.header("sec-fetch-site") === "cross-site"
+        ) {
+          res.status(403).json({ message: "Origem não autorizada." });
+          return;
+        }
+        if (!req.is("application/json")) {
+          res.status(415).json({ message: "Envie JSON." });
+          return;
+        }
+      }
+      next();
+    },
+    json({ limit: "4kb" }),
+  );
+  app.use(
     "/auth",
     (req: Request, res: Response, next: NextFunction) => {
       res.setHeader("Cache-Control", "no-store");

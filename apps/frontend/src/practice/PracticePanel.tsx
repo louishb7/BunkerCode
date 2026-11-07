@@ -1,3 +1,10 @@
+import { useLearning } from "../learning/Learning";
+import {
+  learningRequest,
+  learningLessonPath,
+  type ApprovedSolution,
+} from "../learning/api";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useAuth } from "../auth/Auth";
 import { capabilities } from "../capabilities";
 import { useEffect, useRef, useState } from "react";
@@ -42,8 +49,16 @@ export default function PracticePanel({
   exercise: Exercise;
 }) {
   const { user } = useAuth();
+  const { summary } = useLearning();
+  const published =
+    summary?.courses
+      .find((c) => c.courseId === course)
+      ?.lessons.includes(lesson) ?? false;
   const canExecute = capabilities.remoteExecution && !!user;
   const draft = useDraft(course, lesson, exercise);
+  const [approvedSolution, setApprovedSolution] =
+    useState<ApprovedSolution | null>(null);
+  const [solutionError, setSolutionError] = useState("");
   const [notice, setNotice] = useState("");
   const [file, setFile] = useState<"solution" | "tests">("solution");
   const [formatRequest, setFormatRequest] = useState(0);
@@ -97,6 +112,36 @@ export default function PracticePanel({
         );
     };
   }, [course, lesson, exercise.id]);
+  useEffect(() => {
+    if (!user || !published) return;
+    const controller = new AbortController();
+    void learningRequest(
+      learningLessonPath(course, lesson) + "/solution",
+      controller.signal,
+    )
+      .then((value) => {
+        if (controller.signal.aborted) return;
+        if (!value || typeof value !== "object" || !("solution" in value))
+          throw new Error("Solução incompatível.");
+        const solution = value.solution as ApprovedSolution | null;
+        if (
+          solution &&
+          (typeof solution.source !== "string" ||
+            solution.revision !== exercise.revision ||
+            typeof solution.approvedAt !== "string" ||
+            new TextEncoder().encode(solution.source).length > 65536)
+        )
+          throw new Error("Solução incompatível.");
+        setApprovedSolution(solution);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setSolutionError(
+            "Solução da conta indisponível. Seu rascunho local foi preservado.",
+          );
+      });
+    return () => controller.abort();
+  }, [course, lesson, exercise.revision, user?.id, published]);
   async function copy() {
     try {
       await navigator.clipboard.writeText(draft.code);
@@ -120,6 +165,7 @@ export default function PracticePanel({
   }
   async function analyze(
     source: string,
+    submit = false,
   ): Promise<Submission["state"] | undefined> {
     if (job.current && !job.current.finished) return;
     const controller = new AbortController();
@@ -193,6 +239,7 @@ export default function PracticePanel({
           javascript: compilation.javascript,
         },
         controller.signal,
+        submit,
       );
       if (
         controller.signal.aborted ||
@@ -200,6 +247,14 @@ export default function PracticePanel({
         job.current !== current
       )
         return;
+      if (submit && run.approved) {
+        setApprovedSolution({
+          source,
+          revision: exercise.revision,
+          approvedAt: new Date().toISOString(),
+        });
+        window.dispatchEvent(new Event("bunkercode-learning-change"));
+      }
       const messages = {
         success: "Execução encerrada.",
         error: "Erro de execução.",
@@ -214,7 +269,11 @@ export default function PracticePanel({
         run,
         message:
           assessment === "passed"
-            ? "Testes aprovados · progresso local."
+            ? submit && run.approved
+              ? "Submit aprovado · solução salva na conta."
+              : submit
+                ? "Testes aprovados · prévia editorial, sem progresso na conta."
+                : "Testes aprovados no Run; use Submit para salvar na conta."
             : assessment === "failed"
               ? "Testes falharam."
               : messages[run.state],
@@ -275,7 +334,7 @@ export default function PracticePanel({
     setSending(true);
     setSubmitError("");
     try {
-      const state = await analyze(code);
+      const state = await analyze(code, true);
       if (!alive.current || state === undefined) return;
       const value = await submitSolution(
         course,
@@ -580,9 +639,9 @@ export default function PracticePanel({
                     Solução registrada em{" "}
                     {new Date(submitted.at).toLocaleString("pt-BR")}.{" "}
                     {submitted.state === "passed"
-                      ? "Concluída pelos testes configurados · progresso local."
+                      ? "Aprovada nos testes configurados. Consulte o resultado de sincronização acima."
                       : submitted.state === "failed"
-                        ? "Testes falharam; atividade não concluída."
+                        ? "Testes falharam; este envio não foi aprovado."
                         : "Não avaliada automaticamente."}
                     {submitted.code !== draft.code
                       ? " Você continuou editando o rascunho."
@@ -670,6 +729,55 @@ export default function PracticePanel({
                     </button>
                   )}
                 </div>
+              </section>
+            )}
+            {solutionError && (
+              <p role="status" className="px-4 text-sm">
+                {solutionError}
+              </p>
+            )}
+            {approvedSolution && (
+              <section
+                className="px-4 text-sm"
+                aria-label="Solução aprovada da conta"
+              >
+                <p>Solução aprovada salva na conta para esta revisão.</p>
+                {approvedSolution.source !== draft.code && (
+                  <AlertDialog.Root>
+                    <AlertDialog.Trigger
+                      disabled={
+                        !draft.ready || draft.saving || !!draft.conflict
+                      }
+                    >
+                      Restaurar solução aprovada
+                    </AlertDialog.Trigger>
+                    <AlertDialog.Portal>
+                      <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/70" />
+                      <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-40px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-line bg-surface p-6 shadow-2xl">
+                        <AlertDialog.Title>
+                          Restaurar solução aprovada?
+                        </AlertDialog.Title>
+                        <AlertDialog.Description>
+                          O texto atual do editor será substituído pela solução
+                          da conta. Copie seu rascunho antes de continuar se
+                          quiser preservá-lo.
+                        </AlertDialog.Description>
+                        <div className="mt-6 flex gap-3">
+                          <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                          <AlertDialog.Action
+                            onClick={() => {
+                              draft.change(approvedSolution.source);
+                              setResult(undefined);
+                              setSubmitted(undefined);
+                            }}
+                          >
+                            Restaurar solução
+                          </AlertDialog.Action>
+                        </div>
+                      </AlertDialog.Content>
+                    </AlertDialog.Portal>
+                  </AlertDialog.Root>
+                )}
               </section>
             )}
             {draft.recoveryError && (

@@ -29,7 +29,7 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 360, height: 800 },
 ]) {
-  test(`home first access, valid resume and missing lesson at ${viewport.width}`, async ({
+  test(`home first access, persisted resume and stale local history at ${viewport.width}`, async ({
     page,
   }, info) => {
     await page.setViewportSize(viewport);
@@ -62,8 +62,8 @@ for (const viewport of [
     await page.reload();
     await expect(resume).toHaveAttribute("href", lesson);
     await history(page, JSON.stringify({ course, slug: "missing-lesson" }));
-    await expect(resume).toHaveCount(0);
-    await expect(start).toHaveAttribute("href", `/courses/${course}`);
+    await expect(resume).toHaveAttribute("href", lesson);
+    await expect(start).toHaveCount(0);
     await expect(page.locator('a[href*="missing-lesson"]')).toHaveCount(0);
     await noPageOverflow(page, viewport.width);
     await page.screenshot({
@@ -186,6 +186,11 @@ test("home preserves malformed and unavailable history without offering a dead r
 test("home falls back when a listed lesson is unavailable", async ({
   page,
 }) => {
+  const visited = page.waitForResponse((r) =>
+    r.url().endsWith(`/learning/courses/${course}/lessons/${slug}/visit`),
+  );
+  await page.goto(lesson);
+  expect((await visited).ok()).toBeTruthy();
   await page.goto("/");
   await page.route(
     `**/api/content/courses/${course}/lessons/${slug}`,

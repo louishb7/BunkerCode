@@ -25,6 +25,8 @@ async function register(
   await page.getByLabel("Confirmar senha", { exact: true }).fill(secret);
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(lesson + "$"));
+  if ((page.viewportSize()?.width ?? 1280) < 1000)
+    await page.getByRole("button", { name: "Código", exact: true }).click();
   await expect(page.locator(".cm-editor")).toBeVisible();
 }
 
@@ -37,7 +39,8 @@ test("anonymous discovery, published reading and voluntary login preserve contex
   );
   const privateRequests: string[] = [];
   page.on("request", (r) => {
-    if (r.url().includes("/api/practice/")) privateRequests.push(r.url());
+    if (/\/api\/(practice|learning)(\/|$)/.test(r.url()))
+      privateRequests.push(r.url());
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Início");
@@ -642,4 +645,359 @@ test("real login throttling gives a retry delay without exposing identifiers or 
     path: info.outputPath("login-rate-limit-mobile.png"),
     fullPage: true,
   });
+});
+
+test("student journey persists completion, continuation and preferences across devices", async ({
+  page,
+  browser,
+}, info) => {
+  test.setTimeout(150000);
+  const reading =
+    "/courses/fundamentos-programacao-javascript/lessons/o-que-significa-programar";
+  const email = `journey-${randomUUID()}@example.test`,
+    secret = password();
+  await page.goto("/");
+  await selectSiteTheme(page, "light"); // Guest context remains independent of account edits.
+  await register(page, email, secret);
+  await page.goto(reading);
+  const complete = page.getByRole("button", {
+    name: "Marcar como concluída",
+    exact: true,
+  });
+  await expect(complete).toBeVisible();
+  await expect(page.getByText("Lição concluída", { exact: true })).toHaveCount(
+    0,
+  );
+  await complete.click();
+  await expect(
+    page.getByText("Lição concluída", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByText("Lição concluída", { exact: true }),
+  ).toBeVisible();
+  await selectSiteTheme(page, "bunkercode");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-site-theme",
+    "bunkercode",
+  );
+  await page
+    .getByRole("button", { name: "Ajustar leitura", exact: true })
+    .click();
+  for (const tone of [
+    "BunkerCode",
+    "Azul profundo",
+    "Alto contraste",
+    "Claro suave",
+    "Neutro",
+    "Névoa azul",
+  ]) {
+    await page.getByRole("button", { name: tone, exact: true }).click();
+  }
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/learning/preferences") &&
+      r.request().method() === "PUT" &&
+      r.request().postDataJSON().readingSize === 20,
+  );
+  await page.getByLabel("Tamanho do texto").fill("20");
+  expect((await saved).ok()).toBeTruthy();
+  await page.keyboard.press("Escape");
+  await page
+    .getByText("Lição concluída", { exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath("sprint2-conclusao-dark.png"),
+  });
+  const visits: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/visit")) visits.push(r.url());
+  });
+  await page.goto(lesson);
+  await expect(page.locator(".lesson-progress")).toContainText("Em andamento");
+  await expect.poll(() => visits.length).toBe(1);
+  await page
+    .getByRole("link", { name: "BunkerCode — início", exact: true })
+    .count()
+    .then(async (count) => {
+      if (count)
+        await page
+          .getByRole("link", { name: "BunkerCode — início", exact: true })
+          .click();
+      else await page.goto("/");
+    });
+  await expect(
+    page.getByRole("link", { name: "Continuar estudando →", exact: true }),
+  ).toHaveAttribute("href", lesson);
+  await page.screenshot({ path: info.outputPath("sprint2-retomada-dark.png") });
+  const device = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+  });
+  const other = await device.newPage();
+  const login = async (target: Page) => {
+    await target.goto("/login?next=" + encodeURIComponent(reading));
+    await target.getByLabel("E-mail ou usuário", { exact: true }).fill(email);
+    await target.getByLabel("Senha", { exact: true }).fill(secret);
+    await target.getByRole("button", { name: "Entrar", exact: true }).click();
+    await expect(target).toHaveURL(new RegExp(reading + "$"));
+  };
+  try {
+    await other.goto("/login");
+    // The new device starts with no browser history or local preferences.
+    await other.getByLabel("E-mail ou usuário", { exact: true }).fill(email);
+    await other.getByLabel("Senha", { exact: true }).fill(secret);
+    await other.getByRole("button", { name: "Entrar", exact: true }).click();
+    await expect(other).toHaveURL(/\/courses$/);
+    await other.goto("/");
+    await expect(
+      other.getByRole("link", { name: "Continuar estudando →", exact: true }),
+    ).toHaveAttribute("href", lesson);
+    await other.goto(reading);
+    await expect(
+      other.getByText("Lição concluída", { exact: true }),
+    ).toBeVisible();
+    await expect(other.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "bunkercode",
+    );
+    await expect(other.locator(".reading-theme")).toHaveClass(/reading-tone-5/);
+    await other
+      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .click();
+    await expect(other.getByLabel("Tamanho do texto")).toHaveValue("20");
+    await other.screenshot({
+      path: info.outputPath("sprint2-segundo-dispositivo-mobile.png"),
+    });
+    await other.keyboard.press("Escape");
+    await other.getByRole("button", { name: "Sair", exact: true }).click();
+    await register(
+      other,
+      `independent-${randomUUID()}@example.test`,
+      password(),
+    );
+    await other.goto(reading);
+    await expect(
+      other.getByRole("button", { name: "Marcar como concluída", exact: true }),
+    ).toBeVisible();
+    await expect(other.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "bunkercode",
+    );
+    await expect(other.locator(".reading-theme")).toHaveClass(/reading-tone-0/);
+    await other.screenshot({
+      path: info.outputPath("sprint2-conta-independente-mobile.png"),
+    });
+    await other.getByRole("button", { name: "Sair", exact: true }).click();
+    await login(other);
+    await expect(
+      other.getByText("Lição concluída", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Sair", exact: true }).click();
+    await page.goto(reading);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "light",
+    );
+    await expect(page.locator(".reading-theme")).toHaveClass(/reading-tone-3/);
+    await page.screenshot({
+      path: info.outputPath("sprint2-visitante-light.png"),
+    });
+  } finally {
+    await device.close();
+  }
+});
+
+test("approved Submit restores exact source across devices without replacing unfinished drafts", async ({
+  page,
+  browser,
+}, info) => {
+  test.setTimeout(120000);
+  const email = `solution-${randomUUID()}@example.test`,
+    secret = password();
+  await register(page, email, secret);
+  const personal = async (target: Page, path: string) => {
+    const session = await target.request.post("/api/auth/refresh", {
+      data: {},
+      headers: { Origin: new URL(target.url()).origin },
+    });
+    expect(session.ok()).toBeTruthy();
+    const value = (await session.json()) as { accessToken: string };
+    return target.request.get("/api/" + path, {
+      headers: { Authorization: "Bearer " + value.accessToken },
+    });
+  };
+  const runtime = (await (await personal(page, "practice/runtime")).json()) as {
+    available: boolean;
+    reason: string;
+  };
+  test.skip(!runtime.available, runtime.reason);
+  const solutionPath = "learning" + lesson + "/solution";
+  const editor = (target: Page) =>
+    target.getByRole("textbox", { name: "Código da solução", exact: true });
+  const results = page.getByRole("region", { name: "Compilação e resultados" });
+  const code =
+    "function isAvailable(stock: number): boolean { return stock > 0; }";
+  await editor(page).fill(code);
+  expect(await (await personal(page, solutionPath)).json()).toEqual({
+    solution: null,
+  });
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(results).toContainText("Testes aprovados no Run", {
+    timeout: 30000,
+  });
+  expect(await (await personal(page, solutionPath)).json()).toEqual({
+    solution: null,
+  });
+  await editor(page).fill(
+    "function isAvailable(stock: number): boolean { return false; }",
+  );
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(results).toContainText("Testes falharam", { timeout: 30000 });
+  expect(await (await personal(page, solutionPath)).json()).toEqual({
+    solution: null,
+  });
+  await editor(page).fill(code);
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(results).toContainText("solução salva na conta", {
+    timeout: 30000,
+  });
+  expect(await (await personal(page, solutionPath)).json()).toMatchObject({
+    solution: { source: code },
+  });
+  const unfinished = code + " // Novo rascunho ainda não enviado";
+  await editor(page).fill(unfinished);
+  await page.reload();
+  await expect(editor(page)).toHaveText(unfinished);
+  await expect(
+    page.getByRole("button", {
+      name: "Restaurar solução aprovada",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("sprint2-rascunho-preservado.png"),
+  });
+  const device = await browser.newContext();
+  const other = await device.newPage();
+  try {
+    await other.goto("/login?next=" + encodeURIComponent(lesson));
+    await other.getByLabel("E-mail ou usuário", { exact: true }).fill(email);
+    await other.getByLabel("Senha", { exact: true }).fill(secret);
+    await other.getByRole("button", { name: "Entrar", exact: true }).click();
+    await expect(editor(other)).toBeVisible();
+    await expect(
+      other.getByRole("button", {
+        name: "Restaurar solução aprovada",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await other
+      .getByRole("button", { name: "Restaurar solução aprovada", exact: true })
+      .click();
+    await expect(other.getByRole("alertdialog")).toBeVisible();
+    await other.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(editor(other)).not.toHaveText(code);
+    await other
+      .getByRole("button", { name: "Restaurar solução aprovada", exact: true })
+      .click();
+    await other
+      .getByRole("button", { name: "Restaurar solução", exact: true })
+      .click();
+    await expect(editor(other)).toHaveText(code);
+    await other.screenshot({
+      path: info.outputPath("sprint2-solucao-restaurada.png"),
+    });
+    await other.getByRole("button", { name: "Sair", exact: true }).click();
+    await other.goto(lesson);
+    await expect(
+      other.getByRole("region", {
+        name: "Solução aprovada da conta",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(editor(other)).not.toHaveText(code);
+    await register(
+      other,
+      `solution-other-${randomUUID()}@example.test`,
+      password(),
+    );
+    await expect(editor(other)).not.toHaveText(code);
+    await expect(
+      other.getByRole("region", {
+        name: "Solução aprovada da conta",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+  } finally {
+    await device.close();
+  }
+});
+
+test("delayed account preferences cannot populate a new identity", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await register(page, `stale-${randomUUID()}@example.test`, password());
+  await selectSiteTheme(page, "light");
+  await page
+    .getByRole("button", { name: "Ajustar leitura", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Névoa azul", exact: true }).click();
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/learning/preferences") &&
+      r.request().method() === "PUT" &&
+      r.request().postDataJSON().readingSize === 21,
+  );
+  await page.getByLabel("Tamanho do texto").fill("21");
+  expect((await saved).ok()).toBeTruthy();
+  let release: () => void = () => undefined,
+    received: () => void = () => undefined,
+    delivered: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    received = resolve;
+  });
+  const done = new Promise<void>((resolve) => {
+    delivered = resolve;
+  });
+  let first = true;
+  await page.route("**/api/learning/preferences", async (route) => {
+    if (!first || route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    first = false;
+    const response = await route.fetch();
+    received();
+    await gate;
+    await route.fulfill({ response });
+    delivered();
+  });
+  try {
+    await page.reload();
+    await ready;
+    await page.getByRole("button", { name: "Sair", exact: true }).click();
+    await register(page, `fresh-${randomUUID()}@example.test`, password());
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "bunkercode",
+    );
+    release();
+    await done;
+    await expect(page.locator(".reading-theme")).toHaveClass(/reading-tone-0/);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-site-theme",
+      "bunkercode",
+    );
+    await page
+      .getByRole("button", { name: "Ajustar leitura", exact: true })
+      .click();
+    await expect(page.getByLabel("Tamanho do texto")).toHaveValue("17");
+  } finally {
+    release();
+  }
 });

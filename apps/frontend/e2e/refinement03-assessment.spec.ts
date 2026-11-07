@@ -81,18 +81,18 @@ for (const language of ["javascript", "typescript"] as const)
       timeout: 30000,
     });
     await page.getByRole("button", { name: "Submit", exact: true }).click();
-    await expect(results).toContainText("Concluída pelos testes configurados", {
+    await expect(results).toContainText("Aprovada nos testes configurados", {
       timeout: 30000,
     });
     await code(page, partial);
     await page.getByRole("button", { name: "Submit", exact: true }).click();
-    await expect(results).toContainText("atividade não concluída", {
+    await expect(results).toContainText("este envio não foi aprovado", {
       timeout: 30000,
     });
     await code(page, correct);
     // Submit without an intervening Run must compile and test this new snapshot.
     await page.getByRole("button", { name: "Submit", exact: true }).click();
-    await expect(results).toContainText("Concluída pelos testes configurados", {
+    await expect(results).toContainText("Aprovada nos testes configurados", {
       timeout: 30000,
     });
     await page

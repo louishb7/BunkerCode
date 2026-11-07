@@ -220,6 +220,7 @@ test("retired exercise endpoints are absent while course content stays available
         headers: {
           "content-type": "application/json",
           "x-bunkercode-client": "local",
+          Origin: "http://127.0.0.1:5173",
         },
         body: JSON.stringify({ activityId: "reserve-stock" }),
       })

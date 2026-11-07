@@ -1,3 +1,4 @@
+import { useLearning } from "../learning/Learning";
 import { useAuth } from "../auth/Auth";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { useState } from "react";
@@ -75,7 +76,9 @@ function ContinueStudy({
 export function HomePage() {
   const { user } = useAuth();
   const { data, error } = useContent("", parseCourses);
-  const [recent] = useState(recentLesson);
+  const [localRecent] = useState(recentLesson);
+  const { summary, error: learningError } = useLearning();
+  const recent = user ? summary?.resume : localRecent;
   const courses = data
     ? discoverableCourses(data, user?.role === "ADMIN")
     : undefined;
@@ -84,6 +87,7 @@ export function HomePage() {
     <Page title="Início" className="product-page dashboard-page">
       <h1 className="sr-only">Início</h1>
       <div className="home-study-overview">
+        {user && learningError && <p role="status">{learningError}</p>}
         {recent ? (
           <ContinueStudy recent={recent} fallback={firstCourse} />
         ) : user ? (

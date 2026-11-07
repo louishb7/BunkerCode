@@ -148,7 +148,11 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
   const backgrounds = new Set<string>();
   const samples: unknown[] = [];
   const width = page.viewportSize()!.width;
-  const original = await article.innerText();
+  // Editorial content must stay identical; account progress loads independently.
+  const editorial = article.locator(
+    ":scope > .lesson-heading, :scope > .prose",
+  );
+  const original = await editorial.allTextContents();
   for (let tone = 0; tone < 6; tone++) {
     await openAppearance(page);
     await expect(page.locator(".reading-tone-options button")).toHaveText(
@@ -170,7 +174,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
       "font-size",
       "21px",
     );
-    expect(await article.innerText()).toBe(original);
+    expect(await editorial.allTextContents()).toEqual(original);
     const background = await article.evaluate(
       (node) => getComputedStyle(node).backgroundColor,
     );
@@ -639,9 +643,20 @@ export async function checkThemeHierarchy(
   await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
   await selectSiteTheme(page, "bunkercode");
   await selectSiteTheme(page, "light");
-  expect(
-    await page.evaluate(() => localStorage.getItem("bunkercode:reading-tone")),
-  ).toBe("0");
+  if (await page.getByRole("button", { name: "Sair", exact: true }).count()) {
+    // Authenticated changes belong to the account; the guest storage stays untouched.
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("bunkercode:reading-tone"),
+      ),
+    ).toBeNull();
+  } else {
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("bunkercode:reading-tone"),
+      ),
+    ).toBe("0");
+  }
   await expect(article).toHaveCSS("background-color", "rgb(25, 30, 35)");
   await selectReadingTone(page, 1);
   await page.keyboard.press("Escape");

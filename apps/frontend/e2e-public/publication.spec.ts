@@ -35,6 +35,9 @@ for (const viewport of [
       if (
         request.url().includes("/api/") &&
         !request.url().includes("/api/auth/") &&
+        !/\/api\/learning\/(preferences|courses\/[^/]+\/lessons\/[^/]+\/visit)$/.test(
+          request.url(),
+        ) &&
         request.method() !== "GET"
       )
         mutations.push(request.url());
@@ -290,6 +293,7 @@ test("public HTTP denies forged local mutations without modifying snapshot or au
       "/api/content/courses/typescript/lessons/values-and-types/markdown",
     ],
     ["POST", "/api/practice/runs"],
+    ["POST", "/api/practice/submissions"],
     ["DELETE", "/api/practice/runs/00000000-0000-4000-8000-000000000000"],
   ]) {
     const result = await request.fetch(url!, {
@@ -354,7 +358,8 @@ test("public tactics remain browser-only", async ({ page }) => {
   page.on("request", (request) => {
     if (
       request.url().includes("/api/") &&
-      !request.url().includes("/api/auth/")
+      !request.url().includes("/api/auth/") &&
+      !/\/api\/learning(?:\/preferences)?$/.test(request.url())
     )
       privateCalls.push(request.url());
   });
@@ -418,7 +423,7 @@ anonymousTest(
   async ({ page, request }) => {
     const privateRequests: string[] = [];
     page.on("request", (request) => {
-      if (request.url().includes("/api/practice/"))
+      if (/\/api\/(practice|learning)(\/|$)/.test(request.url()))
         privateRequests.push(request.url());
     });
     await page.goto("/");

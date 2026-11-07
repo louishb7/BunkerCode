@@ -1,3 +1,5 @@
+import { PrismaService } from "../auth/prisma.service";
+import { AuthService } from "../auth/auth.service";
 import { RequireIdentity, type AuthenticatedRequest } from "../auth/auth.guard";
 import { prepareFunctionTests } from "./function-tests";
 import { compileAssessment } from "./assessment";
@@ -11,6 +13,7 @@ import {
   Header,
   HttpException,
   Param,
+  NotFoundException,
   Post,
   Res,
   type OnApplicationShutdown,
@@ -27,18 +30,39 @@ import {
 @RequireIdentity("STUDENT")
 @Controller("practice")
 export class PracticeController implements OnApplicationShutdown {
-  constructor(@Inject(ContentReader) private readonly reader: ContentReader) {}
+  constructor(
+    @Inject(ContentReader) private readonly reader: ContentReader,
+    @Inject(PrismaService) private readonly db: PrismaService,
+    @Inject(AuthService) private readonly auth: AuthService,
+  ) {}
   @Get("runtime")
   @Header("Cache-Control", "no-store")
   async status() {
     return { ...(await runnerStatus()), limits: RUN_LIMITS };
   }
-  @Post("runs")
+  @Post("submissions")
   @Header("Cache-Control", "no-store")
-  async run(
+  submit(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.execute(body, request, response, true);
+  }
+  @Post("runs")
+  @Header("Cache-Control", "no-store")
+  run(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.execute(body, request, response, false);
+  }
+  private async execute(
+    body: unknown,
+    request: AuthenticatedRequest,
+    response: Response,
+    submit: boolean,
   ) {
     if (!body || typeof body !== "object")
       throw new HttpException("Comando inválido.", 400);
@@ -127,7 +151,62 @@ export class PracticeController implements OnApplicationShutdown {
               },
             }
           : {};
-      return { ...result, revision, ...assessment };
+      let approved = false;
+      if (
+        submit &&
+        assessment.assessment === "passed" &&
+        result.state === "success" &&
+        !abort.signal.aborted
+      ) {
+        // Recheck session and published revision after execution; preview never creates student approval.
+        await this.auth.authenticate(request.headers.authorization);
+        let current;
+        try {
+          current = this.reader.exercise(course!, lesson!).exercise;
+        } catch (error) {
+          if (!(error instanceof NotFoundException)) throw error;
+        }
+        if (
+          current &&
+          (current.id !== exercise || current.revision !== revision)
+        )
+          throw new HttpException(
+            "A definição mudou. Recarregue a lição antes de enviar.",
+            409,
+          );
+        if (current) {
+          const key = {
+            userId: request.identity.id,
+            courseId: course!,
+            lessonSlug: lesson!,
+          };
+          const solutionKey = {
+            ...key,
+            exerciseId: exercise!,
+            revision: revision!,
+          };
+          await this.db.$transaction([
+            this.db.approvedSolution.upsert({
+              where: {
+                userId_courseId_lessonSlug_exerciseId_revision: solutionKey,
+              },
+              create: { ...solutionKey, source: source! },
+              update: { source: source!, approvedAt: new Date() },
+            }),
+            this.db.lessonCompletion.createMany({
+              data: [key],
+              skipDuplicates: true,
+            }),
+          ]);
+          approved = true;
+        }
+      }
+      return {
+        ...result,
+        revision,
+        ...assessment,
+        ...(submit ? { approved } : {}),
+      };
     } finally {
       response.off("close", disconnect);
     }

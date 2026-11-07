@@ -262,3 +262,153 @@ test(
     }
   },
 );
+
+test(
+  "deployment entry gates concurrent HTTP startup on idempotent migrations",
+  { timeout: 60000 },
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), "bunkercode-deploy-"));
+    const path = join(root, "courses/demo/lessons/first");
+    await mkdir(path, { recursive: true });
+    await writeFile(
+      join(root, "courses/demo/course.json"),
+      JSON.stringify({
+        id: "demo",
+        title: "Deploy",
+        description: "Fixture",
+        lessons: [{ slug: "first", title: "First" }],
+      }),
+    );
+    await writeFile(join(path, "lesson.md"), "# Deployment fixture");
+    const selection = join(root, "selection.json");
+    await writeFile(selection, JSON.stringify({ courses: ["demo"] }));
+    const ports = await Promise.all([deploymentPort(), deploymentPort()]);
+    const children = ports.map((port) =>
+      deploymentProcess({
+        PORT: String(port),
+        BUNKERCODE_PROFILE: "authoring",
+        BUNKERCODE_CONTENT_DIR: root,
+        BUNKERCODE_PUBLICATION_FILE: selection,
+        DIRECT_URL: process.env.DATABASE_URL!,
+      }),
+    );
+    try {
+      await Promise.all(
+        children.map(async (entry, index) => {
+          const deadline = Date.now() + 25000;
+          let ready = false;
+          while (!ready && Date.now() < deadline) {
+            assert.equal(entry.child.exitCode, null, entry.output());
+            ready = await globalThis
+              .fetch(`http://127.0.0.1:${ports[index]}/content/courses`)
+              .then((r) => r.ok)
+              .catch(() => false);
+            if (!ready) await setTimeout(50);
+          }
+          assert.ok(ready, entry.output());
+          assert.match(entry.output(), /migrations ready; starting backend/);
+          assert.ok(
+            entry.output().indexOf("migrations ready") <
+              entry.output().indexOf("Starting Nest application"),
+            entry.output(),
+          );
+          assert.ok(
+            !entry.output().includes(process.env.DATABASE_URL!),
+            "Connection URL must not reach startup logs",
+          );
+        }),
+      );
+    } finally {
+      await Promise.all(children.map((entry) => stopDeployment(entry.child)));
+    }
+  },
+);
+
+test(
+  "deployment migration failure never opens HTTP or exposes raw CLI secrets",
+  { timeout: 20000 },
+  async () => {
+    const port = await deploymentPort();
+    const marker = "private-deploy-engine-marker";
+    const entry = deploymentProcess({
+      PORT: String(port),
+      BUNKERCODE_PROFILE: "public",
+      PRISMA_SCHEMA_ENGINE_BINARY: join(tmpdir(), marker, "missing-engine"),
+    });
+    const [code] = await once(entry.child, "exit");
+    assert.notEqual(code, 0);
+    assert.match(entry.output(), /migration failed/);
+    assert.ok(!entry.output().includes(marker));
+    assert.ok(!entry.output().includes(process.env.DATABASE_URL!));
+    assert.ok(!entry.output().includes("starting backend"));
+    await assert.rejects(
+      globalThis.fetch(`http://127.0.0.1:${port}/content/courses`),
+    );
+  },
+);
+
+test(
+  "deployment configuration refuses absent database URL without loading local files",
+  { timeout: 10000 },
+  async () => {
+    const child = spawn(
+      process.execPath,
+      [resolve("../../scripts/deploy-backend.mjs")],
+      {
+        env: { PATH: process.env.PATH, BUNKERCODE_PROFILE: "public" },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let output = "";
+    child.stdout.on("data", (data: Buffer) => {
+      output += data.toString();
+    });
+    child.stderr.on("data", (data: Buffer) => {
+      output += data.toString();
+    });
+    const [code] = await once(child, "exit");
+    assert.notEqual(code, 0);
+    assert.match(output, /configuration failed/);
+    assert.ok(!output.includes("applying versioned"));
+  },
+);
+
+async function deploymentPort() {
+  const reservation = createServer();
+  reservation.listen(0, "127.0.0.1");
+  await once(reservation, "listening");
+  const port = (reservation.address() as AddressInfo).port;
+  await new Promise<void>((resolve, reject) =>
+    reservation.close((error) => (error ? reject(error) : resolve())),
+  );
+  return port;
+}
+function deploymentProcess(extra: Record<string, string>) {
+  const child = spawn(
+    process.execPath,
+    [resolve("../../scripts/deploy-backend.mjs")],
+    {
+      env: { PATH: process.env.PATH, ...authEnvironment(), ...extra },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  let output = "";
+  child.stdout.on("data", (data: Buffer) => {
+    output += data.toString();
+  });
+  child.stderr.on("data", (data: Buffer) => {
+    output += data.toString();
+  });
+  return { child, output: () => output };
+}
+async function stopDeployment(child: ReturnType<typeof spawn>) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = once(child, "exit");
+  child.kill("SIGTERM");
+  const timer = deadlineTimer(() => child.kill("SIGKILL"), 5000);
+  try {
+    await exited;
+  } finally {
+    clearTimeout(timer);
+  }
+}

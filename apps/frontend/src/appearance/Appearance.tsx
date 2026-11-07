@@ -1,7 +1,14 @@
+import { useAuth } from "../auth/Auth";
+import {
+  learningRequest,
+  parsePreferences,
+  type Preferences,
+} from "../learning/api";
 import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -66,71 +73,179 @@ export function useAppearance() {
   if (!value) throw new Error("AppearanceProvider is required");
   return value;
 }
+function guestPreferences(): Preferences {
+  let siteTheme: SiteTheme = "bunkercode";
+  try {
+    if (localStorage.getItem(siteKey) === "light") siteTheme = "light";
+  } catch {
+    /* Keep defaults when storage is unavailable. */
+  }
+  return {
+    siteTheme,
+    readingTone: savedTone(),
+    readingSize: Math.round(savedSize()),
+  };
+}
 export function AppearanceProvider({ children }: { children: ReactNode }) {
-  // The head bootstrap applies the saved global choice before React/CSS paint.
-  const [site, updateSite] = useState<SiteTheme>(() =>
-    document.documentElement.dataset.siteTheme === "light"
-      ? "light"
-      : "bunkercode",
-  );
-  const [tone, updateTone] = useState(savedTone);
-  const [size, updateSize] = useState(savedSize);
+  const { user, loading } = useAuth();
+  const [values, setValues] = useState<Preferences>(guestPreferences);
   const [siteError, setSiteError] = useState("");
   const [readingError, setReadingError] = useState("");
-  function persist(action: () => void, report: (error: string) => void) {
-    try {
-      action();
-      report("");
-    } catch {
-      report("Preferência aplicada nesta sessão; armazenamento indisponível.");
-    }
-  }
-  function setSite(theme: SiteTheme) {
-    updateSite(theme);
-    document.documentElement.dataset.siteTheme = theme;
+  const current = useRef(values);
+  const dirty = useRef<Partial<Preferences>>({});
+  const owner = useRef<string | undefined>(undefined);
+  const active = useRef<AbortController | undefined>(undefined);
+  const ready = useRef(false);
+  const version = useRef(0);
+  const savedVersion = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const saving = useRef(false);
+  function apply(value: Preferences) {
+    current.current = value;
+    setValues(value);
+    document.documentElement.dataset.siteTheme = value.siteTheme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "light" ? "#f4f4f5" : "#202328");
-    persist(() => localStorage.setItem(siteKey, theme), setSiteError);
+      ?.setAttribute(
+        "content",
+        value.siteTheme === "light" ? "#f4f4f5" : "#202328",
+      );
   }
-  function setTone(value: number | null) {
-    updateTone(value);
-    persist(
-      () =>
-        value === null
-          ? localStorage.removeItem(toneKey)
-          : localStorage.setItem(toneKey, String(value)),
-      setReadingError,
-    );
+  function syncError(message: string) {
+    setSiteError(message);
+    setReadingError(message);
   }
-  function setSize(value: number) {
-    updateSize(value);
-    persist(
-      () => localStorage.setItem(sizeKey, String(value)),
-      setReadingError,
-    );
+  async function flush(controller: AbortController) {
+    if (
+      controller.signal.aborted ||
+      saving.current ||
+      !ready.current ||
+      version.current === savedVersion.current
+    )
+      return;
+    saving.current = true;
+    const revision = version.current;
+    try {
+      await learningRequest(
+        "/preferences",
+        controller.signal,
+        "PUT",
+        current.current,
+      );
+      if (!controller.signal.aborted) {
+        savedVersion.current = revision;
+        syncError("");
+      }
+    } catch {
+      if (!controller.signal.aborted)
+        syncError(
+          "Aplicada nesta sessão; não sincronizada. Altere novamente para tentar salvar.",
+        );
+      return;
+    } finally {
+      if (!controller.signal.aborted) saving.current = false;
+    }
+    if (!controller.signal.aborted && version.current !== savedVersion.current)
+      void flush(controller);
   }
-  function resetReading() {
-    updateTone(null);
-    updateSize(17);
-    persist(() => {
-      localStorage.removeItem(toneKey);
-      localStorage.setItem(sizeKey, "17");
-    }, setReadingError);
+  useLayoutEffect(() => {
+    if (loading) return;
+    const controller = new AbortController();
+    active.current = controller;
+    owner.current = user?.id;
+    ready.current = false;
+    saving.current = false;
+    version.current = 0;
+    dirty.current = {};
+    savedVersion.current = 0;
+    syncError("");
+    const guest = guestPreferences();
+    apply(guest);
+    if (user) {
+      // POST initializes only if absent; an existing account always wins over guest defaults.
+      void learningRequest("/preferences", controller.signal, "POST", guest)
+        .then(parsePreferences)
+        .then((value) => {
+          if (controller.signal.aborted) return;
+          ready.current = true;
+          apply({ ...value, ...dirty.current });
+          if (version.current > 0) void flush(controller);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted)
+            syncError(
+              "Preferências da conta indisponíveis; alterações nesta sessão não serão sincronizadas.",
+            );
+        });
+    }
+    const leaving = () => {
+      clearTimeout(timer.current);
+      void flush(controller);
+    };
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      window.removeEventListener("pagehide", leaving);
+      controller.abort();
+      clearTimeout(timer.current);
+    };
+  }, [user?.id, loading]);
+  function change(next: Preferences, reading: boolean) {
+    const previous = current.current;
+    if (user) {
+      if (previous.siteTheme !== next.siteTheme)
+        dirty.current.siteTheme = next.siteTheme;
+      if (previous.readingTone !== next.readingTone)
+        dirty.current.readingTone = next.readingTone;
+      if (previous.readingSize !== next.readingSize)
+        dirty.current.readingSize = next.readingSize;
+    }
+    apply(next);
+    if (user) {
+      if (owner.current !== user.id) return;
+      version.current++;
+      clearTimeout(timer.current);
+      const controller = active.current;
+      if (controller && ready.current) {
+        // Discrete choices persist immediately; only the continuous size control is debounced.
+        if (previous.readingSize !== next.readingSize)
+          timer.current = setTimeout(() => void flush(controller), 400);
+        else void flush(controller);
+      }
+      return;
+    }
+    try {
+      localStorage.setItem(siteKey, next.siteTheme);
+      if (next.readingTone === null) localStorage.removeItem(toneKey);
+      else localStorage.setItem(toneKey, String(next.readingTone));
+      localStorage.setItem(sizeKey, String(next.readingSize));
+      (reading ? setReadingError : setSiteError)("");
+    } catch {
+      (reading ? setReadingError : setSiteError)(
+        "Preferência aplicada nesta sessão; armazenamento indisponível.",
+      );
+    }
   }
   return (
     <AppearanceContext.Provider
       value={{
-        site,
-        tone,
-        effectiveTone: tone ?? (site === "light" ? 3 : 0),
-        size,
+        site: values.siteTheme,
+        tone: values.readingTone,
+        size: values.readingSize,
+        effectiveTone:
+          values.readingTone ?? (values.siteTheme === "light" ? 3 : 0),
         siteError,
         readingError,
-        setSite,
-        setTone,
-        setSize,
-        resetReading,
+        setSite: (theme) =>
+          change({ ...current.current, siteTheme: theme }, false),
+        setTone: (tone) =>
+          change({ ...current.current, readingTone: tone }, true),
+        setSize: (size) =>
+          change({ ...current.current, readingSize: size }, true),
+        resetReading: () =>
+          change(
+            { ...current.current, readingTone: null, readingSize: 17 },
+            true,
+          ),
       }}
     >
       {children}

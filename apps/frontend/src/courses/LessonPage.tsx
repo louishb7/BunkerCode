@@ -1,3 +1,5 @@
+import { useLearning } from "../learning/Learning";
+import { learningRequest, learningLessonPath } from "../learning/api";
 import { useAuth } from "../auth/Auth";
 import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
@@ -42,6 +44,55 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   const id = lesson.course.id,
     slug = lesson.slug;
   const [activityError, setActivityError] = useState("");
+  const { summary, refresh, error: learningError } = useLearning();
+  const eligible = summary?.courses.find((c) => c.courseId === id);
+  const published = eligible?.lessons.includes(slug) ?? false;
+  const completed = eligible?.completed.includes(slug) ?? false;
+  const [syncError, setSyncError] = useState("");
+  const [completing, setCompleting] = useState(false);
+  useEffect(() => {
+    if (!user || !published) return;
+    const controller = new AbortController();
+    // Defer to coalesce Strict Mode's repeated effect setup before sending a visit.
+    const timer = setTimeout(() => {
+      void learningRequest(
+        learningLessonPath(id, slug) + "/visit",
+        controller.signal,
+        "POST",
+        {},
+      )
+        .then(() => refresh())
+        .catch(() => {
+          if (!controller.signal.aborted)
+            setSyncError(
+              "Última visita não sincronizada. Recarregue para tentar novamente.",
+            );
+        });
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [user?.id, id, slug, published, refresh]);
+  async function complete() {
+    if (completing) return;
+    setCompleting(true);
+    setSyncError("");
+    try {
+      await learningRequest(
+        learningLessonPath(id, slug) + "/complete",
+        AbortSignal.timeout(10000),
+        "POST",
+        {},
+      );
+      refresh();
+    } catch {
+      setSyncError("Conclusão não salva. Tente novamente.");
+    } finally {
+      setCompleting(false);
+    }
+  }
+
   const [mobileView, setMobileView] = useState<"reading" | "code">("reading");
   const { data: practice, error: practiceError } = useContent(
     "/" +
@@ -170,6 +221,35 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                 )}
               </div>
               {!placedExercise && exercisePrompt}
+              {user && learningError && (
+                <p role="status">
+                  {learningError}{" "}
+                  <button type="button" onClick={refresh}>
+                    Tentar sincronizar
+                  </button>
+                </p>
+              )}
+              {user && published && (
+                <div className="lesson-progress">
+                  {completed ? (
+                    <p role="status">Lição concluída</p>
+                  ) : practice && !exercise && !practiceError ? (
+                    <button
+                      type="button"
+                      disabled={completing}
+                      onClick={() => void complete()}
+                    >
+                      {completing ? "Salvando…" : "Marcar como concluída"}
+                    </button>
+                  ) : (
+                    <p className="text-sm text-subtle">
+                      Em andamento
+                      {exercise ? " · conclusão por Submit aprovado" : ""}
+                    </p>
+                  )}
+                  {syncError && <p role="alert">{syncError}</p>}
+                </div>
+              )}
               {practiceError && (
                 <div
                   role="alert"
