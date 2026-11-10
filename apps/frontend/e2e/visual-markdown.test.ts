@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { openVisual, markdownManager } from "../src/studio/visual-markdown";
-import { validateEditorial } from "@bunkercode/content";
+import { parseQuiz, validateEditorial } from "@bunkercode/content";
 const quiz = {
   id: "example-question",
   question: "Qual valor?",
@@ -67,4 +67,38 @@ test("every existing lesson converts safely or explicitly falls back", () => {
         file,
       );
   }
+});
+
+test("option feedback is validated and preserved through visual Markdown round trips", () => {
+  const modern = {
+    ...quiz,
+    options: quiz.options.map((option) => ({
+      ...option,
+      feedback: `Feedback **${option.id}**.`,
+    })),
+  };
+  assert.deepEqual(parseQuiz(modern), modern);
+  assert.deepEqual(parseQuiz(quiz), quiz);
+  const source = "```bunker-quiz\n" + JSON.stringify(modern) + "\n```";
+  const result = openVisual(source);
+  assert.ok(result.document, result.error);
+  const restored = markdownManager.serialize(result.document);
+  assert.deepEqual(openVisual(restored).document, result.document);
+  for (const feedback of [null, 42, "", " ", "x".repeat(4001), "a\u0000b"]) {
+    assert.throws(() =>
+      parseQuiz({
+        ...quiz,
+        options: [{ ...quiz.options[0], feedback }, quiz.options[1]],
+      }),
+    );
+  }
+  assert.throws(() =>
+    parseQuiz({
+      ...quiz,
+      options: [
+        { ...quiz.options[0], feedback: "Ok", extra: true },
+        quiz.options[1],
+      ],
+    }),
+  );
 });

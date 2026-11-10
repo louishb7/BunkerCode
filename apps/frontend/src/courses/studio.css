@@ -432,10 +432,16 @@
   margin-left: 0;
 }
 .quiz-author-option {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   margin: 8px 0;
+}
+.quiz-option-feedback {
+  grid-column: 2 / -1;
+  min-width: 0;
+  font-size: 13px;
 }
 .quiz-author-option input[type="radio"] {
   accent-color: var(--accent);

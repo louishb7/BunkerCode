@@ -6,7 +6,7 @@ O Studio usa Tiptap 3 com a extensão oficial Markdown, carregados somente na ro
 
 Use a toolbar compacta para parágrafos/títulos, negrito, itálico, listas agrupadas, links, código inline e desfazer/refazer. Ícones têm labels e tooltips. O popover de link preserva a seleção, permite URL, confirmação, cancelamento e remoção; aceita http/https/mailto, paths locais e âncoras, recusando protocolos inseguros. Sem seleção, confirmar insere a URL como texto vinculado. Escape cancela e devolve o foco ao documento. Posicione o cursor no bloco anterior e acione **Inserir após o bloco selecionado**: parágrafo, código, nota, quiz ou enunciado do exercício. O + fica na margem esquerda do bloco atual, inclusive parágrafos vazios, acompanha a geometria/rolagem do ProseMirror e permanece fechado até clique explícito. Inserir, clicar fora, Escape ou mudar a seleção fecha o menu. Os blocos selecionados oferecem **Ações do bloco** para mover para cima/baixo, excluir e continuar abaixo. Continuar insere um parágrafo e define caret/foco numa transação síncrona. Desfazer/refazer integra as operações ao documento. Os exemplos de programação usam CodeMirror, separados dos rascunhos do estudante, sem executar código. Tab indenta; Escape seguido de Tab sai do código. O editor oferece sintaxe e autocomplete para JS/TS; outros fences mantêm linguagem e texto, com edição sem gramática específica. O cabeçalho do exemplo contém o seletor discreto de linguagem; o conteúdo fica contido, com scroll horizontal/vertical interno em blocos extensos. O NodeView declara contentDOM oculto para que o ProseMirror mantenha o texto sem criar uma segunda cópia visível fora da caixa. As mutações DOM do CodeMirror ficam isoladas. Trocar a linguagem reconfigura o CodeMirror sem remontagem e preserva texto, seleção e undo; a transação também preserva a NodeSelection do bloco. O leitor continua destacando as linguagens suportadas pelo Highlight.js.
 
-Sem seleção, o quiz mostra pergunta e alternativas como parte do documento, sem campos administrativos ou UUID. Clique no quiz ou use **Editar quiz** para editar pergunta, alternativas e resposta correta. **Feedback e tentativas** expande as configurações secundárias; os identificadores permanecem estáveis internamente. **Testar como estudante** usa o mesmo componente do leitor. As respostas são formativas, em memória; não certificam aprendizagem e não concluem a lição. O leitor aceita vários quizzes intercalados com texto.
+Sem seleção, o quiz mostra pergunta e alternativas como parte do documento, sem campos administrativos ou UUID. Clique no quiz ou use **Editar quiz** para editar pergunta, alternativas, resposta correta e um feedback próprio para cada alternativa. Deixe o feedback da alternativa vazio para usar o feedback geral correto/incorreto. Os campos de texto preservam a composição nativa do teclado (acentos e IME); o documento recebe a alteração ao terminar a composição. **Feedback e tentativas** expande as configurações secundárias; os identificadores permanecem estáveis internamente. **Testar como estudante** usa o mesmo componente do leitor. As respostas são formativas, em memória; não certificam aprendizagem e não concluem a lição. O leitor aceita vários quizzes intercalados com texto. Com `retry: true`, após errar é possível escolher outra alternativa e confirmar novamente em **Verificar resposta**, sem reset obrigatório; mudar a seleção limpa o resultado anterior. Também é possível verificar a mesma escolha novamente. Após acertar, **Tentar novamente** permite reiniciar. Com `retry: false`, a primeira resposta continua definitiva nesta montagem do quiz.
 
 **Visual**, **Prévia** e **Markdown** ficam diretamente na barra superior. O editor visual permanece montado ao alternar vistas, mantendo seleção e histórico enquanto a fonte não for substituída. O seletor do curso e **Nova lição** integram navegação/criação sem página intermediária. O protocolo de rascunho em sessionStorage, conflitos HTTP 409, revisão de arquivo, limite UTF-8 e escrita por temporário/rename permanece o mesmo descrito em [autoria](authoring.md).
 
@@ -21,8 +21,8 @@ Elementos especiais são fences JSON no nível principal do documento. O Studio 
   "id": "tipo-de-valor",
   "question": "Qual é o tipo de 42?",
   "options": [
-    { "id": "number", "text": "number" },
-    { "id": "string", "text": "string" }
+    { "id": "number", "text": "number", "feedback": "42 é um valor numérico." },
+    { "id": "string", "text": "string", "feedback": "Uma string precisaria estar entre aspas." }
   ],
   "correct": "number",
   "feedbackCorrect": "42 é um valor numérico.",
@@ -30,6 +30,8 @@ Elementos especiais são fences JSON no nível principal do documento. O Studio 
   "retry": true
 }
 ```
+
+O campo opcional `options[].feedback` aceita até 4000 caracteres não vazios e tem prioridade sobre o feedback geral correspondente à resposta confirmada. Sem ele, `feedbackCorrect`/`feedbackIncorrect` continuam funcionando e obrigatórios; alternativas com e sem feedback próprio podem coexistir. Campos desconhecidos, feedbacks de tipo inválido ou vazios são recusados. Não há migração nem regravação automática do acervo.
 
 De 2 a 12 alternativas, uma correta, IDs de até 80 caracteres em minúsculas/números/hífens. Pergunta e cada feedback: até 4000 caracteres; alternativa: 2000. Nota: até 12000 caracteres. Cada bloco: até 32768 caracteres, dentro do limite global de 256 KiB do arquivo.
 
@@ -42,7 +44,7 @@ De 2 a 12 alternativas, uma correta, IDs de até 80 caracteres em minúsculas/n�
 
 Variantes: `info`, `tip`, `warning`.
 
-Para uma fala do personagem Otto, inicie o texto exatamente com `**Otto**`, uma linha em branco e o comentário: `"text": "**Otto**\n\nO comentário do personagem."`. O leitor e a prévia do Studio apresentam o nome uma única vez e o avatar local; mencionar Otto no meio de outra nota não muda sua identidade. É uma convenção editorial explícita, sem novo campo ou variante no JSON. O texto continua sanitizado. O avatar, decorativo ao lado do nome acessível, vem do [Robot do SVG Repo](https://www.svgrepo.com/svg/159845/robot), identificado pela fonte como CC0; o arquivo integral está em `apps/frontend/public/characters/otto.svg`, sem dependência remota em produção.
+Para uma fala do personagem Otto, inicie o texto exatamente com `**Otto**`, uma linha em branco e o comentário: `"text": "**Otto**\n\nO comentário do personagem."`. O leitor e a prévia do Studio apresentam somente o avatar local em moldura circular, centralizado verticalmente ao lado do comentário, sem nome visível; mencionar Otto no meio de outra nota não muda sua identidade. É uma convenção editorial explícita, sem novo campo ou variante no JSON. O texto continua sanitizado. O avatar, decorativo dentro da nota com nome acessível Otto, vem do [Robot do SVG Repo](https://www.svgrepo.com/svg/159845/robot), identificado pela fonte como CC0; o arquivo integral está em `apps/frontend/public/characters/otto.svg`, sem dependência remota em produção.
 
 ```bunker-exercise
 {

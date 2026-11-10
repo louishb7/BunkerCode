@@ -12,7 +12,7 @@ export {
 export interface Quiz {
   id: string;
   question: string;
-  options: { id: string; text: string }[];
+  options: { id: string; text: string; feedback?: string }[];
   correct: string;
   feedbackCorrect: string;
   feedbackIncorrect: string;
@@ -74,8 +74,12 @@ export function parseQuiz(value: unknown): Quiz {
     );
   const options = q.options.map((value) => {
     const o = object(value);
-    fields(o, ["id", "text"]);
-    return { id: id(o.id), text: text(o.text, 2000) };
+    fields(o, "feedback" in o ? ["id", "text", "feedback"] : ["id", "text"]);
+    return {
+      id: id(o.id),
+      text: text(o.text, 2000),
+      ...("feedback" in o ? { feedback: text(o.feedback, 4000) } : {}),
+    };
   });
   const correct = id(q.correct);
   if (

@@ -1,12 +1,12 @@
 # O que significa programar?
 
-*O conhecimento invisível*
+Antes de começarmos, quero te apresentar uma ideia que vai acompanhar você durante todo este curso: programar não começa quando escrevemos a primeira linha de código. Existe uma habilidade que vem antes disso. Algo que não aparece na tela, não depende de uma linguagem e nem sempre é percebido por quem está começando. É a capacidade de observar um problema, compreender o que está acontecendo e pensar em maneiras de resolvê-lo.
 
-Tenho que admitir uma coisa antes de "começarmos". Coloquei a palavra entre aspas porque não quero dar peso ao que vamos fazer aqui. Se você entrou neste curso esperando ganhar um certificado colorido nas primeiras horas para exibir no LinkedIn que "concluiu uma jornada de aprendizado", tenho uma má notícia: não é assim que o BunkerCode funciona.
+O que vamos construir neste primeiro módulo é uma tentativa de te entregar um **conhecimento invisível**: uma lente diferente para observar problemas. Quando você começa a enxergar a estrutura por trás de uma decisão ou de uma regra, fica mais fácil perceber por que certas soluções funcionam e outras desmoronam na primeira exceção. Você para de aceitar explicações vagas e passa a examinar como as coisas realmente operam.
 
-O que vamos construir neste primeiro módulo não serve para enfeitar currículo. É uma tentativa de te entregar um **conhecimento invisível**: uma lente diferente para observar problemas. Quando você começa a enxergar a estrutura por trás de uma decisão ou de uma regra, fica mais fácil perceber por que certas soluções funcionam e outras desmoronam na primeira exceção. Você para de aceitar explicações vagas e passa a examinar como as coisas realmente operam.
+Vamos começar com uma afirmativa muito simples: **nosso cérebro é uma ferramenta poderosa!** 
 
-Mas não se engane. Não sou eu quem vai pilotar uma moto e jogar esse conteúdo dentro da sua cabeça. Afinal, eu ainda estou fazendo as entregas para o meu próprio subconsciente. E é neste ponto que quero chegar. Nosso cérebro é uma ferramenta poderosa! Mas pense bem: como você acha que a memória funciona?
+Pense bem... como você acha que a memória funciona?
 
 ```bunker-note
 {
@@ -21,7 +21,7 @@ Como esta não é uma aula de biologia, irei resumir a um único conselho inicia
 
 Quem vê a programação de fora costuma imaginar que programar consiste em decorar centenas de palavras em inglês e símbolos especiais para digitar sem parar numa tela escura. Por causa dessa impressão, muita gente trava logo no início: tenta memorizar comandos soltos, esquece um detalhe, recebe um erro na tela e conclui que não leva jeito para a área. O problema é que aprender a gramática de uma linguagem e aprender a resolver problemas são atividades diferentes.
 
-Eventualmente, a sintaxe irá se enraizar na sua cabeça. Mas não tenha pressa. Até hoje, quando se trata de estudar programação, eu ainda me jogo na cama enquanto falo pra mim mesmo: *"porra! eu sou a pessoa mais burra do mundo!"*
+Eventualmente, a sintaxe irá se enraizar na sua cabeça. Mas não tenha pressa. Até hoje, quando se trata de estudar programação, eu ainda me jogo na cama enquanto falo pra mim mesmo: *"Meu deus! eu sou a pessoa mais burra do mundo!"*
 
 E então, 30 minutos depois, a pessoa mais burra do mundo consegue resolver o problema que a estressou até o talo.
 
@@ -39,11 +39,7 @@ Pense em quantas coisas você faz diariamente sem precisar refletir sobre cada p
 
 Na comunicação entre pessoas, acontece algo parecido. Não precisamos detalhar absolutamente tudo o que dizemos, porque contamos com a capacidade da outra pessoa de interpretar o contexto, reconhecer nossas intenções e preencher o que ficou subentendido. E sim, estou contando com essa mesma capacidade enquanto atiro um monte de informações e afirmações na sua cabeça. Se precisasse explicar absolutamente tudo o que deixo subentendido, provavelmente ainda estaríamos no primeiro parágrafo.
 
-O problema começa quando levamos esse mesmo hábito para a programação. Vou te mostrar por quê.
-
-## Uma frase, várias perguntas
-
-Imagine que você esteja me ajudando a desenvolver esta própria plataforma de estudos e eu te entregue a seguinte tarefa:
+O problema começa quando levamos esse mesmo hábito para a programação. Vou te mostrar por quê. Imagine que você esteja me ajudando a desenvolver esta própria plataforma de estudos e eu te entregue a seguinte tarefa:
 
 *"Quando o aluno terminar uma lição, libere a próxima."*
 
@@ -54,7 +50,6 @@ Mas quero que você observe uma palavra específica nessa frase: **terminar**. O
 - O aluno precisa ler todo o conteúdo?
 - Basta chegar ao final da página?
 - Ele precisa responder corretamente a algum exercício?
-- E se fechar a página antes de terminar?
 
 Percebeu? Nossa tarefa, que antes cabia confortavelmente em uma única frase, começou a revelar uma série de decisões que ainda não tomamos.
 
@@ -62,16 +57,11 @@ Isso acontece porque, quando conversamos, somos capazes de compreender uma inten
 
 E, ironicamente, como você ainda não está me ajudando diretamente a desenvolver esta plataforma, sou eu quem precisa responder às perguntas que acabei de apresentar. Inclusive, essa foi uma das minhas primeiras descobertas ao desenvolver projetos próprios: quando você trabalha sozinho, também precisa aprender a questionar as instruções que você mesmo inventou.
 
-```bunker-note
-{
-  "kind": "info",
-  "text": "Uma das primeiras habilidades que quero desenvolver com você é aprender a desconfiar de instruções aparentemente óbvias.\n\nQuando encontrar uma regra que te faça desconfiar, experimente perguntar: *será que isso está certo mesmo? O que estou considerando verdadeiro aqui, mesmo sem ninguém ter me dito que é?*\n\nSe ainda assim não tiver certeza, converse com as pessoas envolvidas, esclareça as dúvidas e estabeleça critérios que possam ser verificados."
-}
-```
+Por isso, eu sugiro que você não trabalhe sozinho. Minha recomendação é que você contrate para te auxiliar: **as vozes da sua cabeça**, **os demônios da autossabotagem**, **e o ego de conseguir resolver qualquer problema que aparecer futuramente.** 
 
-Eu não sei quais membros você vai se sentir confortável em adicionar à sua equipe de desenvolvimento, mas, quando marco esse tipo de reunião, os principais convocados costumam ser: as vozes da minha cabeça, os demônios da autossabotagem e o meu ego de achar que consigo resolver tudo apenas lendo uma documentação ou fazendo as perguntas certas para uma inteligência artificial.
+Aviso: nem sempre os membros da equipe chegam a um consenso.
 
-Nem sempre chegamos a um consenso.
+Talvez você nem saiba por onde começar a resolver, mas e daí? Primeiro você dá uma mordida no bolo, e só depois descobre se consegue ou não engolir o pedaço.
 
 ## Tirando as regras da nossa cabeça
 
@@ -110,16 +100,6 @@ Mas quero que observe uma coisa: embora o código tenha uma aparência diferente
 
 E, já que aparentemente estamos desenvolvendo uma plataforma juntos, quero te propor um pequeno desafio.
 
-## E se a nossa solução falhar?
-
-Imagine que levamos aquela ideia adiante, implementamos a funcionalidade e começamos a testá-la. Tudo parece funcionar: o aluno responde às perguntas, acerta duas e consegue acessar a próxima lição.
-
-Missão cumprida? Ainda não.
-
-Durante um dos testes, encontramos um comportamento inesperado: depois de concluir a atividade e desbloquear a próxima lição, o aluno atualiza a página. Quando ela carrega novamente, a próxima lição aparece bloqueada.
-
-Opa. Nossa solução funcionou em uma situação, mas falhou em outra. Antes que você convoque uma reunião extraordinária com as vozes da sua mente, quero saber como pretende investigar esse problema.
-
 ```bunker-quiz
 {
   "id": "quiz-c170cb23-d58f-4efd-b0ed-2acad7ddc8d3",
@@ -135,7 +115,7 @@ Opa. Nossa solução funcionou em uma situação, mas falhou em outra. Antes que
     },
     {
       "id": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7",
-      "text": "Investigar se a conclusão da lição foi registrada corretamente e se o programa consegue recuperar essa informação quando a página é carregada novamente."
+      "text": "Investigar se a conclusão da lição foi registrada corretamente, pois o aluno perdeu o registro ao atualizar a página."
     }
   ],
   "correct": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7",
@@ -147,13 +127,7 @@ Opa. Nossa solução funcionou em uma situação, mas falhou em outra. Antes que
 
 ---
 
-Você acabou de acompanhar uma parte importante do trabalho de quem programa. Começamos com uma necessidade, investigamos o que ela significava, estabelecemos algumas regras e imaginamos uma solução. Quando essa solução foi colocada à prova, encontramos um comportamento que não correspondia ao que esperávamos.
-
-E o que fizemos? Voltamos a fazer perguntas.
-
-Essa é uma característica fundamental da programação que quero que você carregue durante o curso: **errar não significa necessariamente que todo o seu raciocínio estava errado. Às vezes, significa apenas que você descobriu uma situação que ainda não havia considerado.**
-
-O código não é uma espécie de resposta definitiva que escrevemos depois de pensar em tudo. Ele também é uma ferramenta que utilizamos para experimentar, investigar e aperfeiçoar nossas soluções.
+Você acabou de acompanhar uma parte importante do trabalho de quem programa. Começamos com uma necessidade, investigamos o que ela significava, estabelecemos algumas regras e imaginamos uma solução. O código não é uma espécie de resposta definitiva que escrevemos depois de pensar em tudo. Ele também é uma ferramenta que utilizamos para experimentar, investigar e aperfeiçoar nossas soluções.
 
 ## Então, o que significa programar?
 
@@ -167,14 +141,6 @@ Na próxima lição, quero te apresentar um problema que, à primeira vista, qua
 
 Talvez você descubra que o problema não era tão simples quanto parecia.
 
-### Ah, quase me esqueci de uma coisa...
+Bom, como você não participou da reunião de desenvolvimento desta plataforma, tomei a liberdade de decidir sozinho o significado de "Terminar uma lição". Nesta primeira tarefa, resolvi simplificar. Você chegou até aqui? Então pode seguir para a próxima lição.
 
-Lembra daquela funcionalidade que desenvolvemos juntos durante a lição? A que exigia acertar duas de três perguntas para liberar o próximo conteúdo?
-
-Bom, como você não participou da reunião de desenvolvimento desta plataforma, tomei a liberdade de decidir sozinho. Nesta primeira lição, eu poderia ter criado três exercícios, um sistema de correção e uma regra para impedir que você avançasse até demonstrar que compreendeu tudo o que acabamos de discutir.
-
-Mas resolvi simplificar. Você chegou até aqui? Então pode seguir para a próxima lição.
-
-Eu escolhi não complicar as coisas.
-
-Pelo menos não hoje.
+Eu escolhi não complicar as coisas. Pelo menos não na introdução.

@@ -394,7 +394,8 @@ test("Studio previews the real editorial blocks and physically saves a separate 
   for (const width of [390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 });
     for (const correct of [false, true]) {
-      await preview.getByRole("button", { name: "Tentar novamente" }).click();
+      if (!correct)
+        await preview.getByRole("button", { name: "Tentar novamente" }).click();
       await preview
         .getByRole("radio")
         .nth(correct ? 2 : 0)

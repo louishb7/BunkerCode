@@ -14,10 +14,51 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import type { Quiz, Note } from "@bunkercode/content";
 import { QuizBlock, NoteBlock } from "../courses/EditorialBlock";
 import { CodeEditor } from "../practice/CodeEditor";
+
+// Keep native composition local: document transactions during pre-edit can reset
+// the browser's IME range inside an atomic ProseMirror node view.
+function AuthoringText({
+  value,
+  onChange,
+  multiline = false,
+  ...props
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+} & Pick<
+  ComponentProps<"textarea">,
+  "aria-label" | "className" | "placeholder"
+>) {
+  const [draft, setDraft] = useState(value);
+  const composing = useRef(false);
+  useEffect(() => {
+    if (!composing.current) setDraft(value);
+  }, [value]);
+  const Component = multiline ? "textarea" : "input";
+  return (
+    <Component
+      {...props}
+      value={draft}
+      onCompositionStart={() => {
+        composing.current = true;
+      }}
+      onCompositionEnd={(event) => {
+        composing.current = false;
+        setDraft(event.currentTarget.value);
+        onChange(event.currentTarget.value);
+      }}
+      onChange={(event) => {
+        setDraft(event.currentTarget.value);
+        if (!composing.current) onChange(event.currentTarget.value);
+      }}
+    />
+  );
+}
 
 function selectBlock({ editor, getPos, selected }: NodeViewProps) {
   const pos = getPos();
@@ -195,10 +236,11 @@ export function EditorialView(props: NodeViewProps) {
             </label>
             <label>
               Texto da nota
-              <textarea
+              <AuthoringText
+                multiline
                 value={note.text}
-                onChange={(e) =>
-                  updateAttributes({ data: { ...note, text: e.target.value } })
+                onChange={(text) =>
+                  updateAttributes({ data: { ...note, text } })
                 }
               />
             </label>
@@ -254,9 +296,10 @@ export function EditorialView(props: NodeViewProps) {
             <>
               <label className="quiz-question">
                 Pergunta
-                <textarea
+                <AuthoringText
+                  multiline
                   value={q.question}
-                  onChange={(e) => change({ question: e.target.value })}
+                  onChange={(question) => change({ question })}
                 />
               </label>
               <fieldset>
@@ -270,13 +313,13 @@ export function EditorialView(props: NodeViewProps) {
                       checked={q.correct === o.id}
                       onChange={() => change({ correct: o.id })}
                     />
-                    <input
+                    <AuthoringText
                       aria-label={`Alternativa ${i + 1}`}
                       value={o.text}
-                      onChange={(e) =>
+                      onChange={(text) =>
                         change({
                           options: q.options.map((v) =>
-                            v.id === o.id ? { ...v, text: e.target.value } : v,
+                            v.id === o.id ? { ...v, text } : v,
                           ),
                         })
                       }
@@ -298,6 +341,24 @@ export function EditorialView(props: NodeViewProps) {
                     >
                       <X size={16} />
                     </button>
+                    <label className="quiz-option-feedback">
+                      Feedback da alternativa {i + 1}
+                      <AuthoringText
+                        multiline
+                        value={o.feedback ?? ""}
+                        placeholder="Sem texto próprio, usa o feedback geral."
+                        onChange={(feedback) =>
+                          change({
+                            options: q.options.map((option) => {
+                              if (option.id !== o.id) return option;
+                              const rest = { ...option };
+                              delete rest.feedback;
+                              return feedback ? { ...rest, feedback } : rest;
+                            }),
+                          })
+                        }
+                      />
+                    </label>
                   </div>
                 ))}
                 <button
@@ -322,19 +383,19 @@ export function EditorialView(props: NodeViewProps) {
                 <summary>Feedback e tentativas</summary>
                 <label>
                   Feedback correto
-                  <textarea
+                  <AuthoringText
+                    multiline
                     value={q.feedbackCorrect}
-                    onChange={(e) =>
-                      change({ feedbackCorrect: e.target.value })
-                    }
+                    onChange={(feedbackCorrect) => change({ feedbackCorrect })}
                   />
                 </label>
                 <label>
                   Feedback incorreto
-                  <textarea
+                  <AuthoringText
+                    multiline
                     value={q.feedbackIncorrect}
-                    onChange={(e) =>
-                      change({ feedbackIncorrect: e.target.value })
+                    onChange={(feedbackIncorrect) =>
+                      change({ feedbackIncorrect })
                     }
                   />
                 </label>

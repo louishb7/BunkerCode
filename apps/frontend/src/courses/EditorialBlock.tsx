@@ -22,7 +22,12 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
   const name = useId();
   const [choice, setChoice] = useState("");
   const [answer, setAnswer] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const correct = answer === quiz.correct;
+  const canRetry = !!answer && !correct && quiz.retry;
+  const feedback =
+    quiz.options.find((option) => option.id === answer)?.feedback ??
+    (correct ? quiz.feedbackCorrect : quiz.feedbackIncorrect);
   const ResultIcon = correct ? CircleCheck : CircleX;
   return (
     <section className="inline-quiz" aria-labelledby={`${name}-question`}>
@@ -46,8 +51,11 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
                 name={name}
                 value={option.id}
                 checked={choice === option.id}
-                disabled={!!answer}
-                onChange={() => setChoice(option.id)}
+                disabled={!!answer && !canRetry}
+                onChange={() => {
+                  setChoice(option.id);
+                  setAnswer("");
+                }}
               />
               <span>{option.text}</span>
               {answer === option.id && (
@@ -56,11 +64,14 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
             </label>
           ))}
         </div>
-        {!answer && (
+        {(!answer || canRetry) && (
           <button
             type="button"
             disabled={!choice}
-            onClick={() => setAnswer(choice)}
+            onClick={() => {
+              setAnswer(choice);
+              setAttempt((value) => value + 1);
+            }}
           >
             Verificar resposta
           </button>
@@ -69,6 +80,7 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
           {answer && (
             <div
               className="quiz-feedback"
+              key={attempt}
               data-result={correct ? "correct" : "incorrect"}
             >
               <p className="quiz-result">
@@ -78,14 +90,12 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
                 </strong>
               </p>
               <div className="quiz-feedback-text">
-                <EditorialText
-                  text={correct ? quiz.feedbackCorrect : quiz.feedbackIncorrect}
-                />
+                <EditorialText text={feedback} />
               </div>
             </div>
           )}
         </div>
-        {answer && quiz.retry && (
+        {answer && correct && quiz.retry && (
           <button
             type="button"
             onClick={() => {
@@ -125,11 +135,6 @@ export function NoteBlock({ note }: { note: Note }) {
         />
       )}
       <div className="editorial-note-content">
-        {otto && (
-          <p className="otto-name">
-            <strong>Otto</strong>
-          </p>
-        )}
         <EditorialText text={text} />
       </div>
     </aside>

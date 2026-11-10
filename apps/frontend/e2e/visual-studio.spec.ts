@@ -412,7 +412,9 @@ test("multiple quizzes retain independent answers, retry and an inline exercise 
   await first.getByRole("radio", { name: "Não", exact: true }).check();
   await first.getByRole("button", { name: "Verificar resposta" }).click();
   await expect(first.getByRole("status")).toContainText("Reveja primeiro");
-  await first.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(
+    first.getByRole("button", { name: "Tentar novamente" }),
+  ).toHaveCount(0);
   await first.getByRole("radio", { name: "Sim", exact: true }).check();
   await first.getByRole("button", { name: "Verificar resposta" }).click();
   await second.getByRole("radio", { name: "Sim", exact: true }).check();
@@ -582,7 +584,9 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
   await expect(interaction.getByRole("status").locator("em")).toHaveText(
     "the evidence",
   );
-  await interaction.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(
+    interaction.getByRole("button", { name: "Tentar novamente" }),
+  ).toHaveCount(0);
   await interaction
     .getByRole("radio", { name: "Investigate", exact: true })
     .check();
@@ -645,7 +649,7 @@ test("reading themes keep links, quotes and lists legible without changing Studi
 
 test("Otto signature uses the same safe avatar in Studio preview and reader", async ({
   page,
-}) => {
+}, info) => {
   const note = JSON.stringify({
     kind: "info",
     text: "**Otto**\n\nUm comentário com **ênfase**. <script>window.ottoUnsafe = true</script>",
@@ -683,4 +687,274 @@ test("Otto signature uses the same safe avatar in Studio preview and reader", as
       .locator(".otto-avatar"),
   ).toBeVisible();
   expect(await page.evaluate(() => "ottoUnsafe" in window)).toBe(false);
+  const comment = page.getByRole("complementary", {
+    name: "Otto",
+    exact: true,
+  });
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(comment).not.toContainText("Otto");
+    await expect(comment.locator(".otto-avatar")).toHaveCSS(
+      "border-radius",
+      "50%",
+    );
+    const avatar = await comment.locator(".otto-avatar").boundingBox();
+    const text = await comment.locator(".editorial-note-content").boundingBox();
+    expect(
+      Math.abs(avatar!.y + avatar!.height / 2 - text!.y - text!.height / 2),
+    ).toBeLessThan(2);
+    expect(
+      await comment.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    if (width !== 375)
+      await comment.screenshot({
+        path: info.outputPath(`otto-note-${width}.png`),
+      });
+  }
+});
+
+test("Portuguese composition keeps quiz and note fields focused and saves accented text", async ({
+  page,
+}) => {
+  await writeFile(
+    file,
+    source +
+      "\n```bunker-quiz\n" +
+      JSON.stringify({
+        id: "accents",
+        question: "Pergunta",
+        options: [
+          { id: "a", text: "Um" },
+          { id: "b", text: "Dois" },
+        ],
+        correct: "a",
+        feedbackCorrect: "Sim",
+        feedbackIncorrect: "Reveja",
+        retry: true,
+      }) +
+      "\n```\n\n```bunker-note\n" +
+      JSON.stringify({ kind: "info", text: "Nota" }) +
+      "\n```",
+  );
+  await page.goto(url + "/edit");
+  await page.locator(".quiz-author").click();
+  const session = await page.context().newCDPSession(page);
+  for (const label of [
+    "Pergunta",
+    "Alternativa 1",
+    "Feedback da alternativa 1",
+    "Feedback correto",
+    "Feedback incorreto",
+    "Texto da nota",
+  ]) {
+    if (label === "Feedback correto")
+      await page.getByText("Feedback e tentativas", { exact: true }).click();
+    if (label === "Texto da nota")
+      await page.locator(".visual-document .editorial-note").first().click();
+    const field = page.getByRole("textbox", { name: label, exact: true });
+    await field.fill("");
+    for (const part of ["é", " já", " não"]) {
+      await session.send("Input.imeSetComposition", {
+        text: part,
+        selectionStart: part.length,
+        selectionEnd: part.length,
+      });
+      await expect(field).toBeFocused();
+      await session.send("Input.insertText", { text: part });
+    }
+    await expect(field).toHaveValue("é já não");
+    await expect(field).toBeFocused();
+  }
+  await page
+    .locator(".visual-document p")
+    .filter({ hasText: "Antes do bloco." })
+    .click();
+  await page.keyboard.press("End");
+  await session.send("Input.imeSetComposition", {
+    text: " é já não",
+    selectionStart: 9,
+    selectionEnd: 9,
+  });
+  await session.send("Input.insertText", { text: " é já não" });
+  await expect(page.locator(".visual-document")).toContainText(
+    "Antes do bloco. é já não",
+  );
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  expect(await readFile(file, "utf8")).toContain("é já não");
+  await page.reload();
+  await page.locator(".quiz-author").click();
+  await expect(
+    page.getByRole("textbox", { name: "Pergunta", exact: true }),
+  ).toHaveValue("é já não");
+  await studioView(page, "Editar fonte Markdown");
+  const markdown = page.locator("#lesson-markdown");
+  await markdown.focus();
+  await page.keyboard.press("ControlOrMeta+End");
+  await session.send("Input.imeSetComposition", {
+    text: "\n\né já não",
+    selectionStart: 10,
+    selectionEnd: 10,
+  });
+  await session.send("Input.insertText", { text: "\n\né já não" });
+  await expect(markdown).toHaveValue(/é já não$/);
+});
+
+test("authors save per-option feedback and learners retry directly with keyboard and legacy fallback", async ({
+  page,
+}, info) => {
+  const quiz = {
+    id: "option-feedback",
+    question: "Qual alternativa?",
+    options: [
+      { id: "a", text: "Correta" },
+      { id: "b", text: "Incorreta" },
+      { id: "c", text: "Legada" },
+    ],
+    correct: "a",
+    feedbackCorrect: "Correto geral",
+    feedbackIncorrect: "Incorreto geral",
+    retry: true,
+  };
+  await writeFile(
+    file,
+    source + "\n```bunker-quiz\n" + JSON.stringify(quiz) + "\n```\n",
+  );
+  await page.goto(url + "/edit");
+  await page.locator(".quiz-author").click();
+  const correctFeedback = "Já está **correta**.\n\nVocê identificou a regra.";
+  const incorrectFeedback =
+    "Não é essa. Reveja *este caso*. <script>window.optionUnsafe = true</script>";
+  await page
+    .getByRole("textbox", { name: "Feedback da alternativa 1", exact: true })
+    .fill(correctFeedback);
+  await page
+    .getByRole("textbox", { name: "Feedback da alternativa 2", exact: true })
+    .fill(incorrectFeedback);
+  const optionalFeedback = page.getByRole("textbox", {
+    name: "Feedback da alternativa 3",
+    exact: true,
+  });
+  await optionalFeedback.fill("Texto temporário");
+  await optionalFeedback.fill("");
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page
+        .locator(".quiz-author")
+        .evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+  }
+  await page
+    .locator(".quiz-author")
+    .screenshot({ path: info.outputPath("studio-option-feedback-320.png") });
+  await page.setViewportSize({ width: 1280, height: 960 });
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  const saved = await readFile(file, "utf8");
+  expect(saved).toContain(JSON.stringify(correctFeedback));
+  expect(saved).toContain(JSON.stringify(incorrectFeedback));
+  expect(saved).toContain('"id": "c"');
+  expect(saved).not.toContain('"feedback": ""');
+  expect(saved).not.toContain("Texto temporário");
+  await page.reload();
+  await page.locator(".quiz-author").click();
+  await expect(
+    page.getByRole("textbox", {
+      name: "Feedback da alternativa 1",
+      exact: true,
+    }),
+  ).toHaveValue(correctFeedback);
+  await page.getByRole("button", { name: "Testar como estudante" }).click();
+  await page.getByRole("radio", { name: "Incorreta", exact: true }).check();
+  await page.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Resposta incorreta" }),
+  ).toContainText("Não é essa.");
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const interaction = page.locator(".inline-quiz");
+  const verify = interaction.getByRole("button", {
+    name: "Verificar resposta",
+  });
+  const wrong = interaction.getByRole("radio", {
+    name: "Incorreta",
+    exact: true,
+  });
+  await wrong.check();
+  await verify.click();
+  await expect(interaction.getByRole("status")).toContainText("Não é essa.");
+  await expect(interaction.locator("em")).toHaveText("este caso");
+  await expect(interaction.locator("script")).toHaveCount(0);
+  expect(await page.evaluate(() => "optionUnsafe" in window)).toBe(false);
+  await expect(wrong).toBeEnabled();
+  await expect(
+    interaction.getByRole("button", { name: "Tentar novamente" }),
+  ).toHaveCount(0);
+  await verify.click(); // Same wrong choice is a valid explicit new attempt.
+  await expect(interaction.getByRole("status")).toContainText("Não é essa.");
+  await wrong.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    interaction.getByRole("radio", { name: "Legada", exact: true }),
+  ).toBeFocused();
+  await expect(interaction.getByRole("status")).toBeEmpty();
+  await expect(interaction.locator("[data-result]")).toHaveCount(0);
+  await verify.focus();
+  await page.keyboard.press("Enter");
+  await expect(interaction.getByRole("status")).toContainText(
+    "Incorreto geral",
+  );
+  await interaction
+    .getByRole("radio", { name: "Correta", exact: true })
+    .check();
+  await expect(interaction.getByRole("status")).toBeEmpty();
+  await verify.click();
+  await expect(interaction.getByRole("status")).toContainText(
+    "Já está correta.",
+  );
+  await expect(interaction.locator(".quiz-feedback strong").last()).toHaveText(
+    "correta",
+  );
+  await expect(interaction.locator(".quiz-feedback-text p")).toHaveCount(2);
+  await interaction.screenshot({
+    path: info.outputPath("quiz-option-feedback.png"),
+  });
+});
+
+test("quizzes with retry disabled retain the confirmed incorrect answer", async ({
+  page,
+}) => {
+  await writeFile(
+    file,
+    source +
+      "\n```bunker-quiz\n" +
+      JSON.stringify({
+        id: "single-attempt",
+        question: "Uma tentativa",
+        options: [
+          { id: "a", text: "Sim" },
+          { id: "b", text: "Não" },
+        ],
+        correct: "a",
+        feedbackCorrect: "Certo",
+        feedbackIncorrect: "Reveja a regra",
+        retry: false,
+      }) +
+      "\n```\n",
+  );
+  await page.goto(url);
+  const interaction = page.locator(".inline-quiz");
+  await interaction.getByRole("radio", { name: "Não", exact: true }).check();
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status")).toContainText("Reveja a regra");
+  for (const radio of await interaction.getByRole("radio").all())
+    await expect(radio).toBeDisabled();
+  await expect(
+    interaction.getByRole("radio", { name: "Não", exact: true }),
+  ).toBeChecked();
+  await expect(interaction.getByRole("button")).toHaveCount(0);
 });

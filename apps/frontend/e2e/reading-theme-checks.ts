@@ -295,7 +295,9 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
         path: info.outputPath("theme-3-incorrect-320.png"),
       });
     }
-    await quiz.getByRole("button", { name: "Tentar novamente" }).click();
+    await expect(
+      quiz.getByRole("button", { name: "Tentar novamente" }),
+    ).toHaveCount(0);
     await quiz.getByRole("radio").last().check();
     await quiz.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(quiz.getByRole("status")).toContainText("Resposta correta");
@@ -1129,7 +1131,7 @@ export async function checkOttoNotes(page: Page, info: TestInfo) {
     await selectReadingTone(page, tone);
     await page.keyboard.press("Escape");
     for (const note of await notes.all()) {
-      await expect(note.locator(".otto-name")).toHaveText("Otto");
+      await expect(note.locator(".otto-name")).toHaveCount(0);
       const avatar = note.locator("img");
       await expect(avatar).toHaveAttribute("src", "/characters/otto.svg");
       expect(
