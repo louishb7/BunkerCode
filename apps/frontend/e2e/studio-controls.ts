@@ -58,3 +58,15 @@ export async function studioTools(page: Page) {
   if ((await button.getAttribute("aria-pressed")) !== "true")
     await button.click();
 }
+
+export async function selectNoteText(field: Locator, text: string) {
+  await field.evaluate((node, text) => {
+    if (!(node instanceof HTMLTextAreaElement))
+      throw new Error("Note textarea not found");
+    const start = node.value.indexOf(text);
+    if (start < 0) throw new Error("Requested note text not found");
+    node.focus();
+    node.setSelectionRange(start, start + text.length);
+    node.dispatchEvent(new Event("select", { bubbles: true }));
+  }, text);
+}

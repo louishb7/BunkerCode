@@ -284,6 +284,9 @@ for (const width of [390, 1440]) {
       .getByRole("textbox", { name: "Texto da nota", exact: true })
       .fill("Nota inserida na posição escolhida.");
     await page
+      .getByRole("button", { name: "Aplicar nota", exact: true })
+      .click();
+    await page
       .getByRole("button", { name: "Salvar alterações", exact: true })
       .click();
     await expect(

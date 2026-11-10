@@ -53,16 +53,23 @@ export const VisualCode = CodeBlock.extend({
     return `${fence}${node.attrs?.language ?? ""}\n${text}\n${fence}`;
   },
 }).configure({ enableTabIndentation: false });
-export const baseExtensions = [
-  StarterKit.configure({
-    codeBlock: false,
-    link: { openOnClick: false },
-    underline: false,
-    trailingNode: false,
-  }),
-  VisualCode,
-  EditorialBlock,
-];
+// Backslash breaks also preserve consecutive hardBreak nodes: a line containing
+// only two spaces is a blank paragraph delimiter in Markdown.
+export const VisualStarterKit = StarterKit.extend({
+  addExtensions() {
+    return (this.parent?.() ?? []).map((extension) =>
+      extension.name === "hardBreak"
+        ? extension.extend({ renderMarkdown: () => "\\\n" })
+        : extension,
+    );
+  },
+}).configure({
+  codeBlock: false,
+  link: { openOnClick: false },
+  underline: false,
+  trailingNode: false,
+});
+export const baseExtensions = [VisualStarterKit, VisualCode, EditorialBlock];
 export const markdownManager = new MarkdownManager({
   extensions: baseExtensions,
 });

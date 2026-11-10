@@ -1,9 +1,10 @@
+import { NoteEditingContext } from "./note-editing";
 import { closeHistory } from "@tiptap/pm/history";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { CodeView, EditorialView } from "./StudioBlocks";
 import { VisualToolbar } from "./VisualToolbar";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EditorContent,
   ReactNodeViewRenderer,
@@ -11,10 +12,14 @@ import {
   type JSONContent,
 } from "@tiptap/react";
 import { Markdown } from "@tiptap/markdown";
-import StarterKit from "@tiptap/starter-kit";
 import { Plus, ListTree, Type } from "lucide-react";
 import { continueAfter, endsInSpecialBlock } from "./continuation";
-import { EditorialBlock, VisualCode, openVisual } from "./visual-markdown";
+import {
+  EditorialBlock,
+  VisualCode,
+  VisualStarterKit,
+  openVisual,
+} from "./visual-markdown";
 function insertionPoint(editor: Editor) {
   const { selection } = editor.state;
   if (selection.$from.depth)
@@ -30,12 +35,7 @@ function insertionPoint(editor: Editor) {
 }
 
 const extensions = [
-  StarterKit.configure({
-    codeBlock: false,
-    underline: false,
-    trailingNode: false,
-    link: { openOnClick: false },
-  }),
+  VisualStarterKit,
   VisualCode.extend({
     addNodeView() {
       return ReactNodeViewRenderer(CodeView, {
@@ -56,12 +56,32 @@ export default function VisualEditor({
   active,
   disabled,
   onChange,
+  onPendingNotesChange,
 }: {
   source: string;
   active: boolean;
   disabled: boolean;
   onChange: (value: string) => void;
+  onPendingNotesChange: (pending: boolean) => void;
 }) {
+  const pendingNotes = useRef(new Set<string>());
+  const pendingCallback = useRef(onPendingNotesChange);
+  pendingCallback.current = onPendingNotesChange;
+  const reportPendingNote = useCallback((id: string, pending: boolean) => {
+    if (pending) pendingNotes.current.add(id);
+    else pendingNotes.current.delete(id);
+    pendingCallback.current(pendingNotes.current.size > 0);
+  }, []);
+  useEffect(() => {
+    const protectDraft = (event: BeforeUnloadEvent) => {
+      if (pendingNotes.current.size) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", protectDraft);
+    return () => window.removeEventListener("beforeunload", protectDraft);
+  }, []);
   const [initial] = useState(() => openVisual(source));
   const callback = useRef(onChange);
   callback.current = onChange;
@@ -390,7 +410,9 @@ export default function VisualEditor({
       >
         <VisualToolbar editor={editor} disabled={disabled} />
       </div>
-      <EditorContent editor={editor} />
+      <NoteEditingContext.Provider value={reportPendingNote}>
+        <EditorContent editor={editor} />
+      </NoteEditingContext.Provider>
       {hasContinuation && (
         <button
           type="button"

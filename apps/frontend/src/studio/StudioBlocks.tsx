@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import type { Quiz, Note } from "@bunkercode/content";
-import { QuizBlock, NoteBlock } from "../courses/EditorialBlock";
+import { QuizBlock } from "../courses/EditorialBlock";
+import { StudioNote } from "./StudioNote";
 import { CodeEditor } from "../practice/CodeEditor";
 
 // Keep native composition local: document transactions during pre-edit can reset
@@ -180,6 +181,7 @@ function BlockActions({ editor, getPos, node, selected }: NodeViewProps) {
 export function EditorialView(props: NodeViewProps) {
   const { node, updateAttributes, selected } = props;
   const [preview, setPreview] = useState(false);
+  const [notePending, setNotePending] = useState(false);
   const data = node.attrs.data as Quiz | Note;
   const events = {
     onPointerDownCapture: () => selectBlock(props),
@@ -219,36 +221,14 @@ export function EditorialView(props: NodeViewProps) {
         tabIndex={0}
         {...events}
       >
-        {selected ? (
-          <>
-            <label>
-              Tipo de nota
-              <select
-                value={note.kind}
-                onChange={(e) =>
-                  updateAttributes({ data: { ...note, kind: e.target.value } })
-                }
-              >
-                <option value="info">Informação</option>
-                <option value="tip">Dica</option>
-                <option value="warning">Atenção</option>
-              </select>
-            </label>
-            <label>
-              Texto da nota
-              <AuthoringText
-                multiline
-                value={note.text}
-                onChange={(text) =>
-                  updateAttributes({ data: { ...note, text } })
-                }
-              />
-            </label>
-          </>
-        ) : (
-          <NoteBlock note={note} />
-        )}
-        <BlockActions {...props} />
+        <StudioNote
+          note={note}
+          selected={selected}
+          editor={props.editor}
+          getPos={props.getPos}
+          onPendingChange={setNotePending}
+        />
+        {!notePending && <BlockActions {...props} />}
       </NodeViewWrapper>
     );
   }

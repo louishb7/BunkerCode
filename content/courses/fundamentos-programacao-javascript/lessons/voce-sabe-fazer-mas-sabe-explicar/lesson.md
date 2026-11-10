@@ -111,15 +111,20 @@ Aliás, existe um nome para esse tipo de organização.
 
 Na programação, chamamos de **algoritmo** um conjunto organizado de passos para realizar uma tarefa ou resolver um problema. E aqui está um detalhe importante: um algoritmo não precisa começar como código. Antes de escrever instruções em uma linguagem de programação, podemos pensar na solução, organizar as ações necessárias e verificar se fazem sentido. Foi justamente o que fizemos com ajuda do Otto.
 
-Não se preocupe em decorar essa definição agora. Teremos bastante tempo para trabalhar com algoritmos durante esta trilha. Por enquanto, quero que você guarde uma ideia: **uma tarefa pode parecer óbvia para quem sabe realizá-la. O desafio está em transformar esse conhecimento em instruções claras e organizadas.**
+Não se preocupe em decorar essa definição agora. Teremos bastante tempo para trabalhar com algoritmos durante esta trilha.   
+Por enquanto, quero que você guarde uma ideia: **uma tarefa pode parecer óbvia para quem sabe realizá-la. O desafio está em transformar esse conhecimento em instruções claras e organizadas.**
 
-Até aqui, trabalhamos com uma atividade relativamente pequena: preparar uma mochila. Mesmo assim, precisamos descobrir uma instrução que estava faltando, corrigir a sequência das ações e identificar quais delas poderiam mudar de posição sem prejudicar o resultado. E tudo isso para guardar alguns objetos.
+Até aqui, t*rabalham*os com uma atividade relativamente pequena, mas e se nos depararmos com um obstáculo ainda maior?   
+A resposta é muito simples:  **"Nenhum problema é tão grande que não dê pra dividir ele na porrada."**  
+— Algum bêbado por aí.
 
-
+Não se preocupe. Na próxima lição, aprenderemos **a arte de dividir problemas.**
 
 ```bunker-note
 {
   "kind": "info",
-  "text": "**Otto**\n\nUma mudança inteira? Escolham outra coisa. Vocês não estavam resolvendo a bagunça nem de uma mochila."
+  "text": "**Otto**\n\nResolver problemas? Sua arte tá mais para **criar problemas**."
 }
 ```
+
+É mesmo, Otto? Então advinha quem vai precisar resolver o problema da próxima lição...

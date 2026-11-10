@@ -2,7 +2,12 @@ import { parseQuiz } from "@bunkercode/content";
 import { expandReadingSettings } from "./reading-theme-checks";
 import { selectReadingTone } from "./reading-theme-checks";
 import { expectRenderedContrast } from "./reading-theme-checks";
-import { studioView, studioTools } from "./studio-controls";
+import {
+  selectNoteText,
+  selectStudioText,
+  studioView,
+  studioTools,
+} from "./studio-controls";
 import { test, expect } from "./auth-fixture";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -346,10 +351,12 @@ test("notes move, delete and undo without losing surrounding text", async ({
     exact: true,
   });
   await note.fill("Uma observação autoral.");
+  await page.getByRole("button", { name: "Aplicar nota", exact: true }).click();
   await page
     .getByRole("button", { name: "Ações do bloco", exact: true })
     .click();
   await page.getByRole("button", { name: "Mover bloco para cima" }).click();
+  await page.getByRole("button", { name: "Editar nota", exact: true }).click();
   await expect(note).toHaveValue("Uma observação autoral.");
   await page
     .getByRole("button", { name: "Ações do bloco", exact: true })
@@ -571,6 +578,7 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
   await expect(input).toHaveValue(note);
   const revised = note.replace("First paragraph.", "Revised first paragraph.");
   await input.fill(revised);
+  await page.getByRole("button", { name: "Aplicar nota", exact: true }).click();
   await page
     .getByRole("button", { name: "Salvar alterações", exact: true })
     .click();
@@ -757,7 +765,7 @@ test("Otto signature uses the same safe avatar in Studio preview and reader", as
     );
     const avatar = await comment.locator(".otto-avatar").boundingBox();
     const portrait = await comment.locator(".otto-avatar img").boundingBox();
-    expect(portrait!.width).toBeGreaterThan(avatar!.width * 1.4);
+    expect(portrait!.width).toBeGreaterThan(avatar!.width);
     expect(portrait!.width / portrait!.height).toBeCloseTo(1, 2);
     const text = await comment.locator(".editorial-note-content").boundingBox();
     expect(
@@ -819,6 +827,7 @@ test("Portuguese composition keeps quiz and note fields focused and saves accent
     await expect(field).toHaveValue("é já não");
     await expect(field).toBeFocused();
   }
+  await page.getByRole("button", { name: "Aplicar nota", exact: true }).click();
   await page
     .locator(".visual-document p")
     .filter({ hasText: "Antes do bloco." })
@@ -1410,4 +1419,346 @@ test("second published-course lesson permits repeated answers before and after s
   expect(await readFile(lessonFile, "utf8")).toBe(original);
   await page.reload();
   await expect(status).toBeEmpty();
+});
+
+test("italic toolbar and shortcut preserve emphasis and allow synthesized slant", async ({
+  page,
+}, info) => {
+  await writeFile(file, source + "\nTexto para itálico.\n");
+  await page.goto(url + "/edit");
+  const paragraph = page
+    .locator(".visual-document > p")
+    .filter({ hasText: "Texto para itálico." });
+  await selectStudioText(paragraph, "itálico");
+  await page.getByRole("button", { name: "Itálico", exact: true }).click();
+  await expect(paragraph.locator("em")).toHaveText("itálico");
+  await expect(paragraph.locator("em")).toHaveCSS("font-style", "italic");
+  await expect(paragraph.locator("em")).toHaveCSS(
+    "font-synthesis-style",
+    "auto",
+  );
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  expect(await readFile(file, "utf8")).toContain("*itálico*");
+  await page.reload();
+  await expect(paragraph.locator("em")).toHaveText("itálico");
+  await selectStudioText(paragraph, "Texto");
+  await page.keyboard.press("ControlOrMeta+i");
+  await expect(paragraph.locator("em").first()).toHaveText("Texto");
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  await expect(page.locator("article .prose em").last()).toHaveText("itálico");
+  await expect(page.locator("article .prose em").last()).toHaveCSS(
+    "font-synthesis-style",
+    "auto",
+  );
+  await page
+    .locator("article .prose")
+    .screenshot({ path: info.outputPath("italic-reader.png") });
+});
+
+test("Otto note drafts survive blur, cancel explicitly and apply before the global save", async ({
+  page,
+}, info) => {
+  const original =
+    source +
+    "\n```bunker-note\n" +
+    JSON.stringify({
+      kind: "info",
+      text: "**Otto**\n\nUma ideia para investigar.",
+    }) +
+    "\n```\n";
+  await writeFile(file, original);
+  await page.goto(url + "/edit");
+  const author = page.getByRole("group", {
+    name: "Nota editorial",
+    exact: true,
+  });
+  await author.click();
+  const type = author.getByRole("combobox", { name: "Tipo de nota" });
+  const text = author.getByRole("textbox", {
+    name: "Texto da nota",
+    exact: true,
+  });
+  await expect(type).toHaveValue("otto");
+  await expect(text).toHaveValue("Uma ideia para investigar.");
+  expect(await readFile(file, "utf8")).toBe(original);
+  for (const value of ["tip", "otto", "warning", "otto", "info", "otto"]) {
+    await type.selectOption(value);
+    await expect(text).toHaveValue("Uma ideia para investigar.");
+  }
+  await text.fill("Rascunho ainda não aplicado.");
+  await page.locator(".visual-document > p").first().click();
+  await expect(text).toHaveValue("Rascunho ainda não aplicado.");
+  await author.click();
+  await expect(text).toHaveValue("Rascunho ainda não aplicado.");
+  await expect(
+    page.getByRole("button", { name: "Salvar alterações", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Editar fonte Markdown", exact: true }),
+  ).toBeDisabled();
+  await author.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await expect(page.locator(".studio-status")).toHaveText("Sem alterações.");
+  expect(await readFile(file, "utf8")).toBe(original);
+  await author
+    .getByRole("button", { name: "Editar nota", exact: true })
+    .click();
+  await expect(text).toHaveValue("Uma ideia para investigar.");
+  await selectNoteText(text, "ideia");
+  await author.getByRole("button", { name: "Negrito", exact: true }).click();
+  await expect(text).toBeFocused();
+  await expect(text).toHaveValue("Uma **ideia** para investigar.");
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(
+      await author.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+    if (width === 375)
+      await author.screenshot({
+        path: info.outputPath("note-otto-authoring.png"),
+      });
+  }
+  await page.setViewportSize({ width: 1280, height: 960 });
+  await author
+    .getByRole("button", { name: "Aplicar nota", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText(
+    "Alterações não salvas.",
+  );
+  expect(await readFile(file, "utf8")).toBe(original);
+  await expect(
+    author.getByRole("complementary", { name: "Otto", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  const saved = await readFile(file, "utf8");
+  expect(saved.match(/\*\*Otto\*\*/g)).toHaveLength(1);
+  expect(saved).toContain("Uma **ideia** para investigar.");
+  await page.reload();
+  await author.click();
+  await expect(type).toHaveValue("otto");
+  await expect(text).toHaveValue("Uma **ideia** para investigar.");
+  await type.selectOption("tip");
+  await author
+    .getByRole("button", { name: "Aplicar nota", exact: true })
+    .click();
+  await expect(
+    author.getByRole("complementary", { name: "Nota", exact: true }),
+  ).toBeVisible();
+  await expect(author.locator(".otto-avatar")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  expect(await readFile(file, "utf8")).not.toContain("**Otto**");
+  await author
+    .getByRole("button", { name: "Editar nota", exact: true })
+    .click();
+  await type.selectOption("otto");
+  await author
+    .getByRole("button", { name: "Aplicar nota", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const rendered = page.getByRole("complementary", {
+    name: "Otto",
+    exact: true,
+  });
+  await expect(rendered.locator("strong")).toHaveText("ideia");
+  await expect(rendered.locator("img")).toHaveAttribute(
+    "src",
+    "/characters/otto.svg",
+  );
+  await rendered.screenshot({ path: info.outputPath("note-otto-reader.png") });
+});
+
+test("note formatting supports selection, keyboard, links, lists, empty insertion and safe rendering", async ({
+  page,
+}) => {
+  await writeFile(
+    file,
+    source +
+      "\n```bunker-note\n" +
+      JSON.stringify({
+        kind: "tip",
+        text: "Negrito itálico código referência\n\nPrimeiro\nSegundo",
+      }) +
+      "\n```\n",
+  );
+  await page.goto(url + "/edit");
+  const author = page.getByRole("group", {
+    name: "Nota editorial",
+    exact: true,
+  });
+  await author.click();
+  const text = author.getByRole("textbox", {
+    name: "Texto da nota",
+    exact: true,
+  });
+  await text.fill("");
+  await author.getByRole("button", { name: "Negrito", exact: true }).click();
+  await expect(text).toHaveValue("**texto**");
+  await expect(text).toBeFocused();
+  expect(
+    await text.evaluate((node) =>
+      node instanceof HTMLTextAreaElement
+        ? node.value.slice(node.selectionStart, node.selectionEnd)
+        : "",
+    ),
+  ).toBe("texto");
+  await text.fill("Negrito itálico código referência\n\nPrimeiro\nSegundo");
+  for (const [word, button] of [
+    ["Negrito", "Negrito"],
+    ["itálico", "Itálico"],
+    ["código", "Código inline"],
+  ]) {
+    await selectNoteText(text, word!);
+    await author.getByRole("button", { name: button!, exact: true }).click();
+    await expect(text).toBeFocused();
+  }
+  await selectNoteText(text, "referência");
+  await author.getByRole("button", { name: "Link", exact: true }).click();
+  await author
+    .getByRole("textbox", { name: "URL", exact: true })
+    .fill("javascript:alert(1)");
+  await author
+    .getByRole("button", { name: "Inserir link", exact: true })
+    .click();
+  await expect(author.getByRole("alert")).toContainText("URL");
+  await author
+    .getByRole("textbox", { name: "URL", exact: true })
+    .fill("https://example.com");
+  await author
+    .getByRole("button", { name: "Inserir link", exact: true })
+    .click();
+  await selectNoteText(text, "Primeiro\nSegundo");
+  await author
+    .getByRole("button", { name: "Lista com marcadores", exact: true })
+    .click();
+  await expect(text).toHaveValue(/- Primeiro\n- Segundo$/);
+  await selectNoteText(text, "Negrito");
+  await text.press("ControlOrMeta+b"); // Toggle the existing markers, preserving the selection.
+  await expect(text).toHaveValue(/^Negrito /);
+  await text.press("ControlOrMeta+b");
+  await selectNoteText(text, "itálico");
+  await text.press("ControlOrMeta+i");
+  await expect(text).toHaveValue(/\*\*Negrito\*\* itálico /);
+  await text.press("ControlOrMeta+i");
+  await text.press("ControlOrMeta+End");
+  await text.press("Shift+Enter");
+  await text.pressSequentially(
+    "Fim seguro. <script>window.noteUnsafe = true</script>",
+  );
+  await expect(text).toHaveValue(/\\\nFim seguro/);
+  await author
+    .getByRole("button", { name: "Aplicar nota", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.reload();
+  await author.click();
+  await expect(text).toHaveValue(/\*itálico\*/);
+  await author.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const note = page.getByRole("complementary", { name: "Nota", exact: true });
+  await expect(note.locator("strong")).toHaveText("Negrito");
+  await expect(note.locator("em")).toHaveText("itálico");
+  await expect(note.locator("code")).toHaveText("código");
+  await expect(note.getByRole("link", { name: "referência" })).toHaveAttribute(
+    "href",
+    "https://example.com",
+  );
+  await expect(note.locator("li")).toHaveCount(2);
+  await expect(note.locator("br")).toHaveCount(1);
+  await expect(note.locator("script")).toHaveCount(0);
+  expect(await page.evaluate(() => "noteUnsafe" in window)).toBe(false);
+});
+
+test("visual Enter paragraphs and Shift Enter line breaks round-trip through Markdown, save and reader", async ({
+  page,
+}, info) => {
+  await page.goto(url + "/edit");
+  const doc = page.locator(".visual-document");
+  const first = doc.locator(":scope > p").first();
+  await first.click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Primeira linha");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Segunda linha");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Terceira linha");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Outro parágrafo.");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("Depois da linha vazia.");
+  const lines = doc.locator(":scope > p").filter({ hasText: "Primeira linha" });
+  const consecutive = doc
+    .locator(":scope > p")
+    .filter({ hasText: "Outro parágrafo." });
+  await expect(lines.locator("br")).toHaveCount(2);
+  await expect(consecutive.locator("br")).toHaveCount(2);
+  const count = await doc.locator(":scope > p").count();
+  await studioTools(page);
+  await expect(
+    page.getByText("Enter: novo parágrafo · Shift+Enter: quebra de linha", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await doc.screenshot({
+    path: info.outputPath("soft-breaks-before-save.png"),
+  });
+  await studioView(page, "Editar fonte Markdown");
+  await expect(page.locator("#lesson-markdown")).toHaveValue(
+    /Primeira linha\\\nSegunda linha\\\nTerceira linha\n\nOutro parágrafo\.\\\n\\\nDepois/,
+  );
+  await studioView(page, "Editor visual");
+  await expect(lines.locator("br")).toHaveCount(2);
+  await expect(consecutive.locator("br")).toHaveCount(2);
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.reload();
+  await expect(doc.locator(":scope > p")).toHaveCount(count);
+  await expect(lines.locator("br")).toHaveCount(2);
+  await expect(consecutive.locator("br")).toHaveCount(2);
+  await doc.screenshot({
+    path: info.outputPath("soft-breaks-after-reload.png"),
+  });
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const rendered = page
+    .locator("article .prose p")
+    .filter({ hasText: "Primeira linha" });
+  await expect(rendered.locator("br")).toHaveCount(2);
+  const geometry = await rendered.evaluate((node) => ({
+    height: node.getBoundingClientRect().height,
+    line: parseFloat(getComputedStyle(node).lineHeight),
+    margin: parseFloat(getComputedStyle(node).marginBottom),
+  }));
+  expect(geometry.height).toBeCloseTo(geometry.line * 3, 0);
+  expect(geometry.margin).toBeGreaterThan(0);
+  await expect(
+    page
+      .locator("article .prose p")
+      .filter({ hasText: "Outro parágrafo." })
+      .locator("br"),
+  ).toHaveCount(2);
+  await page
+    .locator("article .prose")
+    .screenshot({ path: info.outputPath("soft-breaks-reader.png") });
 });

@@ -1,3 +1,4 @@
+import { safeAuthoringLink } from "./authoring-links";
 import { useEffect, useRef, useState } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import type { SelectionBookmark, Transaction } from "@tiptap/pm/state";
@@ -11,24 +12,6 @@ import {
   List,
   ListOrdered,
 } from "lucide-react";
-
-function safeLink(value: string) {
-  if (
-    !value ||
-    /[\\\s]/.test(value) ||
-    [...value].some(
-      (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127,
-    ) ||
-    !/^(https?:\/\/|mailto:|\/(?!\/)|#)/i.test(value)
-  )
-    return false;
-  try {
-    const url = new URL(value, location.origin);
-    return ["http:", "https:", "mailto:"].includes(url.protocol);
-  } catch {
-    return false;
-  }
-}
 
 export function VisualToolbar({
   editor,
@@ -228,7 +211,7 @@ export function VisualToolbar({
             onSubmit={(event) => {
               event.preventDefault();
               const value = href.trim();
-              if (!safeLink(value)) {
+              if (!safeAuthoringLink(value)) {
                 setError(
                   "Use uma URL http, https, mailto, caminho local ou âncora segura.",
                 );
@@ -292,6 +275,9 @@ export function VisualToolbar({
       >
         <Code2 size={18} />
       </button>
+      <span className="studio-caption">
+        Enter: novo parágrafo · Shift+Enter: quebra de linha
+      </span>
       <span className="toolbar-separator" aria-hidden="true" />
       <button
         type="button"

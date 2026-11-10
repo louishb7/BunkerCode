@@ -905,3 +905,55 @@
 :root[data-site-theme="light"] .studio-code-block .code-language {
   color-scheme: light;
 }
+
+.note-author {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.note-author > label,
+.note-link label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.note-formatting,
+.note-actions,
+.note-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.note-formatting button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  padding: 8px;
+}
+.note-author textarea {
+  min-height: 180px;
+  max-width: 100%;
+  padding: 12px;
+}
+.note-author .studio-caption {
+  margin: 0;
+}
+.note-actions {
+  justify-content: flex-end;
+}
+.note-apply {
+  color: var(--color-bunker);
+  background: var(--accent);
+}
+.note-error {
+  color: var(--status-error);
+  margin: 0;
+}
+.note-link label {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.note-edit-trigger {
+  margin-top: 8px;
+}

@@ -1,9 +1,15 @@
+import {
+  wrapNoteText,
+  listNoteText,
+  linkNoteText,
+} from "../src/studio/note-formatting";
+import { safeAuthoringLink } from "../src/studio/authoring-links";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { openVisual, markdownManager } from "../src/studio/visual-markdown";
-import { parseQuiz, validateEditorial } from "@bunkercode/content";
+import { parseQuiz, validateEditorial, ottoComment } from "@bunkercode/content";
 const quiz = {
   id: "example-question",
   question: "Qual valor?",
@@ -123,4 +129,67 @@ test("every tracked lesson quiz uses the canonical format", () => {
       .filter((p) => p.endsWith("/lesson.md")))
       validateEditorial(readFileSync(resolve(root, file), "utf8"));
   }
+});
+
+test("visual line breaks preserve paragraphs, consecutive breaks and legacy space syntax", () => {
+  for (const source of [
+    "Primeira  \nSegunda  \nTerceira\n\nOutro parágrafo.",
+    "Primeira\\\n\\\nTerceira\n\nOutro parágrafo.",
+  ]) {
+    const opened = openVisual(source);
+    assert.ok(opened.document, opened.error);
+    const paragraphs = opened.document.content!;
+    assert.equal(paragraphs.length, 2);
+    assert.equal(
+      paragraphs[0]!.content!.filter((node) => node.type === "hardBreak")
+        .length,
+      2,
+    );
+    const serialized = markdownManager.serialize(opened.document);
+    assert.match(serialized, /\\\n/);
+    assert.deepEqual(openVisual(serialized).document, opened.document);
+    assert.ok(serialized.includes("\n\nOutro parágrafo."));
+  }
+});
+
+test("Otto signatures expose only the comment and keep ordinary notes intact", () => {
+  assert.equal(ottoComment("**Otto**\n\nJá pensou nisso?"), "Já pensou nisso?");
+  assert.equal(ottoComment("**Otto**\r\n\r\nÉ isso."), "É isso.");
+  assert.equal(ottoComment("Otto apareceu no texto."), null);
+  assert.equal(ottoComment("Antes\n\n**Otto**\n\nDepois"), null);
+});
+
+test("note formatting preserves selected text and validates authoring links", () => {
+  const source = "É uma ideia.";
+  const selection = { start: 6, end: 11 };
+  const bold = wrapNoteText(source, selection, "**", "texto");
+  assert.equal(bold.text, "É uma **ideia**.");
+  assert.equal(bold.text.slice(bold.start, bold.end), "ideia");
+  assert.equal(wrapNoteText(bold.text, bold, "**", "texto").text, source);
+  assert.equal(
+    wrapNoteText("", { start: 0, end: 0 }, "*", "texto").text,
+    "*texto*",
+  );
+  const list = listNoteText("Um\nDois", { start: 0, end: 7 });
+  assert.equal(list.text, "- Um\n- Dois");
+  assert.equal(listNoteText(list.text, list).text, "Um\nDois");
+  assert.equal(
+    linkNoteText(source, selection, "https://example.com/a(b)").text,
+    "É uma [ideia](https://example.com/a%28b%29).",
+  );
+  for (const value of [
+    "https://example.com",
+    "mailto:autor@example.test",
+    "/courses/example",
+    "#parte",
+  ])
+    assert.ok(safeAuthoringLink(value));
+  for (const value of [
+    "javascript:alert(1)",
+    "//evil.test",
+    "https://example.com\n",
+    "https:\\evil.test",
+    "data:text/html,x",
+  ])
+    assert.equal(safeAuthoringLink(value), false);
 });

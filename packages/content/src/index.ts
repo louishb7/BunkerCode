@@ -19,6 +19,11 @@ export interface Note {
   kind: "info" | "tip" | "warning";
   text: string;
 }
+/** Existing Otto signature; the authoring UI edits only its comment body. */
+export function ottoComment(text: string): string | null {
+  const signature = /^\*\*Otto\*\*(?:\r?\n){2}/.exec(text);
+  return signature ? text.slice(signature[0].length) : null;
+}
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Bloco editorial inválido.");

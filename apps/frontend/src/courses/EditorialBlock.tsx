@@ -1,17 +1,43 @@
 import { useId, useState } from "react";
 import { CircleCheck, CircleX, MessageSquareText } from "lucide-react";
-import { parseEditorial, type Quiz, type Note } from "@bunkercode/content";
+import {
+  parseEditorial,
+  ottoComment,
+  type Quiz,
+  type Note,
+} from "@bunkercode/content";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 
 // Editorial text keeps paragraphs and inline emphasis without allowing nested
 // components, executable HTML, or a second document inside a note/feedback.
-function EditorialText({ text }: { text: string }) {
+function EditorialText({
+  text,
+  note = false,
+}: {
+  text: string;
+  note?: boolean;
+}) {
   return (
     <ReactMarkdown
       skipHtml
       rehypePlugins={[rehypeSanitize]}
-      allowedElements={["p", "em", "strong", "code", "br"]}
+      allowedElements={
+        note
+          ? ["p", "em", "strong", "code", "br", "ul", "li", "a"]
+          : ["p", "em", "strong", "code", "br"]
+      }
+      components={{
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target={/^https?:\/\//.test(href ?? "") ? "_blank" : undefined}
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        ),
+      }}
       unwrapDisallowed
     >
       {text}
@@ -93,8 +119,9 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
 }
 export function NoteBlock({ note }: { note: Note }) {
   // An explicit editorial signature, not every note or mention of the character.
-  const otto = /^\*\*Otto\*\*(?:\r?\n){2}/.exec(note.text);
-  const text = otto ? note.text.slice(otto[0].length) : note.text;
+  const comment = ottoComment(note.text);
+  const otto = comment !== null;
+  const text = comment ?? note.text;
   return (
     <aside
       className={`editorial-note editorial-comment note-${note.kind}`}
@@ -112,7 +139,7 @@ export function NoteBlock({ note }: { note: Note }) {
         />
       )}
       <div className="editorial-note-content">
-        <EditorialText text={text} />
+        <EditorialText text={text} note />
       </div>
     </aside>
   );

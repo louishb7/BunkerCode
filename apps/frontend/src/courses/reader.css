@@ -205,6 +205,10 @@
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
+/* System fonts may provide only upright faces. Allow emphasis to remain visible. */
+.prose em {
+  font-synthesis: style;
+}
 .prose p {
   margin: 0.8em 0;
 }

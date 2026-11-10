@@ -139,6 +139,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
     initial.buffer.version !== lesson.version,
   );
   const [saved, setSaved] = useState(false);
+  const [pendingNotes, setPendingNotes] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [current, setCurrent] = useState<MarkdownRevision | null>(null);
@@ -256,13 +257,15 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         : "Versão do arquivo carregada. Nenhuma gravação foi feita.",
     );
   }
-  const status = saving
-    ? "Salvando…"
-    : saved
-      ? "Salvo no arquivo."
-      : dirty
-        ? "Alterações não salvas."
-        : "Sem alterações.";
+  const status = pendingNotes
+    ? "Nota em edição: aplique ou cancele antes de salvar."
+    : saving
+      ? "Salvando…"
+      : saved
+        ? "Salvo no arquivo."
+        : dirty
+          ? "Alterações não salvas."
+          : "Sem alterações.";
   return (
     <Page
       title={`Studio · ${lesson.title} · ${lesson.course.title}`}
@@ -309,7 +312,9 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           Nova lição
         </button>
         <p
-          className={dirty ? "studio-status pending" : "studio-status"}
+          className={
+            dirty || pendingNotes ? "studio-status pending" : "studio-status"
+          }
           role="status"
         >
           {status}
@@ -331,6 +336,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
               aria-label={label}
               title={label}
               aria-pressed={view === mode}
+              disabled={pendingNotes && mode !== "visual"}
               onClick={() => changeView(mode)}
             >
               {caption}
@@ -339,7 +345,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         </div>
         <button
           className="studio-save"
-          disabled={!dirty || saving || conflict}
+          disabled={!dirty || saving || conflict || pendingNotes}
           onClick={() => void save()}
         >
           {saving ? "Salvando…" : "Salvar alterações"}
@@ -420,6 +426,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
             source={buffer.markdown}
             active={view === "visual"}
             disabled={saving}
+            onPendingNotesChange={setPendingNotes}
             onChange={(markdown) => {
               if (
                 buffer.baseMarkdown.includes("\r\n") &&
