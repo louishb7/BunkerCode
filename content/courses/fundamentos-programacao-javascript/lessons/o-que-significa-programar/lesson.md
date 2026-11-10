@@ -107,15 +107,18 @@ E, já que aparentemente estamos desenvolvendo uma plataforma juntos, quero te p
   "options": [
     {
       "id": "a",
-      "text": "Jogar tudo para o alto. Claramente, computadores foram inventados para testar os limites da paciência humana."
+      "text": "Jogar tudo para o alto. Claramente, computadores foram inventados para testar os limites da paciência humana.",
+      "feedback": "A vontade de desistir é compreensível, mas ainda não precisamos declarar guerra ao computador.\n\nO desbloqueio funcionou inicialmente. Precisamos descobrir por que deixou de funcionar após a atualização."
     },
     {
       "id": "b",
-      "text": "Reescrever toda a funcionalidade do zero. Se alguma coisa falhou, significa que nossa primeira solução estava completamente errada."
+      "text": "Reescrever toda a funcionalidade do zero. Se alguma coisa falhou, significa que nossa primeira solução estava completamente errada.",
+      "feedback": "Calma! Não precisamos jogar fora tudo o que já construímos.\n\nA funcionalidade chegou a desbloquear a próxima lição. Antes de refazer o trabalho, precisamos entender o que falhou."
     },
     {
       "id": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7",
-      "text": "Investigar se a conclusão da lição foi registrada corretamente, pois o aluno perdeu o registro ao atualizar a página."
+      "text": "Investigar se a conclusão da lição foi registrada corretamente, pois o aluno perdeu o registro ao atualizar a página.",
+      "feedback": "Exatamente! O aluno conseguiu desbloquear a lição, mas perdeu o acesso ao atualizar a página.\n\nIsso nos dá uma pista importante: o problema apareceu depois da atualização.  "
     }
   ],
   "correct": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7",

@@ -849,7 +849,7 @@
   max-width: none;
   object-fit: contain;
   /* The 498.4-square SVG includes shoulders; crop toward the face, preserving its ratio. */
-  transform: scale(1.5);
+  transform: scale(1.15);
   transform-origin: 50% 40%;
 }
 @media (max-width: 599px) {

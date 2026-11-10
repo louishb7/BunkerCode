@@ -52,10 +52,7 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
                 value={option.id}
                 checked={choice === option.id}
                 disabled={!!answer && !canRetry}
-                onChange={() => {
-                  setChoice(option.id);
-                  setAnswer("");
-                }}
+                onChange={() => setChoice(option.id)}
               />
               <span>{option.text}</span>
               {answer === option.id && (

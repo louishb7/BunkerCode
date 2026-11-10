@@ -954,22 +954,30 @@ test("authors save per-option feedback and learners retry directly with keyboard
   ).toHaveCount(0);
   await verify.click(); // Same wrong choice is a valid explicit new attempt.
   await expect(interaction.getByRole("status")).toContainText("Não é essa.");
+  const submittedWrong = await interaction.getByRole("status").innerHTML();
   await wrong.focus();
   await page.keyboard.press("ArrowDown");
   await expect(
     interaction.getByRole("radio", { name: "Legada", exact: true }),
   ).toBeFocused();
-  await expect(interaction.getByRole("status")).toBeEmpty();
-  await expect(interaction.locator("[data-result]")).toHaveCount(0);
+  expect(await interaction.getByRole("status").innerHTML()).toBe(
+    submittedWrong,
+  );
+  await expect(
+    interaction.locator('.quiz-option[data-result="incorrect"] input'),
+  ).toHaveValue("b");
   await verify.focus();
   await page.keyboard.press("Enter");
   await expect(interaction.getByRole("status")).toContainText(
     "Incorreto geral",
   );
+  const submittedLegacy = await interaction.getByRole("status").innerHTML();
   await interaction
     .getByRole("radio", { name: "Correta", exact: true })
     .check();
-  await expect(interaction.getByRole("status")).toBeEmpty();
+  expect(await interaction.getByRole("status").innerHTML()).toBe(
+    submittedLegacy,
+  );
   await verify.click();
   await expect(interaction.getByRole("status")).toContainText(
     "Já está correta.",
@@ -985,7 +993,7 @@ test("authors save per-option feedback and learners retry directly with keyboard
 
 test("quizzes with retry disabled retain the confirmed incorrect answer", async ({
   page,
-}) => {
+}, info) => {
   await writeFile(
     file,
     source +
@@ -1015,6 +1023,12 @@ test("quizzes with retry disabled retain the confirmed incorrect answer", async 
     interaction.getByRole("radio", { name: "Não", exact: true }),
   ).toBeChecked();
   await expect(interaction.getByRole("button")).toHaveCount(0);
+  await interaction.evaluate((node) =>
+    node.scrollIntoView({ block: "center" }),
+  );
+  await interaction.screenshot({
+    path: info.outputPath("retry-05-disabled.png"),
+  });
 });
 
 test("new quizzes group correctness and feedback while preserving option identity across editing", async ({
@@ -1243,4 +1257,108 @@ test("legacy feedback survives hidden controls and becomes editable only when an
     "Já está correto após a revisão.",
   );
   await expect(interaction.getByRole("button")).toHaveCount(0);
+});
+
+test("learner retry keeps submitted feedback until explicit verification across multiple wrong answers", async ({
+  page,
+}, info) => {
+  const quiz = {
+    id: "explicit-retry",
+    question: "Qual regra explica o resultado?",
+    options: [
+      {
+        id: "a",
+        text: "Alternativa A",
+        feedback: "Feedback A: investigue o registro inicial.",
+      },
+      {
+        id: "b",
+        text: "Alternativa B",
+        feedback: "Feedback B: investigue a recuperação dos dados.",
+      },
+      {
+        id: "c",
+        text: "Alternativa C",
+        feedback: "Feedback C: a informação precisa sobreviver à atualização.",
+      },
+    ],
+    correct: "c",
+    feedbackCorrect: "Correto legado",
+    feedbackIncorrect: "Incorreto legado",
+    retry: true,
+  };
+  await writeFile(
+    file,
+    source + "\n```bunker-quiz\n" + JSON.stringify(quiz) + "\n```\n",
+  );
+  await page.goto(url);
+  const interaction = page.locator(".inline-quiz");
+  const radios = interaction.getByRole("radio");
+  const status = interaction.getByRole("status");
+  const verify = interaction.getByRole("button", {
+    name: "Verificar resposta",
+  });
+  const reset = interaction.getByRole("button", { name: "Tentar novamente" });
+  await radios.nth(0).check();
+  await verify.click();
+  await expect(status).toContainText(quiz.options[0]!.feedback);
+  await expect(status).toContainText("Resposta incorreta");
+  for (const radio of await radios.all()) await expect(radio).toBeEnabled();
+  await expect(reset).toHaveCount(0);
+  const submittedA = await status.innerHTML();
+  await interaction.evaluate((node) =>
+    node.scrollIntoView({ block: "center" }),
+  );
+  await interaction.screenshot({
+    path: info.outputPath("retry-01-submitted-a.png"),
+  });
+  await radios.nth(0).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(radios.nth(1)).toBeChecked();
+  await expect(radios.nth(1)).toBeFocused();
+  await interaction.screenshot({
+    path: info.outputPath("retry-02-b-selected-feedback-a.png"),
+  });
+  expect(await status.innerHTML()).toBe(submittedA);
+  await expect(status).not.toContainText(quiz.options[1]!.feedback);
+  await expect(
+    interaction.locator('.quiz-option[data-result="incorrect"] input'),
+  ).toHaveValue("a");
+  await verify.focus();
+  await page.keyboard.press("Enter");
+  await expect(status).toContainText(quiz.options[1]!.feedback);
+  await expect(status).not.toContainText(quiz.options[0]!.feedback);
+  await expect(
+    interaction.locator('.quiz-option[data-result="incorrect"] input'),
+  ).toHaveValue("b");
+  await interaction.screenshot({
+    path: info.outputPath("retry-03-submitted-b.png"),
+  });
+  // Repeat an already evaluated wrong choice without a reset.
+  await verify.click();
+  await expect(status).toContainText(quiz.options[1]!.feedback);
+  await expect(reset).toHaveCount(0);
+  await radios.nth(0).check();
+  await expect(status).toContainText(quiz.options[1]!.feedback);
+  await verify.click();
+  await expect(status).toContainText(quiz.options[0]!.feedback);
+  await radios.nth(2).check();
+  await expect(status).toContainText(quiz.options[0]!.feedback);
+  await expect(status).not.toContainText("Resposta correta");
+  await verify.click();
+  await expect(status).toContainText(quiz.options[2]!.feedback);
+  await expect(status).toContainText("Resposta correta");
+  for (const radio of await radios.all()) await expect(radio).toBeDisabled();
+  await expect(verify).toHaveCount(0);
+  await expect(reset).toBeVisible();
+  await expect(radios.nth(2)).toBeChecked();
+  await interaction.screenshot({
+    path: info.outputPath("retry-04-correct-c.png"),
+  });
+  await expect(status).toContainText(quiz.options[2]!.feedback);
+  // Quiz answers remain ephemeral, without rewriting the lesson file.
+  expect(await readFile(file, "utf8")).toContain(JSON.stringify(quiz));
+  await page.reload();
+  await expect(status).toBeEmpty();
+  await expect(interaction.locator("input:checked")).toHaveCount(0);
 });
