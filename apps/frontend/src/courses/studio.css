@@ -433,15 +433,41 @@
 }
 .quiz-author-option {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  margin: 8px 0;
+  gap: 8px 12px;
+  margin: 20px 0 24px;
+}
+.visual-document .quiz-option-answer,
+.visual-document .quiz-option-feedback {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+}
+.quiz-author-option > button {
+  align-self: end;
+}
+.visual-document .quiz-option-correct {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 44px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-subtle);
+  cursor: pointer;
+}
+.quiz-option-correct:has(input:checked) {
+  color: var(--accent);
+  font-weight: 600;
+}
+.quiz-author-option[data-correct="true"] .quiz-option-answer input {
+  border-color: var(--accent);
 }
 .quiz-option-feedback {
-  grid-column: 2 / -1;
-  min-width: 0;
-  font-size: 13px;
+  grid-column: 1 / -1;
 }
 .quiz-author-option input[type="radio"] {
   accent-color: var(--accent);

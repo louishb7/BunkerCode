@@ -120,13 +120,9 @@ export function NoteBlock({ note }: { note: Note }) {
       aria-label={otto ? "Otto" : "Nota"}
     >
       {otto ? (
-        <img
-          className="otto-avatar"
-          src="/characters/otto.svg"
-          width="56"
-          height="56"
-          alt=""
-        />
+        <span className="otto-avatar" aria-hidden="true">
+          <img src="/characters/otto.svg" width="56" height="56" alt="" />
+        </span>
       ) : (
         <MessageSquareText
           className="note-symbol"

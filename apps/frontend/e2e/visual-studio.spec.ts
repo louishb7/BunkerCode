@@ -1,3 +1,4 @@
+import { parseQuiz } from "@bunkercode/content";
 import { expandReadingSettings } from "./reading-theme-checks";
 import { selectReadingTone } from "./reading-theme-checks";
 import { expectRenderedContrast } from "./reading-theme-checks";
@@ -53,12 +54,17 @@ test("open/close is byte preserving and visual quiz saves between paragraphs wit
   await page.getByLabel("Alternativa 1", { exact: true }).fill("Primeira");
   await page.getByLabel("Alternativa 2", { exact: true }).fill("Segunda");
   await page.getByLabel("Alternativa correta 2", { exact: true }).check();
-  await page.getByText("Feedback e tentativas", { exact: true }).click();
+  await expect(page.getByText("Feedback legado", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("textbox", { name: "Feedback correto", exact: true }),
+  ).toHaveCount(0);
   await page
-    .getByRole("textbox", { name: "Feedback correto", exact: true })
+    .getByRole("textbox", { name: "Feedback da alternativa 2", exact: true })
     .fill("Você identificou a segunda.");
   await page
-    .getByRole("textbox", { name: "Feedback incorreto", exact: true })
+    .getByRole("textbox", { name: "Feedback da alternativa 1", exact: true })
     .fill("Observe a segunda alternativa.");
   await page.getByRole("button", { name: "Testar como estudante" }).click();
   await page.getByRole("radio", { name: "Primeira", exact: true }).check();
@@ -691,6 +697,47 @@ test("Otto signature uses the same safe avatar in Studio preview and reader", as
     name: "Otto",
     exact: true,
   });
+  const geometry = await page.evaluate(async () => {
+    const source = await (await fetch("/characters/otto.svg")).text();
+    const svg = new DOMParser().parseFromString(
+      source,
+      "image/svg+xml",
+    ).documentElement;
+    if (!(svg instanceof SVGSVGElement)) throw new Error("Expected Otto SVG");
+    svg.style.position = "absolute";
+    svg.style.left = "-10000px";
+    document.body.append(svg);
+    try {
+      const bounds = svg.getBBox();
+      const view = svg.viewBox.baseVal;
+      return {
+        viewBox: {
+          x: view.x,
+          y: view.y,
+          width: view.width,
+          height: view.height,
+        },
+        artwork: {
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        },
+      };
+    } finally {
+      svg.remove();
+    }
+  });
+  await writeFile(
+    info.outputPath("otto-svg-geometry.json"),
+    JSON.stringify(geometry, null, 2),
+  );
+  await info.attach("otto-svg-geometry.json", {
+    body: JSON.stringify(geometry, null, 2),
+    contentType: "application/json",
+  });
+  expect(geometry.viewBox.width).toBeCloseTo(498.4, 1);
+
   for (const width of [1280, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(comment).not.toContainText("Otto");
@@ -698,7 +745,18 @@ test("Otto signature uses the same safe avatar in Studio preview and reader", as
       "border-radius",
       "50%",
     );
+    await expect(comment.locator(".otto-avatar")).toHaveCSS(
+      "overflow",
+      "hidden",
+    );
+    await expect(comment.locator(".otto-avatar img")).toHaveAttribute(
+      "src",
+      "/characters/otto.svg",
+    );
     const avatar = await comment.locator(".otto-avatar").boundingBox();
+    const portrait = await comment.locator(".otto-avatar img").boundingBox();
+    expect(portrait!.width).toBeGreaterThan(avatar!.width * 1.4);
+    expect(portrait!.width / portrait!.height).toBeCloseTo(1, 2);
     const text = await comment.locator(".editorial-note-content").boundingBox();
     expect(
       Math.abs(avatar!.y + avatar!.height / 2 - text!.y - text!.height / 2),
@@ -748,7 +806,7 @@ test("Portuguese composition keeps quiz and note fields focused and saves accent
     "Texto da nota",
   ]) {
     if (label === "Feedback correto")
-      await page.getByText("Feedback e tentativas", { exact: true }).click();
+      await page.getByText("Feedback legado", { exact: true }).click();
     if (label === "Texto da nota")
       await page.locator(".visual-document .editorial-note").first().click();
     const field = page.getByRole("textbox", { name: label, exact: true });
@@ -956,5 +1014,233 @@ test("quizzes with retry disabled retain the confirmed incorrect answer", async 
   await expect(
     interaction.getByRole("radio", { name: "Não", exact: true }),
   ).toBeChecked();
+  await expect(interaction.getByRole("button")).toHaveCount(0);
+});
+
+test("new quizzes group correctness and feedback while preserving option identity across editing", async ({
+  page,
+}, info) => {
+  await page.goto(url + "/edit");
+  await page.locator(".visual-document p").first().click();
+  await page
+    .getByRole("button", { name: "Inserir após o bloco selecionado" })
+    .click();
+  await page.getByRole("button", { name: "Quiz", exact: true }).click();
+  const author = page.locator(".quiz-author");
+  await expect(
+    author.getByText("Feedback e tentativas", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    author.getByText("Feedback legado", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    author.getByRole("textbox", { name: "Feedback correto", exact: true }),
+  ).toHaveCount(0);
+  const correctness = author.getByRole("radio");
+  await expect(author.locator('input[type="radio"]:checked')).toHaveCount(1);
+  await expect(correctness.first()).toBeChecked();
+  await correctness.first().focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(correctness.nth(1)).toBeChecked();
+  await expect(author.locator('input[type="radio"]:checked')).toHaveCount(1);
+  await expect(
+    author.locator('[data-correct="true"] .quiz-option-correct'),
+  ).toHaveText("Correta");
+  await author
+    .getByRole("textbox", { name: "Alternativa 1", exact: true })
+    .fill("Primeira");
+  await author
+    .getByRole("textbox", { name: "Alternativa 2", exact: true })
+    .fill("Segunda");
+  await author
+    .getByRole("textbox", { name: "Feedback da alternativa 1", exact: true })
+    .fill("Feedback da primeira.");
+  await author
+    .getByRole("textbox", { name: "Feedback da alternativa 2", exact: true })
+    .fill("Feedback da segunda.");
+  await author.getByRole("button", { name: "Adicionar alternativa" }).click();
+  await author
+    .getByRole("textbox", { name: "Alternativa 3", exact: true })
+    .fill("Terceira");
+  await author
+    .getByRole("textbox", { name: "Feedback da alternativa 3", exact: true })
+    .fill("Feedback da terceira.");
+  await author
+    .getByRole("button", { name: "Remover alternativa 1", exact: true })
+    .click();
+  await expect(
+    author.getByRole("textbox", { name: "Alternativa 1", exact: true }),
+  ).toHaveValue("Segunda");
+  await expect(
+    author.getByRole("textbox", {
+      name: "Feedback da alternativa 1",
+      exact: true,
+    }),
+  ).toHaveValue("Feedback da segunda.");
+  await expect(
+    author.getByRole("radio", { name: "Alternativa correta 1", exact: true }),
+  ).toBeChecked();
+  await author.getByText("Configurações do quiz", { exact: true }).click();
+  await author
+    .getByRole("checkbox", { name: "Permitir nova tentativa" })
+    .uncheck();
+  for (const width of [1280, 375, 320]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(
+      await author.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 960 });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({
+    path: info.outputPath("quiz-authoring-options.png"),
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  const saved = await readFile(file, "utf8");
+  const match = /```bunker-quiz\n([\s\S]*?)\n```/.exec(saved);
+  expect(match).not.toBeNull();
+  const quiz = parseQuiz(JSON.parse(match![1]!));
+  expect(
+    quiz.options.map((option) => [option.id, option.text, option.feedback]),
+  ).toEqual([
+    ["b", "Segunda", "Feedback da segunda."],
+    [quiz.options[1]!.id, "Terceira", "Feedback da terceira."],
+  ]);
+  expect(quiz.correct).toBe("b");
+  expect(quiz.retry).toBe(false);
+  // Reordering in the existing Markdown source keeps correctness/feedback tied to IDs.
+  await studioView(page, "Editar fonte Markdown");
+  await page
+    .locator("#lesson-markdown")
+    .fill(
+      saved.replace(
+        match![0],
+        "```bunker-quiz\n" +
+          JSON.stringify(
+            { ...quiz, options: [...quiz.options].reverse() },
+            null,
+            2,
+          ) +
+          "\n```",
+      ),
+    );
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.reload();
+  await studioView(page, "Editor visual");
+  await author.click();
+  await expect(
+    author.getByRole("textbox", { name: "Alternativa 1", exact: true }),
+  ).toHaveValue("Terceira");
+  await expect(
+    author.getByRole("textbox", {
+      name: "Feedback da alternativa 1",
+      exact: true,
+    }),
+  ).toHaveValue("Feedback da terceira.");
+  await expect(
+    author.getByRole("radio", { name: "Alternativa correta 2", exact: true }),
+  ).toBeChecked();
+  await author.getByText("Configurações do quiz", { exact: true }).click();
+  await expect(
+    author.getByRole("checkbox", { name: "Permitir nova tentativa" }),
+  ).not.toBeChecked();
+  // Deleting the correct option selects one surviving option without changing its feedback.
+  await author.getByRole("button", { name: "Adicionar alternativa" }).click();
+  await author
+    .getByRole("button", { name: "Remover alternativa 2", exact: true })
+    .click();
+  await expect(author.locator('input[type="radio"]:checked')).toHaveCount(1);
+  await expect(author.getByRole("radio").first()).toBeChecked();
+  await expect(
+    author.getByRole("textbox", {
+      name: "Feedback da alternativa 1",
+      exact: true,
+    }),
+  ).toHaveValue("Feedback da terceira.");
+});
+
+test("legacy feedback survives hidden controls and becomes editable only when an option needs it", async ({
+  page,
+}) => {
+  const original = {
+    id: "legacy-preservation",
+    question: "Pergunta legada",
+    options: [
+      { id: "a", text: "Primeira", feedback: "Feedback A" },
+      { id: "b", text: "Segunda", feedback: "Feedback B" },
+    ],
+    correct: "a",
+    feedbackCorrect: "Já estava correto no legado.",
+    feedbackIncorrect: "Não era a resposta esperada no legado.",
+    retry: false,
+  };
+  await writeFile(
+    file,
+    source + "\n```bunker-quiz\n" + JSON.stringify(original) + "\n```\n",
+  );
+  await page.goto(url + "/edit");
+  const author = page.locator(".quiz-author");
+  await author.click();
+  await expect(
+    author.getByText("Feedback legado", { exact: true }),
+  ).toHaveCount(0);
+  await author
+    .getByRole("textbox", { name: "Pergunta", exact: true })
+    .fill("Pergunta revisada");
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  const saved = await readFile(file, "utf8");
+  const parsed = parseQuiz(
+    JSON.parse(/```bunker-quiz\n([\s\S]*?)\n```/.exec(saved)![1]!),
+  );
+  expect(parsed).toEqual({ ...original, question: "Pergunta revisada" });
+  await author
+    .getByRole("textbox", { name: "Feedback da alternativa 2", exact: true })
+    .fill("");
+  await expect(
+    author.getByText("Feedback legado", { exact: true }),
+  ).toBeVisible();
+  await author
+    .getByRole("radio", { name: "Alternativa correta 2", exact: true })
+    .check();
+  await expect(
+    author.getByRole("textbox", {
+      name: "Feedback da alternativa 2",
+      exact: true,
+    }),
+  ).toHaveAttribute("placeholder", "Usa o feedback legado correto.");
+  await author.getByText("Feedback legado", { exact: true }).click();
+  await expect(
+    author.getByRole("textbox", { name: "Feedback correto", exact: true }),
+  ).toHaveValue(original.feedbackCorrect);
+  await expect(
+    author.getByRole("textbox", { name: "Feedback incorreto", exact: true }),
+  ).toHaveValue(original.feedbackIncorrect);
+  await author
+    .getByRole("textbox", { name: "Feedback correto", exact: true })
+    .fill("Já está correto após a revisão.");
+  await page
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
+  await page.reload();
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const interaction = page.locator(".inline-quiz");
+  await interaction
+    .getByRole("radio", { name: "Segunda", exact: true })
+    .check();
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status")).toContainText(
+    "Já está correto após a revisão.",
+  );
   await expect(interaction.getByRole("button")).toHaveCount(0);
 });

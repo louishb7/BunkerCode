@@ -317,7 +317,7 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole("textbox", { name: "Feedback correto", exact: true }),
     ).not.toBeVisible();
-    await page.getByText("Feedback e tentativas", { exact: true }).click();
+    await page.getByText("Feedback legado", { exact: true }).click();
     await page
       .getByRole("textbox", { name: "Feedback correto", exact: true })
       .fill("Novo feedback.");

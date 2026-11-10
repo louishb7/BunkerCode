@@ -254,8 +254,16 @@ export default function VisualEditor({
             id: `quiz-${crypto.randomUUID()}`,
             question: "Escreva sua pergunta.",
             options: [
-              { id: "a", text: "Alternativa A" },
-              { id: "b", text: "Alternativa B" },
+              {
+                id: "a",
+                text: "Alternativa A",
+                feedback: "Escreva o feedback desta alternativa.",
+              },
+              {
+                id: "b",
+                text: "Alternativa B",
+                feedback: "Escreva o feedback desta alternativa.",
+              },
             ],
             correct: "a",
             feedbackCorrect: "Resposta correta.",

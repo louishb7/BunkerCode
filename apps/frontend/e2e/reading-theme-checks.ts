@@ -1144,6 +1144,18 @@ export async function checkOttoNotes(page: Page, info: TestInfo) {
       );
     }
     await expectRenderedContrast(notes.locator("p"));
+    if (tone === 0 || tone === 5) {
+      await notes
+        .first()
+        .evaluate((node) => node.scrollIntoView({ block: "center" }));
+      await notes
+        .first()
+        .screenshot({
+          path: info.outputPath(
+            `otto-profile-tone-${tone}-${page.viewportSize()!.width}.png`,
+          ),
+        });
+    }
     await expect(quiz.locator(".quiz-feedback")).toHaveText(feedback, {
       useInnerText: true,
     });

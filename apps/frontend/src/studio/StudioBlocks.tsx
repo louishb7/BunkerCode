@@ -255,6 +255,7 @@ export function EditorialView(props: NodeViewProps) {
   const q = data as Quiz;
   const change = (patch: Partial<Quiz>) =>
     updateAttributes({ data: { ...q, ...patch } });
+  const legacyOptions = q.options.filter((option) => !option.feedback);
   return (
     <NodeViewWrapper
       className="quiz-author"
@@ -305,25 +306,25 @@ export function EditorialView(props: NodeViewProps) {
               <fieldset>
                 <legend>Alternativas · marque a correta</legend>
                 {q.options.map((o, i) => (
-                  <div className="quiz-author-option" key={o.id}>
-                    <input
-                      type="radio"
-                      name={`correct-${q.id}`}
-                      aria-label={`Alternativa correta ${i + 1}`}
-                      checked={q.correct === o.id}
-                      onChange={() => change({ correct: o.id })}
-                    />
-                    <AuthoringText
-                      aria-label={`Alternativa ${i + 1}`}
-                      value={o.text}
-                      onChange={(text) =>
-                        change({
-                          options: q.options.map((v) =>
-                            v.id === o.id ? { ...v, text } : v,
-                          ),
-                        })
-                      }
-                    />
+                  <div
+                    className="quiz-author-option"
+                    key={o.id}
+                    data-correct={q.correct === o.id}
+                  >
+                    <label className="quiz-option-answer">
+                      Alternativa {i + 1}
+                      <AuthoringText
+                        aria-label={`Alternativa ${i + 1}`}
+                        value={o.text}
+                        onChange={(text) =>
+                          change({
+                            options: q.options.map((v) =>
+                              v.id === o.id ? { ...v, text } : v,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
                     <button
                       type="button"
                       title={`Remover alternativa ${i + 1}`}
@@ -341,12 +342,22 @@ export function EditorialView(props: NodeViewProps) {
                     >
                       <X size={16} />
                     </button>
+                    <label className="quiz-option-correct">
+                      <input
+                        type="radio"
+                        name={`correct-${q.id}`}
+                        aria-label={`Alternativa correta ${i + 1}`}
+                        checked={q.correct === o.id}
+                        onChange={() => change({ correct: o.id })}
+                      />
+                      {q.correct === o.id ? "Correta" : "Marcar como correta"}
+                    </label>
                     <label className="quiz-option-feedback">
                       Feedback da alternativa {i + 1}
                       <AuthoringText
                         multiline
                         value={o.feedback ?? ""}
-                        placeholder="Sem texto próprio, usa o feedback geral."
+                        placeholder={`Usa o feedback legado ${q.correct === o.id ? "correto" : "incorreto"}.`}
                         onChange={(feedback) =>
                           change({
                             options: q.options.map((option) => {
@@ -371,6 +382,7 @@ export function EditorialView(props: NodeViewProps) {
                         {
                           id: `option-${crypto.randomUUID()}`,
                           text: "Nova alternativa",
+                          feedback: "Escreva o feedback desta alternativa.",
                         },
                       ],
                     })
@@ -379,26 +391,38 @@ export function EditorialView(props: NodeViewProps) {
                   Adicionar alternativa
                 </button>
               </fieldset>
+              {legacyOptions.length > 0 && (
+                <details className="quiz-settings quiz-legacy-feedback">
+                  <summary>Feedback legado</summary>
+                  <p>
+                    Usado somente nas alternativas sem feedback próprio. A
+                    resposta marcada como correta usa o feedback correto; as
+                    demais usam o incorreto.
+                  </p>
+                  <label>
+                    Feedback correto
+                    <AuthoringText
+                      multiline
+                      value={q.feedbackCorrect}
+                      onChange={(feedbackCorrect) =>
+                        change({ feedbackCorrect })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Feedback incorreto
+                    <AuthoringText
+                      multiline
+                      value={q.feedbackIncorrect}
+                      onChange={(feedbackIncorrect) =>
+                        change({ feedbackIncorrect })
+                      }
+                    />
+                  </label>
+                </details>
+              )}
               <details className="quiz-settings">
-                <summary>Feedback e tentativas</summary>
-                <label>
-                  Feedback correto
-                  <AuthoringText
-                    multiline
-                    value={q.feedbackCorrect}
-                    onChange={(feedbackCorrect) => change({ feedbackCorrect })}
-                  />
-                </label>
-                <label>
-                  Feedback incorreto
-                  <AuthoringText
-                    multiline
-                    value={q.feedbackIncorrect}
-                    onChange={(feedbackIncorrect) =>
-                      change({ feedbackIncorrect })
-                    }
-                  />
-                </label>
+                <summary>Configurações do quiz</summary>
                 <label>
                   <input
                     type="checkbox"
