@@ -502,15 +502,6 @@
 .quiz-edit-trigger:focus-visible {
   opacity: 1;
 }
-.quiz-settings {
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--color-subtle);
-}
-.quiz-settings summary {
-  cursor: pointer;
-  padding: 8px 0;
-}
 .visual-document .quiz-question textarea {
   font-size: 18px;
   font-weight: 600;

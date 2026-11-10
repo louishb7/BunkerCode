@@ -266,9 +266,6 @@ export default function VisualEditor({
               },
             ],
             correct: "a",
-            feedbackCorrect: "Resposta correta.",
-            feedbackIncorrect: "Revise a explicação e tente novamente.",
-            retry: true,
           },
         },
       };

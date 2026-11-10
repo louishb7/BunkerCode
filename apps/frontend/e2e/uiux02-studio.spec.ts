@@ -13,13 +13,10 @@ const quiz = {
   id: "stable-quiz",
   question: "Qual valor representa a quantidade?",
   options: [
-    { id: "first", text: "Um número" },
-    { id: "second", text: "Uma string" },
+    { id: "first", text: "Um número", feedback: "Correto." },
+    { id: "second", text: "Uma string", feedback: "Reveja os tipos." },
   ],
   correct: "first",
-  feedbackCorrect: "Correto.",
-  feedbackIncorrect: "Reveja os tipos.",
-  retry: true,
 };
 const source =
   "# Documento de teste\n\nUma explicação com referência e autoria.\n\n## Exemplos\n\n```typescript\nconst amount: number = 42;\nconsole.log(amount);\n```\n\nDepois do código.\n\n```bunker-quiz\n" +
@@ -317,9 +314,8 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole("textbox", { name: "Feedback correto", exact: true }),
     ).not.toBeVisible();
-    await page.getByText("Feedback legado", { exact: true }).click();
     await page
-      .getByRole("textbox", { name: "Feedback correto", exact: true })
+      .getByRole("textbox", { name: "Feedback da alternativa 1", exact: true })
       .fill("Novo feedback.");
     await page
       .getByRole("button", { name: "Testar como estudante", exact: true })

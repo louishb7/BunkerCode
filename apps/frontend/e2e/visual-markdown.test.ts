@@ -8,13 +8,10 @@ const quiz = {
   id: "example-question",
   question: "Qual valor?",
   options: [
-    { id: "a", text: "Um" },
-    { id: "b", text: "Dois" },
+    { id: "a", text: "Um", feedback: "Correto" },
+    { id: "b", text: "Dois", feedback: "Revise" },
   ],
   correct: "a",
-  feedbackCorrect: "Correto",
-  feedbackIncorrect: "Revise",
-  retry: true,
 };
 const special = "```bunker-quiz\n" + JSON.stringify(quiz, null, 2) + "\n```";
 for (const [name, source] of Object.entries({
@@ -101,4 +98,29 @@ test("option feedback is validated and preserved through visual Markdown round t
       ],
     }),
   );
+});
+
+test("quizzes reject removed settings and missing option feedback", () => {
+  for (const setting of [
+    { retry: true },
+    { retry: false },
+    { feedbackCorrect: "Old" },
+    { feedbackIncorrect: "Old" },
+  ])
+    assert.throws(() => parseQuiz({ ...quiz, ...setting }));
+  assert.throws(() =>
+    parseQuiz({ ...quiz, options: [{ id: "a", text: "Um" }, quiz.options[1]] }),
+  );
+});
+
+test("every tracked lesson quiz uses the canonical format", () => {
+  for (const root of [
+    resolve("../../content/courses"),
+    resolve("../frontend/e2e/fixtures/legacy-courses"),
+  ]) {
+    for (const file of readdirSync(root, { recursive: true })
+      .map(String)
+      .filter((p) => p.endsWith("/lesson.md")))
+      validateEditorial(readFileSync(resolve(root, file), "utf8"));
+  }
 });

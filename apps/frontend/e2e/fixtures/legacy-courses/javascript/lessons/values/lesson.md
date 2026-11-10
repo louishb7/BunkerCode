@@ -50,21 +50,21 @@ Distinguir um valor, sua variável e o tipo observado em JavaScript.
   "options": [
     {
       "id": "a",
-      "text": "Alternativa A"
+      "text": "Alternativa A",
+      "feedback": "Revise a explicação e tente novamente."
     },
     {
       "id": "b",
-      "text": "Alternativa B"
+      "text": "Alternativa B",
+      "feedback": "Resposta correta."
     },
     {
       "id": "option-2950210d-4669-4abd-973a-4133e4490027",
-      "text": "Nova alternativa"
+      "text": "Nova alternativa",
+      "feedback": "Revise a explicação e tente novamente."
     }
   ],
-  "correct": "b",
-  "feedbackCorrect": "Resposta correta.",
-  "feedbackIncorrect": "Revise a explicação e tente novamente.",
-  "retry": true
+  "correct": "b"
 }
 ```
 

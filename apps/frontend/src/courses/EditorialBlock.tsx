@@ -24,10 +24,8 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
   const [answer, setAnswer] = useState("");
   const [attempt, setAttempt] = useState(0);
   const correct = answer === quiz.correct;
-  const canRetry = !!answer && !correct && quiz.retry;
   const feedback =
-    quiz.options.find((option) => option.id === answer)?.feedback ??
-    (correct ? quiz.feedbackCorrect : quiz.feedbackIncorrect);
+    quiz.options.find((option) => option.id === answer)?.feedback ?? "";
   const ResultIcon = correct ? CircleCheck : CircleX;
   return (
     <section className="inline-quiz" aria-labelledby={`${name}-question`}>
@@ -51,7 +49,6 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
                 name={name}
                 value={option.id}
                 checked={choice === option.id}
-                disabled={!!answer && !canRetry}
                 onChange={() => setChoice(option.id)}
               />
               <span>{option.text}</span>
@@ -61,18 +58,16 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
             </label>
           ))}
         </div>
-        {(!answer || canRetry) && (
-          <button
-            type="button"
-            disabled={!choice}
-            onClick={() => {
-              setAnswer(choice);
-              setAttempt((value) => value + 1);
-            }}
-          >
-            Verificar resposta
-          </button>
-        )}
+        <button
+          type="button"
+          disabled={!choice}
+          onClick={() => {
+            setAnswer(choice);
+            setAttempt((value) => value + 1);
+          }}
+        >
+          Verificar resposta
+        </button>
         <div role="status" aria-atomic="true">
           {answer && (
             <div
@@ -92,17 +87,6 @@ export function QuizBlock({ quiz }: { quiz: Quiz }) {
             </div>
           )}
         </div>
-        {answer && correct && quiz.retry && (
-          <button
-            type="button"
-            onClick={() => {
-              setAnswer("");
-              setChoice("");
-            }}
-          >
-            Tentar novamente
-          </button>
-        )}
       </fieldset>
     </section>
   );

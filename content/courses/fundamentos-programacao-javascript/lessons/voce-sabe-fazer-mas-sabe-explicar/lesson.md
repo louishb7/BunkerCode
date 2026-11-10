@@ -79,21 +79,21 @@ Precisamos acrescentar uma nova instrução, guardarEstojo();, sem modificar as 
   "options": [
     {
       "id": "a",
-      "text": "A instrução deve aparecer imediatamente antes de fecharMochila();, pois guardar o estojo precisa ser a última ação antes do fechamento."
+      "text": "A instrução deve aparecer imediatamente antes de fecharMochila();, pois guardar o estojo precisa ser a última ação antes do fechamento.",
+      "feedback": "Essa posição funcionaria, mas não é a única possível. Pense no que realmente precisa acontecer antes de guardar o estojo. Seria necessário guardar primeiro o caderno e o livro? A sequência permite mais de uma organização válida, desde que certas condições sejam respeitadas."
     },
     {
       "id": "b",
-      "text": "A instrução pode aparecer em qualquer posição entre abrirMochila(); e fecharMochila();, independentemente da ordem em que os materiais sejam guardados."
+      "text": "A instrução pode aparecer em qualquer posição entre abrirMochila(); e fecharMochila();, independentemente da ordem em que os materiais sejam guardados.",
+      "feedback": "Exatamente! Você percebeu que não existe uma única posição válida para a nova instrução.\n\nO importante é respeitar uma condição: a mochila precisa estar aberta quando o estojo for guardado. Podemos guardar o estojo antes ou depois do caderno e do livro. Nesse caso, a ordem entre os materiais não altera o resultado."
     },
     {
       "id": "c",
-      "text": "A instrução pode aparecer depois de fecharMochila();, já que o estojo faz parte da mesma tarefa de organização."
+      "text": "A instrução pode aparecer depois de fecharMochila();, já que o estojo faz parte da mesma tarefa de organização.",
+      "feedback": "As instruções pertencem à mesma tarefa, mas isso não significa que possam aparecer em qualquer ordem. Quando o ajudante chegar à nova instrução, a mochila já estará fechada. Para que a ação funcione sem modificar outras linhas, precisamos inseri-la enquanto a mochila estiver aberta."
     }
   ],
-  "correct": "b",
-  "feedbackCorrect": "Exatamente! Você percebeu que não existe uma única posição válida para a nova instrução.\n\nO importante é respeitar uma condição: a mochila precisa estar aberta quando o estojo for guardado. Podemos guardar o estojo antes ou depois do caderno e do livro. Nesse caso, a ordem entre os materiais não altera o resultado.",
-  "feedbackIncorrect": "**Se você escolheu A:**\n\nEssa posição funcionaria, mas não é a única possível. Pense no que realmente precisa acontecer antes de guardar o estojo. Seria necessário guardar primeiro o caderno e o livro? A sequência permite mais de uma organização válida, desde que certas condições sejam respeitadas.\n\n**Se você escolheu C:**\n\nAs instruções pertencem à mesma tarefa, mas isso não significa que possam aparecer em qualquer ordem. Quando o ajudante chegar à nova instrução, a mochila já estará fechada. Para que a ação funcione sem modificar outras linhas, precisamos inseri-la enquanto a mochila estiver aberta.",
-  "retry": true
+  "correct": "b"
 }
 ```
 
@@ -109,17 +109,13 @@ Quando escrevemos um programa, também precisamos representar aquilo que queremo
 
 Aliás, existe um nome para esse tipo de organização.
 
-Na programação, chamamos de algoritmo um conjunto organizado de passos para realizar uma tarefa ou resolver um problema. E aqui está um detalhe importante: um algoritmo não precisa começar como código. Antes de escrever instruções em uma linguagem de programação, podemos pensar na solução, organizar as ações necessárias e verificar se fazem sentido. Foi justamente o que fizemos com ajuda do Otto.
+Na programação, chamamos de **algoritmo** um conjunto organizado de passos para realizar uma tarefa ou resolver um problema. E aqui está um detalhe importante: um algoritmo não precisa começar como código. Antes de escrever instruções em uma linguagem de programação, podemos pensar na solução, organizar as ações necessárias e verificar se fazem sentido. Foi justamente o que fizemos com ajuda do Otto.
 
-Não se preocupe em decorar essa definição agora. Teremos bastante tempo para trabalhar com algoritmos durante esta trilha. Por enquanto, quero que você guarde uma ideia: uma tarefa pode parecer óbvia para quem sabe realizá-la. O desafio está em transformar esse conhecimento em instruções claras e organizadas.
+Não se preocupe em decorar essa definição agora. Teremos bastante tempo para trabalhar com algoritmos durante esta trilha. Por enquanto, quero que você guarde uma ideia: **uma tarefa pode parecer óbvia para quem sabe realizá-la. O desafio está em transformar esse conhecimento em instruções claras e organizadas.**
 
 Até aqui, trabalhamos com uma atividade relativamente pequena: preparar uma mochila. Mesmo assim, precisamos descobrir uma instrução que estava faltando, corrigir a sequência das ações e identificar quais delas poderiam mudar de posição sem prejudicar o resultado. E tudo isso para guardar alguns objetos.
 
-Agora imagine que, em vez de preparar uma mochila, precisássemos organizar uma mudança inteira. Teríamos roupas, móveis, documentos, caixas, transporte e uma quantidade considerável de coisas para resolver. Algumas tarefas dependeriam de outras. Certos objetos precisariam ser embalados antes de serem transportados. Outros exigiriam cuidados especiais.
 
-E, antes mesmo de decidir a ordem das instruções, teríamos um novo desafio: descobrir tudo o que precisa ser feito. Tentar resolver todos esses detalhes simultaneamente provavelmente não seria a melhor estratégia. Então, como podemos lidar com problemas que parecem grandes demais para resolver de uma só vez?
-
-É isso que vamos investigar na próxima lição. A arte de dividir problemas.
 
 ```bunker-note
 {

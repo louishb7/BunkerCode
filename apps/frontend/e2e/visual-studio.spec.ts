@@ -378,27 +378,24 @@ test("notes move, delete and undo without losing surrounding text", async ({
 test("multiple quizzes retain independent answers, retry and an inline exercise position", async ({
   page,
 }) => {
-  const quiz = (id: string, retry: boolean) =>
+  const quiz = (id: string) =>
     "```bunker-quiz\n" +
     JSON.stringify({
       id,
       question: id,
       options: [
-        { id: "a", text: "Sim" },
-        { id: "b", text: "Não" },
+        { id: "a", text: "Sim", feedback: "Correto " + id },
+        { id: "b", text: "Não", feedback: "Reveja " + id },
       ],
       correct: "a",
-      feedbackCorrect: "Correto " + id,
-      feedbackIncorrect: "Reveja " + id,
-      retry,
     }) +
     "\n```\n";
   await writeFile(
     file,
     source +
-      quiz("primeiro", true) +
+      quiz("primeiro") +
       '\n```bunker-exercise\n{"kind":"exercise"}\n```\n\nContinua depois do exercício.\n\n' +
-      quiz("segundo", false),
+      quiz("segundo"),
   );
   await writeFile(
     join(directory, "exercise.json"),
@@ -544,13 +541,18 @@ test("editorial text preserves paragraphs and emphasis while keeping HTML inert"
     id: "paragraph-feedback",
     question: "Which rule?",
     options: [
-      { id: "a", text: "Investigate" },
-      { id: "b", text: "Guess" },
+      {
+        id: "a",
+        text: "Investigate",
+        feedback: "Correct.\n\nKeep **investigating**.",
+      },
+      {
+        id: "b",
+        text: "Guess",
+        feedback: "Try again.\n\nCheck *the evidence*.",
+      },
     ],
     correct: "a",
-    feedbackCorrect: "Correct.\n\nKeep **investigating**.",
-    feedbackIncorrect: "Try again.\n\nCheck *the evidence*.",
-    retry: true,
   };
   await writeFile(
     file,
@@ -782,13 +784,10 @@ test("Portuguese composition keeps quiz and note fields focused and saves accent
         id: "accents",
         question: "Pergunta",
         options: [
-          { id: "a", text: "Um" },
-          { id: "b", text: "Dois" },
+          { id: "a", text: "Um", feedback: "Sim" },
+          { id: "b", text: "Dois", feedback: "Reveja" },
         ],
         correct: "a",
-        feedbackCorrect: "Sim",
-        feedbackIncorrect: "Reveja",
-        retry: true,
       }) +
       "\n```\n\n```bunker-note\n" +
       JSON.stringify({ kind: "info", text: "Nota" }) +
@@ -801,12 +800,9 @@ test("Portuguese composition keeps quiz and note fields focused and saves accent
     "Pergunta",
     "Alternativa 1",
     "Feedback da alternativa 1",
-    "Feedback correto",
-    "Feedback incorreto",
+    "Feedback da alternativa 2",
     "Texto da nota",
   ]) {
-    if (label === "Feedback correto")
-      await page.getByText("Feedback legado", { exact: true }).click();
     if (label === "Texto da nota")
       await page.locator(".visual-document .editorial-note").first().click();
     const field = page.getByRole("textbox", { name: label, exact: true });
@@ -860,21 +856,26 @@ test("Portuguese composition keeps quiz and note fields focused and saves accent
   await expect(markdown).toHaveValue(/é já não$/);
 });
 
-test("authors save per-option feedback and learners retry directly with keyboard and legacy fallback", async ({
+test("authors save per-option feedback and learners retry directly with keyboard with required feedback", async ({
   page,
 }, info) => {
   const quiz = {
     id: "option-feedback",
     question: "Qual alternativa?",
     options: [
-      { id: "a", text: "Correta" },
-      { id: "b", text: "Incorreta" },
-      { id: "c", text: "Legada" },
+      { id: "a", text: "Correta", feedback: "Correto geral" },
+      {
+        id: "b",
+        text: "Incorreta",
+        feedback: "Observe a terceira alternativa.",
+      },
+      {
+        id: "c",
+        text: "Terceira",
+        feedback: "Observe a terceira alternativa.",
+      },
     ],
     correct: "a",
-    feedbackCorrect: "Correto geral",
-    feedbackIncorrect: "Incorreto geral",
-    retry: true,
   };
   await writeFile(
     file,
@@ -896,7 +897,7 @@ test("authors save per-option feedback and learners retry directly with keyboard
     exact: true,
   });
   await optionalFeedback.fill("Texto temporário");
-  await optionalFeedback.fill("");
+  await optionalFeedback.fill("Observe a terceira alternativa.");
   for (const width of [1280, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -958,7 +959,7 @@ test("authors save per-option feedback and learners retry directly with keyboard
   await wrong.focus();
   await page.keyboard.press("ArrowDown");
   await expect(
-    interaction.getByRole("radio", { name: "Legada", exact: true }),
+    interaction.getByRole("radio", { name: "Terceira", exact: true }),
   ).toBeFocused();
   expect(await interaction.getByRole("status").innerHTML()).toBe(
     submittedWrong,
@@ -969,7 +970,7 @@ test("authors save per-option feedback and learners retry directly with keyboard
   await verify.focus();
   await page.keyboard.press("Enter");
   await expect(interaction.getByRole("status")).toContainText(
-    "Incorreto geral",
+    "Observe a terceira alternativa.",
   );
   const submittedLegacy = await interaction.getByRole("status").innerHTML();
   await interaction
@@ -991,7 +992,7 @@ test("authors save per-option feedback and learners retry directly with keyboard
   });
 });
 
-test("quizzes with retry disabled retain the confirmed incorrect answer", async ({
+test("every quiz accepts another answer after incorrect and correct submissions", async ({
   page,
 }, info) => {
   await writeFile(
@@ -999,16 +1000,13 @@ test("quizzes with retry disabled retain the confirmed incorrect answer", async 
     source +
       "\n```bunker-quiz\n" +
       JSON.stringify({
-        id: "single-attempt",
-        question: "Uma tentativa",
+        id: "unlimited-attempts",
+        question: "Tentativas livres",
         options: [
-          { id: "a", text: "Sim" },
-          { id: "b", text: "Não" },
+          { id: "a", text: "Sim", feedback: "Certo" },
+          { id: "b", text: "Não", feedback: "Reveja a regra" },
         ],
         correct: "a",
-        feedbackCorrect: "Certo",
-        feedbackIncorrect: "Reveja a regra",
-        retry: false,
       }) +
       "\n```\n",
   );
@@ -1018,16 +1016,22 @@ test("quizzes with retry disabled retain the confirmed incorrect answer", async 
   await interaction.getByRole("button", { name: "Verificar resposta" }).click();
   await expect(interaction.getByRole("status")).toContainText("Reveja a regra");
   for (const radio of await interaction.getByRole("radio").all())
-    await expect(radio).toBeDisabled();
+    await expect(radio).toBeEnabled();
   await expect(
     interaction.getByRole("radio", { name: "Não", exact: true }),
   ).toBeChecked();
-  await expect(interaction.getByRole("button")).toHaveCount(0);
+  await interaction.getByRole("radio", { name: "Sim", exact: true }).check();
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status")).toContainText("Certo");
+  await interaction.getByRole("radio", { name: "Não", exact: true }).check();
+  await expect(interaction.getByRole("status")).toContainText("Certo");
+  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
+  await expect(interaction.getByRole("status")).toContainText("Reveja a regra");
   await interaction.evaluate((node) =>
     node.scrollIntoView({ block: "center" }),
   );
   await interaction.screenshot({
-    path: info.outputPath("retry-05-disabled.png"),
+    path: info.outputPath("retry-05-unlimited.png"),
   });
 });
 
@@ -1094,10 +1098,7 @@ test("new quizzes group correctness and feedback while preserving option identit
   await expect(
     author.getByRole("radio", { name: "Alternativa correta 1", exact: true }),
   ).toBeChecked();
-  await author.getByText("Configurações do quiz", { exact: true }).click();
-  await author
-    .getByRole("checkbox", { name: "Permitir nova tentativa" })
-    .uncheck();
+  await expect(author.locator("details")).toHaveCount(0);
   for (const width of [1280, 375, 320]) {
     await page.setViewportSize({ width, height: 960 });
     expect(
@@ -1125,7 +1126,12 @@ test("new quizzes group correctness and feedback while preserving option identit
     [quiz.options[1]!.id, "Terceira", "Feedback da terceira."],
   ]);
   expect(quiz.correct).toBe("b");
-  expect(quiz.retry).toBe(false);
+  expect(Object.keys(quiz).sort()).toEqual([
+    "correct",
+    "id",
+    "options",
+    "question",
+  ]);
   // Reordering in the existing Markdown source keeps correctness/feedback tied to IDs.
   await studioView(page, "Editar fonte Markdown");
   await page
@@ -1161,10 +1167,7 @@ test("new quizzes group correctness and feedback while preserving option identit
   await expect(
     author.getByRole("radio", { name: "Alternativa correta 2", exact: true }),
   ).toBeChecked();
-  await author.getByText("Configurações do quiz", { exact: true }).click();
-  await expect(
-    author.getByRole("checkbox", { name: "Permitir nova tentativa" }),
-  ).not.toBeChecked();
+  await expect(author.getByRole("checkbox")).toHaveCount(0);
   // Deleting the correct option selects one surviving option without changing its feedback.
   await author.getByRole("button", { name: "Adicionar alternativa" }).click();
   await author
@@ -1180,83 +1183,60 @@ test("new quizzes group correctness and feedback while preserving option identit
   ).toHaveValue("Feedback da terceira.");
 });
 
-test("legacy feedback survives hidden controls and becomes editable only when an option needs it", async ({
+test("every option requires its own feedback before saving, without secondary settings", async ({
   page,
 }) => {
   const original = {
-    id: "legacy-preservation",
-    question: "Pergunta legada",
+    id: "required-feedback",
+    question: "Pergunta",
+    correct: "a",
     options: [
       { id: "a", text: "Primeira", feedback: "Feedback A" },
       { id: "b", text: "Segunda", feedback: "Feedback B" },
     ],
-    correct: "a",
-    feedbackCorrect: "Já estava correto no legado.",
-    feedbackIncorrect: "Não era a resposta esperada no legado.",
-    retry: false,
   };
-  await writeFile(
-    file,
-    source + "\n```bunker-quiz\n" + JSON.stringify(original) + "\n```\n",
-  );
+  const initial =
+    source + "\n```bunker-quiz\n" + JSON.stringify(original) + "\n```\n";
+  await writeFile(file, initial);
   await page.goto(url + "/edit");
   const author = page.locator(".quiz-author");
   await author.click();
-  await expect(
-    author.getByText("Feedback legado", { exact: true }),
-  ).toHaveCount(0);
-  await author
-    .getByRole("textbox", { name: "Pergunta", exact: true })
-    .fill("Pergunta revisada");
+  await expect(author.locator("details")).toHaveCount(0);
+  await expect(author.getByRole("checkbox")).toHaveCount(0);
+  const feedback = author.getByRole("textbox", {
+    name: "Feedback da alternativa 2",
+    exact: true,
+  });
+  await feedback.fill("");
   await page
     .getByRole("button", { name: "Salvar alterações", exact: true })
     .click();
-  await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
-  const saved = await readFile(file, "utf8");
-  const parsed = parseQuiz(
-    JSON.parse(/```bunker-quiz\n([\s\S]*?)\n```/.exec(saved)![1]!),
+  await expect(page.getByRole("alert")).toHaveText(
+    "Texto editorial vazio ou inválido.",
   );
-  expect(parsed).toEqual({ ...original, question: "Pergunta revisada" });
-  await author
-    .getByRole("textbox", { name: "Feedback da alternativa 2", exact: true })
-    .fill("");
-  await expect(
-    author.getByText("Feedback legado", { exact: true }),
-  ).toBeVisible();
-  await author
-    .getByRole("radio", { name: "Alternativa correta 2", exact: true })
-    .check();
-  await expect(
-    author.getByRole("textbox", {
-      name: "Feedback da alternativa 2",
-      exact: true,
-    }),
-  ).toHaveAttribute("placeholder", "Usa o feedback legado correto.");
-  await author.getByText("Feedback legado", { exact: true }).click();
-  await expect(
-    author.getByRole("textbox", { name: "Feedback correto", exact: true }),
-  ).toHaveValue(original.feedbackCorrect);
-  await expect(
-    author.getByRole("textbox", { name: "Feedback incorreto", exact: true }),
-  ).toHaveValue(original.feedbackIncorrect);
-  await author
-    .getByRole("textbox", { name: "Feedback correto", exact: true })
-    .fill("Já está correto após a revisão.");
+  await expect(page.locator(".studio-status")).not.toHaveText(
+    "Salvo no arquivo.",
+  );
+  expect(await readFile(file, "utf8")).toBe(initial);
+  await feedback.fill("Feedback revisado B");
   await page
     .getByRole("button", { name: "Salvar alterações", exact: true })
     .click();
   await expect(page.locator(".studio-status")).toHaveText("Salvo no arquivo.");
   await page.reload();
-  await page.getByRole("link", { name: "Voltar à lição" }).click();
-  const interaction = page.locator(".inline-quiz");
-  await interaction
-    .getByRole("radio", { name: "Segunda", exact: true })
-    .check();
-  await interaction.getByRole("button", { name: "Verificar resposta" }).click();
-  await expect(interaction.getByRole("status")).toContainText(
-    "Já está correto após a revisão.",
+  await author.click();
+  await expect(feedback).toHaveValue("Feedback revisado B");
+  const saved = await readFile(file, "utf8");
+  const parsed = parseQuiz(
+    JSON.parse(/```bunker-quiz\n([\s\S]*?)\n```/.exec(saved)![1]!),
   );
-  await expect(interaction.getByRole("button")).toHaveCount(0);
+  expect(parsed).toEqual({
+    ...original,
+    options: [
+      original.options[0],
+      { ...original.options[1], feedback: "Feedback revisado B" },
+    ],
+  });
 });
 
 test("learner retry keeps submitted feedback until explicit verification across multiple wrong answers", async ({
@@ -1283,9 +1263,6 @@ test("learner retry keeps submitted feedback until explicit verification across 
       },
     ],
     correct: "c",
-    feedbackCorrect: "Correto legado",
-    feedbackIncorrect: "Incorreto legado",
-    retry: true,
   };
   await writeFile(
     file,
@@ -1348,17 +1325,89 @@ test("learner retry keeps submitted feedback until explicit verification across 
   await verify.click();
   await expect(status).toContainText(quiz.options[2]!.feedback);
   await expect(status).toContainText("Resposta correta");
-  for (const radio of await radios.all()) await expect(radio).toBeDisabled();
-  await expect(verify).toHaveCount(0);
-  await expect(reset).toBeVisible();
+  for (const radio of await radios.all()) await expect(radio).toBeEnabled();
+  await expect(verify).toBeEnabled();
+  await expect(reset).toHaveCount(0);
   await expect(radios.nth(2)).toBeChecked();
   await interaction.screenshot({
     path: info.outputPath("retry-04-correct-c.png"),
   });
   await expect(status).toContainText(quiz.options[2]!.feedback);
+  await radios.nth(0).check();
+  await expect(status).toContainText(quiz.options[2]!.feedback);
+  await verify.click();
+  await expect(status).toContainText(quiz.options[0]!.feedback);
+  await expect(status).toContainText("Resposta incorreta");
   // Quiz answers remain ephemeral, without rewriting the lesson file.
   expect(await readFile(file, "utf8")).toContain(JSON.stringify(quiz));
   await page.reload();
   await expect(status).toBeEmpty();
   await expect(interaction.locator("input:checked")).toHaveCount(0);
+});
+
+test("second published-course lesson permits repeated answers before and after success with only per-option feedback", async ({
+  page,
+}, info) => {
+  const course = "fundamentos-programacao-javascript";
+  const slug = "voce-sabe-fazer-mas-sabe-explicar";
+  const lessonFile = join(
+    process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+    "courses",
+    course,
+    "lessons",
+    slug,
+    "lesson.md",
+  );
+  const original = await readFile(lessonFile, "utf8");
+  const quiz = parseQuiz(
+    JSON.parse(/```bunker-quiz\n([\s\S]*?)\n```/.exec(original)![1]!),
+  );
+  const lessonUrl = `/courses/${course}/lessons/${slug}`;
+  await page.goto(lessonUrl + "/edit");
+  const author = page.locator(".quiz-author");
+  await author.click();
+  await expect(author.locator("details")).toHaveCount(0);
+  await expect(author.getByRole("checkbox")).toHaveCount(0);
+  await expect(author.getByRole("textbox")).toHaveCount(
+    1 + quiz.options.length * 2,
+  );
+  for (let index = 0; index < quiz.options.length; index++)
+    await expect(
+      author.getByRole("textbox", {
+        name: `Feedback da alternativa ${index + 1}`,
+        exact: true,
+      }),
+    ).toHaveValue(quiz.options[index]!.feedback);
+  await author.screenshot({
+    path: info.outputPath("second-lesson-authoring.png"),
+  });
+  await page.getByRole("link", { name: "Voltar à lição" }).click();
+  const interaction = page.locator(".inline-quiz");
+  const status = interaction.getByRole("status");
+  const verify = interaction.getByRole("button", {
+    name: "Verificar resposta",
+  });
+  // A (wrong), B (correct), C (wrong), B (correct), repeated B, A (wrong).
+  for (const index of [0, 1, 2, 1, 1, 0]) {
+    const previous = await status.innerHTML();
+    const option = quiz.options[index]!;
+    await interaction
+      .getByRole("radio", { name: option.text, exact: true })
+      .check();
+    expect(await status.innerHTML()).toBe(previous);
+    await verify.click();
+    await expect(status).toContainText(option.feedback);
+    await expect(status).toContainText(
+      option.id === quiz.correct ? "Resposta correta" : "Resposta incorreta",
+    );
+    for (const radio of await interaction.getByRole("radio").all())
+      await expect(radio).toBeEnabled();
+    await expect(verify).toBeEnabled();
+    await interaction.screenshot({
+      path: info.outputPath(`second-lesson-answer-${option.id}.png`),
+    });
+  }
+  expect(await readFile(lessonFile, "utf8")).toBe(original);
+  await page.reload();
+  await expect(status).toBeEmpty();
 });

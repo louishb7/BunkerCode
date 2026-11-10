@@ -12,11 +12,8 @@ export {
 export interface Quiz {
   id: string;
   question: string;
-  options: { id: string; text: string; feedback?: string }[];
+  options: { id: string; text: string; feedback: string }[];
   correct: string;
-  feedbackCorrect: string;
-  feedbackIncorrect: string;
-  retry: boolean;
 }
 export interface Note {
   kind: "info" | "tip" | "warning";
@@ -54,31 +51,20 @@ function id(value: unknown): string {
 }
 export function parseQuiz(value: unknown): Quiz {
   const q = object(value);
-  fields(q, [
-    "id",
-    "question",
-    "options",
-    "correct",
-    "feedbackCorrect",
-    "feedbackIncorrect",
-    "retry",
-  ]);
+  fields(q, ["id", "question", "options", "correct"]);
   if (
     !Array.isArray(q.options) ||
     q.options.length < 2 ||
-    q.options.length > 12 ||
-    typeof q.retry !== "boolean"
+    q.options.length > 12
   )
-    throw new Error(
-      "Quiz requer de 2 a 12 alternativas e configuração de nova tentativa.",
-    );
+    throw new Error("Quiz requer de 2 a 12 alternativas.");
   const options = q.options.map((value) => {
     const o = object(value);
-    fields(o, "feedback" in o ? ["id", "text", "feedback"] : ["id", "text"]);
+    fields(o, ["id", "text", "feedback"]);
     return {
       id: id(o.id),
       text: text(o.text, 2000),
-      ...("feedback" in o ? { feedback: text(o.feedback, 4000) } : {}),
+      feedback: text(o.feedback, 4000),
     };
   });
   const correct = id(q.correct);
@@ -92,9 +78,6 @@ export function parseQuiz(value: unknown): Quiz {
     question: text(q.question, 4000),
     options,
     correct,
-    feedbackCorrect: text(q.feedbackCorrect, 4000),
-    feedbackIncorrect: text(q.feedbackIncorrect, 4000),
-    retry: q.retry,
   };
 }
 export function parseNote(value: unknown): Note {

@@ -121,10 +121,7 @@ E, já que aparentemente estamos desenvolvendo uma plataforma juntos, quero te p
       "feedback": "Exatamente! O aluno conseguiu desbloquear a lição, mas perdeu o acesso ao atualizar a página.\n\nIsso nos dá uma pista importante: o problema apareceu depois da atualização.  "
     }
   ],
-  "correct": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7",
-  "feedbackCorrect": "Exatamente! O aluno cumpriu a regra que estabelecemos, mas o resultado não foi preservado como esperávamos.\n\nAntes de modificar a solução, precisamos investigar o que acontece com a informação de conclusão quando a página é atualizada.\n\nTalvez estejamos registrando essa informação apenas temporariamente, talvez exista algum problema na recuperação dos dados ou talvez tenhamos deixado de considerar essa situação durante o desenvolvimento.\n\nJá temos algumas hipóteses para investigar.",
-  "feedbackIncorrect": "Eu também já considerei negociar minha paz de espírito com o computador, mas vamos tentar outra abordagem.\n\nO fato de uma funcionalidade apresentar um comportamento inesperado não significa que precisamos abandonar toda a solução.\n\nO aluno cumpriu a regra: acertou duas questões e desbloqueou a próxima lição. O problema apareceu quando atualizou a página.\n\nPortanto, vale investigar o que aconteceu com a informação que indicava que ele já havia concluído a atividade.",
-  "retry": true
+  "correct": "option-a812f45d-a1e4-47c1-85d5-0e0cb0bdd4a7"
 }
 ```
 

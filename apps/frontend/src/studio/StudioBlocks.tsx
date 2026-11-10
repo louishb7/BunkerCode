@@ -255,7 +255,6 @@ export function EditorialView(props: NodeViewProps) {
   const q = data as Quiz;
   const change = (patch: Partial<Quiz>) =>
     updateAttributes({ data: { ...q, ...patch } });
-  const legacyOptions = q.options.filter((option) => !option.feedback);
   return (
     <NodeViewWrapper
       className="quiz-author"
@@ -356,16 +355,14 @@ export function EditorialView(props: NodeViewProps) {
                       Feedback da alternativa {i + 1}
                       <AuthoringText
                         multiline
-                        value={o.feedback ?? ""}
-                        placeholder={`Usa o feedback legado ${q.correct === o.id ? "correto" : "incorreto"}.`}
+                        value={o.feedback}
                         onChange={(feedback) =>
                           change({
-                            options: q.options.map((option) => {
-                              if (option.id !== o.id) return option;
-                              const rest = { ...option };
-                              delete rest.feedback;
-                              return feedback ? { ...rest, feedback } : rest;
-                            }),
+                            options: q.options.map((option) =>
+                              option.id === o.id
+                                ? { ...option, feedback }
+                                : option,
+                            ),
                           })
                         }
                       />
@@ -391,47 +388,6 @@ export function EditorialView(props: NodeViewProps) {
                   Adicionar alternativa
                 </button>
               </fieldset>
-              {legacyOptions.length > 0 && (
-                <details className="quiz-settings quiz-legacy-feedback">
-                  <summary>Feedback legado</summary>
-                  <p>
-                    Usado somente nas alternativas sem feedback próprio. A
-                    resposta marcada como correta usa o feedback correto; as
-                    demais usam o incorreto.
-                  </p>
-                  <label>
-                    Feedback correto
-                    <AuthoringText
-                      multiline
-                      value={q.feedbackCorrect}
-                      onChange={(feedbackCorrect) =>
-                        change({ feedbackCorrect })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Feedback incorreto
-                    <AuthoringText
-                      multiline
-                      value={q.feedbackIncorrect}
-                      onChange={(feedbackIncorrect) =>
-                        change({ feedbackIncorrect })
-                      }
-                    />
-                  </label>
-                </details>
-              )}
-              <details className="quiz-settings">
-                <summary>Configurações do quiz</summary>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={q.retry}
-                    onChange={(e) => change({ retry: e.target.checked })}
-                  />{" "}
-                  Permitir nova tentativa
-                </label>
-              </details>
             </>
           )}
         </>

@@ -177,8 +177,6 @@ for (const viewport of [
     await page.screenshot({
       path: info.outputPath(`quiz-correct-${viewport.width}.png`),
     });
-    await quiz.getByRole("button", { name: "Tentar novamente" }).click();
-    await expect(quiz.locator("[data-result], .quiz-feedback")).toHaveCount(0);
     await radios.first().check();
     await quiz.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(quiz.getByRole("status")).toContainText("Resposta incorreta");
@@ -394,8 +392,6 @@ test("Studio previews the real editorial blocks and physically saves a separate 
   for (const width of [390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 });
     for (const correct of [false, true]) {
-      if (!correct)
-        await preview.getByRole("button", { name: "Tentar novamente" }).click();
       await preview
         .getByRole("radio")
         .nth(correct ? 2 : 0)

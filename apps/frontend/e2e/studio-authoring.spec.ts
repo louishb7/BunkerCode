@@ -235,13 +235,10 @@ const endings = {
       id: "final-quiz",
       question: "Pergunta final",
       options: [
-        { id: "a", text: "Um" },
-        { id: "b", text: "Dois" },
+        { id: "a", text: "Um", feedback: "Sim" },
+        { id: "b", text: "Dois", feedback: "Reveja" },
       ],
       correct: "a",
-      feedbackCorrect: "Sim",
-      feedbackIncorrect: "Reveja",
-      retry: true,
     }) +
     "\n```",
 };
