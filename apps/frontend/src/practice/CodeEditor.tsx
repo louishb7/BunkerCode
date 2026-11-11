@@ -100,6 +100,8 @@ export function CodeEditor({
   language,
   variant = "practice",
   lessonAppearance = false,
+  siteAppearance = false,
+  keyboardHelpId = "editor-keyboard-help",
   onChange,
   formatRequest,
   onFormatState,
@@ -109,6 +111,8 @@ export function CodeEditor({
   code: string;
   variant?: "practice" | "example";
   lessonAppearance?: boolean;
+  siteAppearance?: boolean;
+  keyboardHelpId?: string;
   readOnly?: boolean;
   label?: string;
   language: string;
@@ -116,8 +120,10 @@ export function CodeEditor({
   formatRequest: number;
   onFormatState: (busy: boolean, message: string) => void;
 }) {
-  const { effectiveTone } = useAppearance();
-  const dark = !lessonAppearance || effectiveTone < 3;
+  const { effectiveTone, site } = useAppearance();
+  const dark = siteAppearance
+    ? site !== "light"
+    : !lessonAppearance || effectiveTone < 3;
   const themeConfig = useRef(new Compartment());
   const initialDark = useRef(dark);
   initialDark.current = dark;
@@ -189,7 +195,7 @@ export function CodeEditor({
           EditorView.contentAttributes.of({
             "aria-label": label,
             "aria-readonly": String(readOnly),
-            "aria-describedby": "editor-keyboard-help",
+            "aria-describedby": keyboardHelpId,
             spellcheck: "false",
           }),
           EditorView.updateListener.of((update) => {
@@ -206,7 +212,7 @@ export function CodeEditor({
       view.current = null;
       editor.destroy();
     };
-  }, [readOnly, label, variant]);
+  }, [readOnly, label, variant, keyboardHelpId]);
   useEffect(() => {
     view.current?.dispatch({
       effects: themeConfig.current.reconfigure(theme(dark)),

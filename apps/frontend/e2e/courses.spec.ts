@@ -26,7 +26,7 @@ test("authored courses render Markdown, highlight code, navigate in manifest ord
 }, testInfo) => {
   const executionRequests: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/api/learning"))
+    if (/\/api\/practice\/(?:runs|submissions)(?:[/?]|$)/.test(request.url()))
       executionRequests.push(request.url());
   });
   await page.goto("/courses");
@@ -197,7 +197,7 @@ test("Markdown stays inert and missing/invalid/empty content has readable states
   }
 });
 
-test("navigation exposes Home, Courses and Tactics while retired execution routes remain absent", async ({
+test("navigation exposes Home, Courses, Tactics and SQL while retired execution routes remain absent", async ({
   page,
 }) => {
   await page.goto("/courses/typescript/lessons/union-types");
@@ -220,7 +220,7 @@ test("navigation exposes Home, Courses and Tactics while retired execution route
     page
       .getByRole("navigation", { name: "Navegação principal" })
       .getByRole("link"),
-  ).toHaveText(["Início", "Cursos", "Táticas"]);
+  ).toHaveText(["Início", "Cursos", "Táticas", "SQL"]);
   await expect(page.locator(".optional-practice")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Prática opcional", exact: true }),

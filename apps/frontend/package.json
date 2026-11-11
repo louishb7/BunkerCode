@@ -11,7 +11,8 @@
     "build:public": "tsc -p tsconfig.json --noEmit && BUNKERCODE_PROFILE=public vite build",
     "preview:authoring": "BUNKERCODE_PROFILE=authoring vite preview --host 127.0.0.1",
     "preview:public": "BUNKERCODE_PROFILE=public vite preview --host 127.0.0.1",
-    "test:browser:public": "playwright test -c playwright.public.config.ts"
+    "test:browser:public": "playwright test -c playwright.public.config.ts",
+    "test:sql": "pnpm --filter @bunkercode/backend exec tsx --test ../frontend/e2e/sql-lab.test.ts"
   },
   "dependencies": {
     "@bunkercode/content": "workspace:*",

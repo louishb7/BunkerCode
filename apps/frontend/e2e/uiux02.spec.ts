@@ -47,6 +47,7 @@ for (const width of [390, 1280, 1440, 1920]) {
         "Início",
         "Cursos",
         "Táticas",
+        "SQL",
       ]);
       await expect(
         page.locator(".lesson-context, .lesson-pagination"),
