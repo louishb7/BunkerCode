@@ -4,6 +4,7 @@ import type { CourseSummary } from "../courses/api";
 // Editorial discovery only; direct routes and the content API remain available.
 const visibleCourseIds = [
   "fundamentos-programacao-javascript",
+  "sql-na-pratica",
   "typescript",
   "nodejs",
   "nestjs",

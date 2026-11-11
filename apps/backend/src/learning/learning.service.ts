@@ -1,3 +1,4 @@
+import { lessonSqlPlacement } from "@bunkercode/content";
 import {
   BadRequestException,
   ConflictException,
@@ -94,8 +95,11 @@ export class LearningService {
     return { saved: true };
   }
   async complete(userId: string, courseId: string, lessonSlug: string) {
-    this.reader.lesson(courseId, lessonSlug);
-    if (this.reader.exercise(courseId, lessonSlug).exercise)
+    const lesson = this.reader.lesson(courseId, lessonSlug);
+    if (
+      lessonSqlPlacement(lesson.markdown) ||
+      this.reader.exercise(courseId, lessonSlug).exercise
+    )
       throw new ConflictException(
         "Esta lição exige Submit aprovado; a leitura não aprova o exercício.",
       );
@@ -104,6 +108,51 @@ export class LearningService {
       skipDuplicates: true,
     });
     return { completed: true };
+  }
+  async recordSqlApproval(
+    userId: string,
+    courseId: string,
+    lessonSlug: string,
+    exerciseId: string,
+    revision: string,
+    steps: string[],
+    authorize: () => Promise<void>,
+  ) {
+    return this.db.$transaction(async (tx) => {
+      await authorize();
+      const key = { userId, courseId, lessonSlug, exerciseId, revision };
+      const data = { ...key, source: JSON.stringify({ format: 1, steps }) };
+      await tx.approvedSolution.upsert({
+        where: { userId_courseId_lessonSlug_exerciseId_revision: key },
+        create: data,
+        update: { source: data.source, approvedAt: new Date() },
+      });
+      await tx.lessonCompletion.createMany({
+        data: [{ userId, courseId, lessonSlug }],
+        skipDuplicates: true,
+      });
+      return { completed: true };
+    });
+  }
+  approvedSql(
+    userId: string,
+    courseId: string,
+    lessonSlug: string,
+    exerciseId: string,
+    revision: string,
+  ) {
+    return this.db.approvedSolution.findUnique({
+      where: {
+        userId_courseId_lessonSlug_exerciseId_revision: {
+          userId,
+          courseId,
+          lessonSlug,
+          exerciseId,
+          revision,
+        },
+      },
+      select: { source: true, revision: true, approvedAt: true },
+    });
   }
   preferences(userId: string) {
     return this.db.learningPreferences.findUnique({

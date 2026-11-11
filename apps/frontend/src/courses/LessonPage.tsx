@@ -22,7 +22,7 @@ import { useLessonNavigation } from "../product/SiteHeader";
 import { LessonNavigation } from "./LessonNavigation";
 import { Markdown, lessonBody } from "./Markdown";
 
-import { resolveSqlExercise } from "../sql-lab/exercise-catalog";
+import { useSqlExercise } from "../sql-lab/api";
 import type { SqlExercise } from "../sql-lab/exercise";
 const SqlInteraction = lazy(() =>
   import("../sql-lab/SqlInteraction").then((module) => ({
@@ -128,7 +128,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     };
   }, [id, slug]);
   const body = lessonBody(lesson.markdown, lesson.title);
-  let sqlExercise: SqlExercise | undefined;
+  let sqlReference: { exerciseId: string; version: number } | null = null;
   let sqlError = "";
   let hasSql = false;
   try {
@@ -140,13 +140,16 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           "Uma lição não pode misturar atividades SQL e JavaScript.",
         );
       // Recreated configuration is safe: session identity is explicit.
-      sqlExercise = { ...resolveSqlExercise(reference) };
+      sqlReference = reference;
     }
   } catch (error) {
     sqlError =
       error instanceof Error ? error.message : "Atividade SQL inválida.";
   }
-  const interactive = !!exercise || !!sqlExercise;
+  const sqlContent = useSqlExercise(sqlReference);
+  const sqlExercise: SqlExercise | undefined = sqlContent.data;
+  sqlError ||= sqlContent.error ?? "";
+  const interactive = !!exercise || hasSql;
   const lessonNumber =
     lesson.course.lessons.findIndex((item) => item.slug === slug) + 1;
   const moduleIndex =
@@ -255,8 +258,10 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                       ) : sqlExercise ? (
                         <aside className="editorial-note">
                           Pratique “{sqlExercise.title}” na área de código. O
-                          feedback é local.
+                          banco é local; a verificação é feita no servidor.
                         </aside>
+                      ) : hasSql ? (
+                        <p role="status">Carregando atividade SQL…</p>
                       ) : undefined
                     }
                   />
@@ -296,7 +301,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                     <p className="text-sm text-subtle">
                       Em andamento
                       {hasSql
-                        ? " · feedback SQL local, sem conclusão persistente"
+                        ? " · conclusão por Submit SQL aprovado"
                         : exercise
                           ? " · conclusão por Submit aprovado"
                           : ""}
@@ -331,7 +336,19 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                 <Suspense
                   fallback={<p role="status">Carregando atividade SQL…</p>}
                 >
-                  <SqlInteraction exercise={sqlExercise} lessonAppearance />
+                  <SqlInteraction
+                    exercise={sqlExercise}
+                    lessonAppearance
+                    lesson={
+                      user?.role === "ADMIN" && !published
+                        ? undefined
+                        : {
+                            courseId: id,
+                            lessonSlug: slug,
+                            onCompleted: refresh,
+                          }
+                    }
+                  />
                 </Suspense>
               </div>
             ) : exercise ? (

@@ -1,4 +1,4 @@
-import { createSqlEngine } from "./sql-engine";
+import { createPracticeEngine as createSqlEngine } from "@bunkercode/content/sql-engine";
 import type { SqlRequest, SqlResponse } from "./exercise";
 
 let engine: Awaited<ReturnType<typeof createSqlEngine>> | undefined;
@@ -16,11 +16,9 @@ self.onmessage = async (event: MessageEvent<SqlRequest>) => {
         type: "result",
         id: request.id,
         result:
-          request.type === "verify-state"
-            ? await engine.verifyState()
-            : request.type === "preview"
-              ? await engine.preview(request.table)
-              : await engine.execute(request.sql, request.verify),
+          request.type === "preview"
+            ? await engine.preview(request.table)
+            : await engine.execute(request.sql),
       });
     }
   } catch (error: unknown) {

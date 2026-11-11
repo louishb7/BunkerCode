@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "id": "store",
+  "version": 1,
+  "title": "As tabelas são relacionadas por orders.customer_id e customers.id.",
+  "tables": [
+    {
+      "name": "customers",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "primaryKey": true,
+          "references": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "primaryKey": false,
+          "references": null
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "nullable": false,
+          "primaryKey": false,
+          "references": null
+        }
+      ],
+      "rows": [
+        [1, "Ana Lima", "Recife"],
+        [2, "Bruno Alves", "Olinda"],
+        [3, "Carla Souza", "Recife"],
+        [4, "Daniel Costa", "Natal"]
+      ]
+    },
+    {
+      "name": "orders",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "primaryKey": true,
+          "references": null
+        },
+        {
+          "name": "customer_id",
+          "type": "integer",
+          "nullable": false,
+          "primaryKey": false,
+          "references": {
+            "table": "customers",
+            "column": "id"
+          }
+        },
+        {
+          "name": "total",
+          "type": "numeric(8,2)",
+          "nullable": false,
+          "primaryKey": false,
+          "references": null
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true,
+          "primaryKey": false,
+          "references": null
+        }
+      ],
+      "rows": [
+        [101, 1, 59.9, "Livros"],
+        [102, 2, 120, null],
+        [103, 1, 35.5, "Caderno"],
+        [104, 3, 89, null]
+      ]
+    }
+  ]
+}

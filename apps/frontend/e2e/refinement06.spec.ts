@@ -15,7 +15,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.clock.setFixedTime(new Date("2026-10-21T12:00:00-03:00"));
     await page.goto("/");
-    await expect(page.locator(".course-card")).toHaveCount(4);
+    await expect(page.locator(".course-card")).toHaveCount(5);
     await expectHomeWithoutActivity(page);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Início");
     await expect(page.locator(".site-header")).toHaveCount(1);
@@ -62,11 +62,12 @@ for (const viewport of [
           return { top: rect.top, bottom: rect.bottom, height: rect.height };
         }),
       );
-      const rows = viewport.width >= 1440 ? 1 : 2;
+      const rows = Math.ceil(cards.length / (viewport.width >= 1440 ? 4 : 2));
       expect(new Set(cards.map((card) => card.top)).size).toBe(rows);
       expect(new Set(cards.map((card) => card.bottom)).size).toBe(rows);
       for (const card of cards) {
-        expect(card.bottom).toBeLessThan(viewport.height);
+        if (card.top === cards[0]!.top)
+          expect(card.bottom).toBeLessThan(viewport.height);
         expect(card.height).toBeLessThanOrEqual(240);
       }
     } else {
@@ -87,7 +88,7 @@ for (const viewport of [
     await expect(
       nav.getByRole("link", { name: "Cursos", exact: true }),
     ).toHaveAttribute("aria-current", "page");
-    await expect(page.locator(".course-card")).toHaveCount(4);
+    await expect(page.locator(".course-card")).toHaveCount(5);
     await page.reload();
     await expect(
       nav.getByRole("link", { name: "Cursos", exact: true }),

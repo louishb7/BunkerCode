@@ -22,6 +22,15 @@ export default defineConfig(({ command, isPreview }) => {
     publicDir: authoring ? "public" : false,
     resolve: {
       alias: [
+        ...["sql", "sql-engine"].map((name) => ({
+          find: new RegExp("^@bunkercode/content/" + name + "$"),
+          replacement: fileURLToPath(
+            new URL(
+              "../../packages/content/src/" + name + ".ts",
+              import.meta.url,
+            ),
+          ),
+        })),
         {
           find: /^@bunkercode\/content$/,
           replacement: fileURLToPath(
@@ -66,7 +75,7 @@ export default defineConfig(({ command, isPreview }) => {
                   if (
                     item.type === "chunk" &&
                     Object.keys(item.modules).some((id) =>
-                      /(?:\/courses\/(?:Studio|VisualEditor|NewLessonDialog|studio-api)|\/@tiptap\/)/.test(
+                      /(?:\/courses\/(?:Studio|VisualEditor|NewLessonDialog|studio-api)|\/sql-lab\/(?:SqlAuthoring|SqlExercisePicker)|\/packages\/content\/(?:src|dist)\/sql-grading|\/@tiptap\/)/.test(
                         id,
                       ),
                     )

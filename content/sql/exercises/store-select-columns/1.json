@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "id": "store-select-columns",
+  "version": 1,
+  "status": "published",
+  "title": "Escolher colunas dos clientes",
+  "objective": "Selecionar apenas as informações necessárias de uma tabela.",
+  "instructions": "Retorne id e name de todos os clientes, nessa ordem de colunas. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": ["SELECT id, name FROM customers"],
+    "orderMatters": false
+  }
+}

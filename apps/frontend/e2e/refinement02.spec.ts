@@ -3,12 +3,14 @@ import { expect, test, type Page } from "./auth-fixture";
 
 const titles = [
   "Fundamentos de Programação com JavaScript",
+  "SQL na Prática: Do Zero aos Bancos de Dados",
   "TypeScript",
   "Node.js",
   "NestJS",
 ];
 const ids = [
   "fundamentos-programacao-javascript",
+  "sql-na-pratica",
   "typescript",
   "nodejs",
   "nestjs",
@@ -56,7 +58,7 @@ async function localRecords(page: Page) {
 
 async function visibleCourses(page: Page) {
   await expect(page.locator(".course-card-title")).toHaveText(titles);
-  await expect(page.locator(".course-card")).toHaveCount(4);
+  await expect(page.locator(".course-card")).toHaveCount(5);
   for (let i = 0; i < ids.length; i++)
     await expect(page.locator(".course-card").nth(i)).toHaveAttribute(
       "href",
@@ -183,7 +185,7 @@ test("Home preserves historical local records of all ages without displaying act
   expect(await localRecords(page)).toEqual(before);
 });
 
-test("one editorial selection controls both pages while hidden courses remain available through API, routes and resume", async ({
+test("editorial selection preserves hidden reading while account resume uses only published lessons", async ({
   page,
   request,
 }) => {
@@ -221,11 +223,26 @@ test("one editorial selection controls both pages while hidden courses remain av
       course.lessons[0]!.title,
     );
   }
+  const unpublishedSummary = (await (
+    await request.get("/api/learning")
+  ).json()) as { resume: unknown };
+  expect(unpublishedSummary.resume).toBeNull();
+  await page.goto(lesson);
+  await expect
+    .poll(
+      async () =>
+        (
+          (await (await request.get("/api/learning")).json()) as {
+            resume: { course: string; slug: string } | null;
+          }
+        ).resume,
+    )
+    .toEqual({ course: "typescript", slug: "values-and-types" });
   await page.goto("/");
   await visibleCourses(page);
   await expect(
     page.getByRole("link", { name: "Continuar estudando →" }),
-  ).toHaveAttribute("href", /^\/courses\/docker\/lessons\//);
+  ).toHaveAttribute("href", lesson);
   await page.route("**/api/content/courses", (route) =>
     route.fulfill({
       json: courses

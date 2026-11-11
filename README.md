@@ -10,11 +10,11 @@ As lições combinam texto, exemplos de código, perguntas com feedback e, quand
 
 O leitor pode ajustar a aparência da lição e o tamanho do texto. Nos exercícios, o rascunho fica neste navegador. A leitura publicada é aberta; uma conta permite guardar progresso, retomar estudos e sincronizar preferências. A conclusão de uma lição com exercício depende de uma solução aprovada pelos testes configurados, não apenas de abrir a página ou responder um quiz.
 
-O ambiente local de autoria também oferece compilação, execução isolada quando disponível e avaliação dos exercícios configurados. No perfil público atual, o editor permite escrever e formatar, mas não oferece execução remota. Essas diferenças e os limites da recuperação de soluções estão no [guia da jornada de aprendizagem](docs/learning-state.md).
+O ambiente local de autoria também oferece compilação, execução isolada quando disponível e avaliação dos exercícios configurados. No perfil público, a prática JavaScript permite escrever e formatar, sem execução remota. SQL oferece experimentação local sem conta e, quando o runner isolado está configurado, verificação e Submit autenticados. Essas diferenças e os limites da recuperação de soluções estão no [guia da jornada de aprendizagem](docs/learning-state.md).
 
 ## Estado e direção
 
-O projeto está em desenvolvimento. O curso autoral de Fundamentos de Programação com JavaScript está em produção editorial; outros cursos permanecem em preparação ou com exemplos demonstrativos identificados. A seleção pública versionada está limitada à primeira lição. Não há deploy público confirmado neste repositório.
+O projeto está em desenvolvimento. O curso autoral de Fundamentos de Programação com JavaScript está em produção editorial. SQL na Prática tem duas lições iniciais com dados fictícios e desafios; outros cursos permanecem em preparação ou com exemplos demonstrativos identificados. A seleção pública versionada inclui a primeira lição JavaScript e essas duas lições SQL. Não há deploy público confirmado neste repositório.
 
 Já existem catálogo, leitura, prática, Studio de autoria, identidade e progresso por conta. A área experimental **Táticas** trabalha raciocínio sobre programas pequenos com atividades estruturadas. A direção é consolidar a experiência e produzir conteúdo progressivamente, apoiados por um backend seguro e compreensível. Isso não representa um catálogo de cursos completo nem uma promessa de calendário.
 
@@ -31,6 +31,7 @@ O conteúdo pode ser escrito no editor de sua preferência ou no Studio com uma 
 - [Arquitetura atual](docs/architecture/overview.md): responsabilidades e decisões técnicas.
 - [Publicação](docs/publication.md): seleção de conteúdo e separação dos perfis.
 - [Deploy e recuperação](docs/deployment.md): migrations, configuração e o que precisa de backup além do Git.
+- [SQL](docs/sql-practice.md): definições versionadas, autoria no Studio e avaliação isolada.
 - [Táticas](docs/tactics-core.md): mecânicas, avaliação e limites do experimento.
 - [História selecionada](docs/history/README.md): decisões anteriores, sem valor de backlog ou arquitetura vigente.
 

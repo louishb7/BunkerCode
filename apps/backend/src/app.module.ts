@@ -1,3 +1,6 @@
+import { SqlAssessmentController } from "./sql/assessment.controller";
+import { SqlService, SQL_CONFIG } from "./sql/sql.service";
+import { SqlController } from "./sql/sql.controller";
 import { LearningController } from "./learning/learning.controller";
 import { LearningService } from "./learning/learning.service";
 import { AuthModule } from "./auth/auth.module";
@@ -13,6 +16,7 @@ export class AppModule {
     const privateControllers =
       config.profile === "authoring"
         ? [
+            (await import("./sql/authoring.controller")).SqlAuthoringController,
             (await import("./content/authoring.controller"))
               .AuthoringController,
             (await import("./practice/practice.controller")).PracticeController,
@@ -23,11 +27,15 @@ export class AppModule {
       imports: [AuthModule],
       controllers: [
         ContentController,
+        SqlController,
+        SqlAssessmentController,
         LearningController,
         ...privateControllers,
       ],
       providers: [
         LearningService,
+        SqlService,
+        { provide: SQL_CONFIG, useValue: config },
         { provide: ContentReader, useValue: new ContentReader(config) },
       ],
     };

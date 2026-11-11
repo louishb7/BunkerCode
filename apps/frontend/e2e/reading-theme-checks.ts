@@ -304,7 +304,7 @@ export async function checkReadingThemes(page: Page, info: TestInfo) {
     const feedback = await expectRenderedContrast(
       quiz.locator(".quiz-result, .quiz-feedback-text p"),
     );
-    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(4);
+    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(2);
     if ((width === 1440 && tone >= 3) || (width === 320 && tone === 3)) {
       await quiz
         .locator(".quiz-feedback")
@@ -684,9 +684,30 @@ export async function checkThemeHierarchy(
   await page.screenshot({
     path: info.outputPath("independent-reading-preference.png"),
   });
+  const savedTone = (await page
+    .getByRole("button", { name: "Sair", exact: true })
+    .count())
+    ? page.waitForResponse((response) => {
+        if (
+          !response.url().endsWith("/api/learning/preferences") ||
+          response.request().method() !== "PUT"
+        )
+          return false;
+        const body: unknown = response.request().postDataJSON();
+        return (
+          !!body &&
+          typeof body === "object" &&
+          "readingTone" in body &&
+          body.readingTone === null &&
+          "readingSize" in body &&
+          body.readingSize === 21
+        );
+      })
+    : null;
   await page
     .getByRole("button", { name: "Usar tema do site", exact: true })
     .click();
+  if (savedTone) expect((await savedTone).ok()).toBe(true);
   await expect(article).toHaveCSS("background-color", "rgb(238, 241, 244)");
   await expect(article.locator(":scope > .prose")).toHaveCSS(
     "font-size",
@@ -1150,13 +1171,11 @@ export async function checkOttoNotes(page: Page, info: TestInfo) {
       await notes
         .first()
         .evaluate((node) => node.scrollIntoView({ block: "center" }));
-      await notes
-        .first()
-        .screenshot({
-          path: info.outputPath(
-            `otto-profile-tone-${tone}-${page.viewportSize()!.width}.png`,
-          ),
-        });
+      await notes.first().screenshot({
+        path: info.outputPath(
+          `otto-profile-tone-${tone}-${page.viewportSize()!.width}.png`,
+        ),
+      });
     }
     await expect(quiz.locator(".quiz-feedback")).toHaveText(feedback, {
       useInnerText: true,

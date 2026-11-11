@@ -1,82 +1,114 @@
-# Prática SQL nas lições
+# Prática, autoria e avaliação SQL
 
-## Estado e fronteira de confiança
+## O que existe e quem decide a aprovação
 
-**IMPLEMENTADO:** PGlite em um Web Worker por interação, com dados fictícios descartáveis em memória. Estudantes exploram tabelas, escrevem SQL, executam e pedem feedback local. Consultas nunca são enviadas ao PostgreSQL da aplicação. Não há endpoint SQL, nova autenticação ou persistência SQL.
+**IMPLEMENTADO:** o leitor e a prévia do Studio usam PGlite em um Web Worker descartável. É possível explorar tabelas e executar SQL sem conta. Nenhum SQL do aluno é enviado ao PostgreSQL da aplicação. Esse banco continua reservado à autenticação e ao estado de aprendizagem pelo Prisma.
 
-**DECIDIDO:** `/sql` e o link SQL do cabeçalho continuam públicos como vitrine temporária para testar a capacidade das lições. Não são um novo produto de treinamento.
+As três ações têm significados diferentes:
 
-Uma resposta correta no navegador **não autoriza conclusão persistente**. A interação SQL não chama Run/Submit nem recebe callback de conclusão. O leitor conserva visitas e preferências existentes, mas não oferece conclusão de uma atividade SQL pelo fluxo editorial sem exercício. O futuro progresso SQL exige uma decisão explícita de validação no servidor; não basta enviar `correct: true` do navegador.
+- **Executar** usa o banco do navegador. Não consulta avaliação nem salva progresso.
+- **Verificar resposta/estado** exige sessão, avalia em container independente e retorna feedback sem concluir a lição.
+- **Submit · concluir lição** exige sessão, vínculo com a lição publicada e nova avaliação. Somente aprovação confirmada permite gravar `ApprovedSolution` e `LessonCompletion`, na mesma transação do serviço de aprendizagem existente.
 
-## Configuração e autoria
+O servidor recusa campos adicionais como `passed`, identidade de usuário e resultado esperado. Busca referência e dataset por ID/versão, confere o vínculo com a lição e reconstrói o estado sem confiar no Worker. A conclusão editorial por leitura é recusada para lições SQL. Falhas de rede, runner ou persistência não são apresentadas como conclusão confirmada. A verificação pública sem login não é oferecida; a experimentação local permanece acessível.
 
-As definições confiáveis ficam em `apps/frontend/src/sql-lab/exercise-catalog.ts` e nos arquivos de atividades. Cada `SqlExercise` tem `id`, `version`, título, objetivo, instruções, SQL inicial, preparação determinística, metadados das tabelas e limites. A preparação pertence ao código revisado do autor, nunca ao visitante.
+`/sql` continua como vitrine temporária das seis demonstrações migradas. O curso **SQL na Prática: Do Zero aos Bancos de Dados** usa o catálogo, módulos, leitor e Studio normais; não depende dessa rota. As duas lições são exemplos iniciais para revisão e desenvolvimento da autoria do criador, sem lhe atribuir relatos pessoais inventados. O Módulo 00 JavaScript não foi modificado.
 
-Uma lição referencia uma definição registrada usando um bloco JSON de topo:
+## Fonte canônica, datasets e versões
+
+A fonte editorial única é `content/sql`:
+
+```text
+sql/datasets/<id>/<version>.json
+sql/exercises/<id>/<version>.json
+sql/exercises/<id>/draft.json
+```
+
+Uma definição tem `format: 1`, `id`, `version`, `status`, `title`, `objective`, `instructions`, `starterSql`, `mode`, `dataset: {id, version}` e `assessment: {reference: string[], orderMatters: boolean}`. `reference` é privada: uma consulta ou uma sequência ordenada de comandos de alteração. Os seis exemplos anteriores mantêm IDs/versão 1; os arquivos TypeScript do catálogo foram removidos.
+
+Dataset é estrutura, não script arbitrário: título, tabelas, colunas e linhas. Cada coluna declara nome, tipo (`integer`, `text`, `numeric(8,2)` ou `boolean`), nulabilidade, chave primária e referência opcional `{table, column}`. Linhas são arrays na ordem das colunas. O validador verifica nomes, tipos, duplicação de chave, referências, valores nulos e limites. A preparação SQL é gerada com identificadores e literais escapados. Dados são fictícios e públicos; nunca inclua dados pessoais, segredos ou credenciais.
+
+Limites do formato: até oito tabelas, dezesseis colunas e cem linhas iniciais por tabela; dataset de até 128 KiB; até vinte comandos e 16 KiB de SQL no total. IDs são slugs, paths não são entradas da API. Publicação cria arquivo exclusivo: não sobrescreve versões existentes. Dataset reutilizado também é imutável. Alterar instrução relevante, preparação, referência ou comparação exige nova versão. Rascunhos usam revisão SHA-256 e lock exclusivo; conflito exige releitura e preservação do texto antes de nova gravação.
+
+Essas garantias coordenam os escritores da aplicação, não impedem um editor externo ou administrador do filesystem de alterar arquivos. Revise o diff antes do commit e preserve as versões antigas. Um lock deixado por interrupção exige inspeção do processo e dos arquivos; não tem expiração ou limpeza automática.
+
+## Studio: criar a terceira atividade e lição
+
+1. Entre como ADMIN na interface local autorizada. Abra uma lição em **Editar lição** e siga **Atividades SQL**, ou abra `/studio/sql`.
+2. Em **Datasets reutilizáveis**, reutilize `store` v1 ou configure outro JSON estruturado e clique **Salvar dataset**. Uma nova revisão usa o próximo número, sem editar versões publicadas.
+3. Clique **Novo exercício**, escolha ID estável, título, objetivo, instruções públicas, modo, dataset e SQL inicial. Escreva a referência privada; alterações podem ter vários passos. Marque exigência de ordem somente quando fizer parte do desafio.
+4. Use **Prévia do exercício** para experimentar a projeção pública. Ela não publica nem grava conclusão. **Salvar rascunho** grava explicitamente; digitar não envia alterações ao backend.
+5. **Testar referência** executa a referência no runner isolado, com os mesmos limites. **Publicar versão** testa novamente e só depois cria a versão imutável, rechecando a revisão. Runner indisponível ou referência inválida impede publicação; não há avaliação local substituta.
+6. Crie a próxima lição com o diálogo já existente e use **Atividade SQL publicada** para selecionar título, ID e versão. O seletor insere ou substitui somente o bloco SQL reconhecido no rascunho, preservando o restante do Markdown. A referência apresentada na autoria também pode ser copiada; escreva a explicação ao redor do bloco abaixo. Salvar Markdown resolve o vínculo e recusa referências ausentes.
+7. Revise a prévia, salve fisicamente, abra o leitor, confira `git diff` e faça o commit manualmente. Se a nova lição deva ser pública, revise a seleção em `config/publication.json` e gere novo snapshot. Reinicie o backend após mudar a seleção.
 
 ````markdown
 ```bunker-sql
-{"kind":"sql","exerciseId":"store-customers-recife","version":1}
+{"kind":"sql","exerciseId":"store-select-columns","version":1}
 ```
 ````
 
-`packages/content` valida estrutura, identificador, versão positiva e unicidade; campos adicionais são recusados. SQL e marcador de prática JavaScript não podem compartilhar a mesma lição. O frontend resolve identidade e versão no catálogo confiável e informa referências indisponíveis. Um exercício JavaScript externo associado à mesma lição também impede montar SQL.
+Não é preciso editar React ou Nest para acrescentar a terceira atividade. O manifesto do curso continua controlando identidade, ordem, módulos e lições. Cada lição admite uma referência SQL de topo; misturar prática JavaScript na mesma lição é recusado. Markdown comum permanece texto inerte, e a prévia não executa fences automaticamente. O rascunho SQL só existe no editor até o salvamento explícito; antes de sair, salve ou copie suas alterações.
 
-O leitor apresenta contexto no artigo e `SqlInteraction` no `StudySplit` existente, incluindo alternância Lição/Código no celular. O editor SQL acompanha as seis tonalidades do leitor. O Studio permite editar a referência na fonte Markdown, preserva o bloco no roundtrip visual e executa a mesma interação na Prévia. Não há formulário visual para criar datasets/oráculos: novas definições ainda exigem código revisado e build. Markdown SQL comum permanece texto inerte; carregar a lição não inicializa o banco. Apenas executar, verificar ou abrir registros inicia o Worker.
+## Projeção pública e distribuição privada
 
-A amostra `docs/examples/sql-select-pilot.md` é original, técnica e não publicada. Os testes a copiam somente para a fixture temporária supervisionada. Nenhum curso SQL é acrescentado ao catálogo nem ao manifesto de publicação; o Módulo 00 JavaScript permanece intacto.
+`GET /content/sql/exercises` lista as últimas versões publicadas; `GET /content/sql/exercises/:id/:version` resolve uma versão. As respostas contêm instruções, início, schema, preparação pública gerada e limites. Não contêm `assessment`, SQL de referência ou metadados de comparação privada. Rascunhos não são resolvidos por essas rotas. Publicar uma versão torna suas instruções/dados públicos também na vitrine, independentemente de a lição já ter sido incluída na seleção de cursos. Submit só pode concluir uma lição quando o vínculo também estiver publicado. `/content/sql/authoring` e suas mutações exigem ADMIN, perfil authoring e as proteções locais de Host/origem/JSON/header existentes.
 
-## Sessão e exploração
+`publication:prepare` gera `sql/public/<id>/<version>.json` a partir do acervo canônico, além dos cursos selecionados. Inclui as demonstrações SQL publicadas para a vitrine; não copia datasets canônicos, rascunhos ou definições privadas. A projeção é derivada, nunca outra fonte a editar. A validação de startup confere inventário, formato e somente leitura. O build público exclui o editor SQL do Studio e não importa o módulo de avaliação nem seus oráculos.
 
-A sessão usa `id + version`. Objetos recriados pelo React não apagam editor, dados ou feedback. A configuração é capturada uma vez por sessão; **qualquer alteração real da definição deve incrementar `version`**. Trocar identidade/versão ou sair da interação desmonta e descarta o Worker. Alterar tema mantém a sessão. Consultas e alterações não são salvas: sair ou recarregar perde a sessão.
+No perfil público, `BUNKERCODE_SQL_ASSESSMENT_DIR` aponta separadamente para a raiz privada `sql`, com `datasets` e `exercises`, fora do host estático e do snapshot público. O backend compara a projeção privada derivada com a publicada antes de avaliar. Configuração ausente ou divergente impede avaliação; leitura e execução local continuam. Nenhum acervo privado deve ser copiado para `dist-public`, servido estaticamente ou incluído em logs. “Privado” aqui descreve a distribuição pela aplicação: se o repositório e seu histórico forem públicos, as definições canônicas também serão públicas. Confidencialidade fora da aplicação exige controle de acesso ao repositório/artefato; esta avaliação verifica resultado/estado, não certifica raciocínio nem funciona como sistema de prova contra consulta de respostas.
 
-**Ver registros** usa o mesmo motor e somente nomes de tabelas presentes nos metadados confiáveis. Mostra até dez linhas reais, nomes de colunas, tipos e chaves configuradas. Não altera a consulta, não verifica resposta nem limpa feedback válido. A região tem rolagem horizontal e foco de teclado; a seção pode ser recolhida no celular. Tabelas vazias preservam cabeçalhos. Os metadados são fornecidos pelo autor, não inferidos como uma ferramenta de administração.
+## Semântica da prática e avaliação
 
-**Cancelar e descartar** e **Reiniciar banco** terminam o Worker. A próxima ação recria o dataset original; reiniciar preserva o texto do editor. Erros SQL comuns permitem correção na mesma sessão. Falha do Worker, mensagem inválida ou prazo excedido descartam o banco e permitem nova inicialização. IDs de solicitações e gerações da interface impedem respostas obsoletas de sobrescrever o estado atual.
+Consulta aceita um único SELECT, incluindo WHERE, ORDER BY, JOIN, agregação e CTEs compatíveis. A preparação é determinística. O papel de estudante não possui tabelas, criação, temporários ou privilégios administrativos. O modo consulta é somente leitura. Protocolo estendido recusa múltiplas instruções; a subconsulta usada para limitar resultados também rejeita comandos não incorporáveis.
 
-Os exemplos concedem 60 segundos à inicialização e 15 segundos a cada operação posterior. O limite de linhas limita a transferência, não custo de consulta, tamanho de célula, CPU ou memória. O primeiro uso baixa arquivos WebAssembly consideráveis. Worker e PGlite local **não são um sandbox geral de segurança**, nem garantem cotas rígidas. Não use dados reais ou segredos nos datasets.
+Alteração aceita um único SELECT, INSERT, UPDATE ou DELETE por execução, planejado com EXPLAIN sem ANALYZE antes da execução transacional. Restrições do PostgreSQL e permissões complementam o isolamento; não há allowlist de palavras por regex como garantia de segurança. DDL, administração, controle de transações, sequências e triggers não fazem parte do contrato educacional.
 
-## Referências que orientaram as decisões
+A sequência de alteração submetida é a dos comandos executados com sucesso desde o último reinício, incluindo consultas, em ordem. O texto ainda não executado não participa da solução. Verificar e Submit reproduzem esses passos em outro banco; não os reaplicam no navegador. Erros comuns fazem rollback do passo. Reiniciar, cancelar ou perder o Worker elimina banco e sequência, preservando o texto. Falhas em explorar dados que descartem o Worker também limpam a sequência.
 
-- [SQLBolt — SELECT](https://sqlbolt.com/lesson/select_queries_introduction) e [UPDATE](https://sqlbolt.com/lesson/updating_rows): explicação curta seguida de tarefa. A aplicação aqui separa explicitamente executar de verificar.
-- [SQLZoo — SELECT básico](https://sqlzoo.net/wiki/SELECT_basics): dados visíveis antes das perguntas. Fundamenta a prévia de registros reais, sem copiar dados ou enunciados.
-- [PostgreSQL Exercises](https://www.pgexercises.com/questions/basic/): categorias práticas sobre um dataset compartilhado, incluindo modificações. Orienta reaproveitar a loja fictícia em desafios progressivos.
-- [Select Star SQL](https://selectstarsql.com/): continuidade entre capítulos e investigação sobre dados. Orienta manter contexto editorial e prática juntos.
-- [DataLemur](https://datalemur.com/sql-tutorial/intro-to-sql): distingue níveis básico, intermediário e avançado e inclui exercícios executáveis. A progressão abaixo é uma proposta própria.
-- [SQL Practice](https://www.sql-practice.com/): endereço consultado, mas sem conteúdo legível pela ferramenta; nenhuma conclusão de comportamento foi derivada dele.
-- [PGlite API](https://pglite.dev/docs/api), [início](https://pglite.dev/docs/) e [Vite/bundler](https://pglite.dev/docs/bundler-support): instância em memória, protocolo de consulta única, fechamento e configuração de build. A integração Vite existente foi preservada.
+A referência e a submissão usam motores independentes, iniciados do mesmo dataset. Consultas comparam nomes/ordem de colunas e valores, preservando NULL, duplicatas e tipos. Ordem de linhas só importa quando configurada. Qualquer resultado truncado reprova. Alterações comparam todas as linhas de todas as tabelas, detectando mudanças não solicitadas. Limite é de cem linhas por resultado/tabela; referências que excedam o limite não podem ser publicadas. O limite de linhas não limita o custo de uma célula; a fronteira de recursos é o container.
 
-**HIPÓTESE:** prática livre separada, contínua ou com exercícios gerados pode ser avaliada futuramente. Não foi implementada nem aprovada.
+O autor deve escolher referências determinísticas: evite horário atual, aleatoriedade e ordenação com empates sem critério de desempate quando a ordem for exigida. O teste de publicação confirma execução e limites, mas não demonstra determinismo nem correção em qualquer conjunto de dados. A avaliação usa o dataset versionado declarado; não há geração de casos privados adicionais.
 
-## Modos e verificação
+**Ver registros** lê até dez registros reais da tabela selecionada, sem alterar texto ou avaliação. Tema e rerenders mantêm a sessão `id + version`; trocar atividade ou sair descarta o Worker. O navegador tem 60 s para inicialização e 5 s por operação posterior. Esses timers descartam o Worker, mas não constituem cotas rígidas de memória do navegador. Dispositivos lentos e custo de baixar WebAssembly continuam limitações reais.
 
-`mode: "query"` declara `expectedQuery` e, opcionalmente, `orderMatters`. Executar apenas consulta; verificar executa a consulta atual e compara nomes/ordem de colunas e valores de todas as linhas. Duplicatas contam, NULL é preservado e qualquer truncamento reprova. A ordem das linhas só importa quando a atividade a exige. As consultas são envolvidas em uma subconsulta SELECT e executadas com transação somente leitura. Há limite de 100 linhas nos exemplos.
+## Runner isolado: configuração e recuperação
 
-`mode: "mutation"` declara `expectedSql`, composto por operações confiáveis do autor sobre o dataset inicial. A inicialização cria uma referência independente, aplica essas operações, captura todas as tabelas declaradas e fecha a referência. Só então cria a sessão do aluno, com o dataset original. Não mantém dois bancos simultâneos nem coloca o oráculo no banco do estudante. Configurações com tabelas públicas não declaradas ou estado esperado maior que o limite são recusadas.
+**DECIDIDO:** um único runner PGlite separado do processo HTTP, mantendo o dialeto da prática. Alternativa PostgreSQL dedicado foi descartada neste escopo pelo custo de criar e limpar bancos/serviços e pela superfície adicional de operação. Papel SQL ou rollback isoladamente não seriam suficientes. A [decisão de arquitetura](architecture/sql-assessment.md) registra alternativas e referências primárias.
 
-**Executar comando** aceita um único SELECT, INSERT, UPDATE ou DELETE. **Verificar estado** recebe uma mensagem própria, lê o estado atual e o compara à referência, sem executar o texto do editor. Todas as linhas e tabelas do dataset são comparadas, incluindo registros que deveriam permanecer iguais. Modificações se acumulam; executar INSERT outra vez pode adicionar outra linha ou gerar erro de chave, e verificar nunca repete esse INSERT. Reiniciar restaura os dados iniciais e preserva o texto do editor. A prévia é invalidada depois de uma execução; **Ver registros** atualiza os dados reais sem alterar o feedback.
+Prepare a imagem depois de compilar o pacote de conteúdo:
 
-O protocolo estendido de `query()` do PGlite recusa múltiplos comandos. Para modificações, PostgreSQL primeiro planeja a instrução com EXPLAIN sem ANALYZE, dentro da transação, evitando comandos de controle transacional. Um papel local sem propriedade das tabelas e sem CREATE/TEMP recebe somente SELECT/INSERT/UPDATE/DELETE nas tabelas declaradas. Tags não suportadas causam rollback. Isso corrige inclusive CREATE TABLE AS, cuja tag pode ser SELECT: apenas inspecionar a tag não seria suficiente. Não há parser por regex. [EXPLAIN no PostgreSQL](https://www.postgresql.org/docs/current/sql-explain.html) documenta a diferença entre planejar e executar com ANALYZE.
+```bash
+pnpm --filter @bunkercode/content build
+node scripts/build-sql-runner.mjs
+```
 
-Essas são restrições funcionais para prática descartável, **não uma garantia contra SQL hostil ou funções arbitrárias do PostgreSQL**. O processo é local, sem dados reais, credenciais ou acesso ao banco do backend. Resultados com RETURNING são limitados antes da transferência ao componente, mas o motor pode materializar mais dados; tamanho de célula e memória não possuem cotas garantidas. Sequências, triggers, alterações de schema e administração não fazem parte do contrato didático atual; exemplos usam IDs explícitos e tabelas pequenas determinísticas.
+O build usa a imagem Node fixada por digest, a dependência PGlite do lockfile, módulos compilados e um programa fixo que recebe JSON pelo stdin. Não recebe código JavaScript do aluno. O contexto é temporário, fora do checkout, sem `.env` ou arquivos do produto, e fica preservado para inspeção. A tag local é `bunkercode-sql:local`; antes de executar, o backend verifica Linux/cgroup v2/seccomp e revisão dos módulos. Executa pelo ID imutável resolvido da imagem. Recompile/reconstrua quando mudar o motor ou dependência; imagem antiga falha fechada.
 
-## Coleção de demonstração e proposta pedagógica
+Habilite explicitamente `BUNKERCODE_SQL_RUNNER_ENABLED=1` no backend. Sem isso, a prática local funciona e a avaliação responde indisponível. Não exponha Docker via HTTP ou mount de socket ao aluno. O serviço que controla Docker possui um privilégio operacional elevado; sua separação e endurecimento no host devem fazer parte da implantação.
 
-O seletor temporário de `/sql` oferece seis configurações sobre a mesma loja fictícia, sem duplicar o motor:
+Cada avaliação usa container novo: UID/GID 65534, rede `none`, sem volumes ou variáveis da aplicação, raiz somente leitura, capabilities removidas, `no-new-privileges`, seccomp padrão, tmpfs de 1 MiB com noexec/nosuid/nodev, 1 GiB de memória sem swap adicional, 0,75 CPU, 32 processos e 64 descritores. Só uma avaliação por processo; não há fila sem limite. Entrada até 300 KB, saída combinada até 2 KiB, execução até 30 s, além de prazos curtos para operações Docker. O PGlite de referência e o do aluno exigiram mais de 512 MiB nos testes; falta de memória encerra o container e nunca aprova.
 
-| Atividade          | Objetivo observável               | Oráculo                                   |
-| ------------------ | --------------------------------- | ----------------------------------------- |
-| Clientes de Recife | Filtrar as linhas de uma cidade   | Resultado completo, sem ordem obrigatória |
-| Escolher colunas   | Retornar somente id e nome        | Nomes/ordem de colunas e todas as linhas  |
-| Filtrar e ordenar  | WHERE e ordem Z a A               | Resultado completo com ordem das linhas   |
-| Clientes e pedidos | Investigar relação com JOIN       | Resultado com duplicatas preservadas      |
-| Resumir pedidos    | COUNT, SUM e GROUP BY             | Quantidade e total por cliente            |
-| Corrigir cidade    | UPDATE apenas no cliente indicado | Estado de todas as tabelas                |
+Há seis solicitações de avaliação por conta/minuto, mapa limitado e concorrência global por processo; a criação/login de contas conserva os limites persistentes de autenticação existentes. Não é uma cota distribuída para vários servidores. Proxy, capacidade, proteção de entrada e política multi-instância precisam de validação operacional antes de produção. SQL completo e respostas privadas não são registrados pelo fluxo normal.
 
-**DECIDIDO — proposta para revisão editorial:** trabalhar com explicação breve → demonstração → exploração livre → desafio → feedback → aplicação independente e justificativa escrita. Uma lição pode reutilizar o dataset anterior, mas cada sessão começa de uma preparação determinística; não há continuidade implícita dos dados alterados entre lições.
+Cancelamento da conexão ou shutdown sinaliza término. Timeout encerra o container; cleanup remove somente o nome gerado pela avaliação. Falha de remoção suspende o runner até reiniciar o processo, sem fallback. Para recuperar: inspecione `docker ps -a --filter label=bunkercode.sql.runner=1`, confirme ausência de consumidores ativos e remova somente resíduos comprovados dessa execução. Não faça limpeza ampla do Docker nem de diretórios ignorados. Após corrigir Docker/imagem/capacidade, reinicie o backend e teste referência e submissão antes de reabrir o serviço. Cancelar não desfaz uma conclusão que já tenha sido confirmada pelo servidor; recarregue o progresso se a conexão cair nessa janela.
 
-- **Fundamentos básicos:** reconhecer tabelas, linhas, colunas e chaves; selecionar informações; filtrar e ordenar; investigar NULL; resumir um conjunto simples; praticar INSERT/UPDATE/DELETE com inspeção antes/depois e reset. Exercícios pedem resultados observáveis e explicação das escolhas, sem depender de quizzes.
-- **SQL intermediário:** resolver perguntas entre tabelas com JOIN; agrupamento e HAVING; subconsultas, CTEs e CASE; compreender relacionamentos, modelagem básica e constraints; construir pequenos relatórios e detectar alterações indevidas nos dados.
-- **HIPÓTESE de trilha avançada:** funções de janela, consultas complexas, planos, índices, transações, desempenho e concorrência. Exigiriam objetivos e limites de execução próprios; este trabalho não implementa essas aulas nem autoriza um curso adicional.
+## Testes seguros e limites de prontidão
 
-**PENDENTE:** curadoria autoral de uma trilha SQL real, interface visual de definição de atividades e decisão de confiança para progresso. A amostra e a coleção provam capacidades técnicas; não constituem um currículo publicado ou aprovação pedagógica definitiva. **DESCARTADO neste escopo:** curso completo automático, geração ilimitada, CMS SQL paralelo e execução SQL no backend. **INCERTO:** custo de inicialização em dispositivos mais fracos; os testes locais não representam todos os navegadores e hardwares.
+Use um PostgreSQL de teste dedicado, `DATABASE_URL` explícita e segredos JWT efêmeros, sem carregar `.env` do autor. Aplique migrations somente nesse banco. As fixtures de browser continuam pertencendo ao supervisor temporário; saídas e evidências usam novo diretório por rodada. Não abra nem migre SQLite histórico.
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm build:public
+# Com a imagem pronta, ambiente de teste e runner habilitado:
+pnpm --filter @bunkercode/backend exec tsx --test test/sql-runner.test.ts
+pnpm --filter @bunkercode/frontend test:browser -- sql-lab.spec.ts
+pnpm --filter @bunkercode/frontend test:browser:public
+```
+
+Os testes reais de Docker usam `BUNKERCODE_SQL_RUNNER_ENABLED=1`; sem essa variável, são explicitamente marcados como skip. Não confunda uma suíte sem esses testes com prova de isolamento. As validações cobrem projeção, arquivos, revisão obsoleta, avaliação sem estado compartilhado, privilégios, limites do kernel, cancelamento/timeout/recuperação e APIs autorizadas. Rode tarefas caras em sequência e Playwright com um worker nesta máquina.
+
+**Estado de prontidão:** capacidade local implementada, com validação em ambiente isolado de desenvolvimento registrada na entrega. **PENDENTE:** revisão do host/kernel e runtime de hospedagem, atualização e integridade da imagem, capacidade real, quotas distribuídas/proxy, observabilidade, operação e recuperação no ambiente de destino. Container compartilha kernel; não equivale a uma VM nem a um atestado de produção. Nenhum deploy foi realizado. **HIPÓTESE:** baixo custo em hardware fraco e capacidade para muitas avaliações simultâneas não foram comprovados. **DESCARTADO:** executor no banco principal, oráculo no frontend, plataforma SQL paralela, microserviço genérico e currículo avançado antecipado.

@@ -16,6 +16,6 @@ Uma consulta começa com as colunas desejadas em `SELECT` e a tabela em `FROM`. 
 
 ## Explique sua escolha
 
-Execute, observe o resultado e use **Verificar resposta** para obter feedback local. Se precisar, edite e tente novamente. Depois escreva, com suas palavras, por que sua condição inclui alguns clientes e exclui outros.
+Execute, observe o resultado e use **Verificar resposta** para obter feedback da referência publicada no servidor, com uma conta. Se precisar, edite e tente novamente. Depois escreva, com suas palavras, por que sua condição inclui alguns clientes e exclui outros.
 
 O banco desta prática é descartável. Sair da atividade perde as consultas e os dados da sessão; a verificação não registra conclusão de lição.

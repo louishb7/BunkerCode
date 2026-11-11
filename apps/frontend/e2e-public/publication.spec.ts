@@ -167,10 +167,10 @@ test("public home and catalog include only explicitly selected fixture courses",
   await page.screenshot({ path: info.outputPath("home-publica.png") });
   await page.goto("/courses");
   const courses = page.locator('a[href^="/courses/"]');
-  await expect(courses).toHaveCount(4);
+  await expect(courses).toHaveCount(5);
   await expect(page.getByRole("link", { name: /PostgreSQL/ })).toBeVisible();
   await page.reload();
-  await expect(courses).toHaveCount(4);
+  await expect(courses).toHaveCount(5);
   await page.screenshot({ path: info.outputPath("catalogo-publico.png") });
 });
 
@@ -463,7 +463,7 @@ anonymousTest(
 );
 
 anonymousTest(
-  "public SQL practice executes and verifies without authentication or SQL API calls",
+  "public SQL practice executes anonymously and explains authenticated verification",
   async ({ page }) => {
     anonymousTest.setTimeout(90000);
     const sqlRequests: string[] = [];
@@ -478,9 +478,15 @@ anonymousTest(
     await page
       .getByRole("textbox", { name: "Consulta SQL" })
       .fill("SELECT * FROM customers WHERE city = 'Recife'");
-    await page.getByRole("button", { name: "Verificar resposta" }).click();
+    await page.getByRole("button", { name: "Executar consulta" }).click();
     await expect(page.locator(".sql-workspace [role=status]")).toHaveText(
-      "Resposta correta!",
+      "Consulta concluída.",
+      { timeout: 65000 },
+    );
+    await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(2);
+    await page.getByRole("button", { name: "Verificar resposta" }).click();
+    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+      "Entre na sua conta para verificar no servidor",
       { timeout: 65000 },
     );
     await page.getByRole("button", { name: "Ver registros" }).click();
@@ -489,6 +495,76 @@ anonymousTest(
         .getByRole("region", { name: "Registros de customers" })
         .locator("tbody tr"),
     ).toHaveCount(4);
+    await page.goto("/courses");
+    await page.getByRole("link", { name: /SQL na Prática/ }).click();
+    await page
+      .getByRole("link", { name: /Seu primeiro contato com um banco de dados/ })
+      .first()
+      .click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "Código", exact: true }).click();
+    await page
+      .getByRole("textbox", { name: "Consulta SQL" })
+      .fill("SELECT id,name FROM customers");
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(4, {
+      timeout: 65000,
+    });
+    await page.getByRole("button", { name: "Submit · concluir lição" }).click();
+    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+      "Entre na sua conta",
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.locator(".sql-workspace [role=status]").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: anonymousTest.info().outputPath("sql-public-mobile-lesson.png"),
+      fullPage: true,
+    });
+    await page
+      .getByRole("link", { name: "Próxima lição", exact: true })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Encontrando o que importa",
+    );
     expect(sqlRequests).toEqual([]);
   },
 );
+
+test("published SQL course keeps private authoring absent and records only trusted account completion", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(100000);
+  expect((await request.get("/api/content/sql/authoring")).status()).toBe(404);
+  const response = await request.get(
+    "/api/content/sql/exercises/store-select-columns/1",
+  );
+  expect(response.status()).toBe(200);
+  const text = await response.text();
+  expect(text).not.toContain("assessment");
+  expect(text).not.toContain("expectedQuery");
+  await page.goto(
+    "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados",
+  );
+  await expect(page.locator('a[href$="/edit"]')).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Consulta SQL" })
+    .fill("SELECT id,name FROM customers");
+  await page.getByRole("button", { name: "Submit · concluir lição" }).click();
+  await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+    "Conclusão da lição registrada",
+    { timeout: 45000 },
+  );
+  await expect(
+    page.getByText("Lição concluída", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Carregar solução aprovada" }).click();
+  await expect(page.getByRole("textbox", { name: "Consulta SQL" })).toHaveText(
+    "SELECT id,name FROM customers",
+  );
+});

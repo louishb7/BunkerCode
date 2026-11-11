@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "id": "store-update-city",
+  "version": 1,
+  "status": "published",
+  "title": "Corrigir a cidade de Bruno",
+  "objective": "Alterar uma linha com UPDATE e preservar todos os outros registros.",
+  "instructions": "O cliente de id 2 está com a cidade incorreta. Altere somente sua cidade para Recife, preservando os demais campos, clientes e pedidos. Execute o comando e depois verifique o estado do banco.",
+  "starterSql": "SELECT * FROM customers WHERE id = 2;",
+  "mode": "mutation",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": ["UPDATE customers SET city = 'Recife' WHERE id = 2;"],
+    "orderMatters": false
+  }
+}

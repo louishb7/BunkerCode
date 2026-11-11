@@ -84,23 +84,16 @@ export class SqlRuntime {
     });
   }
 
-  execute(sql: string, verify = false): Promise<SqlResult> {
-    return this.perform({ type: "query", sql, verify });
+  execute(sql: string): Promise<SqlResult> {
+    return this.perform({ type: "query", sql });
   }
 
   preview(table: string): Promise<SqlResult> {
     return this.perform({ type: "preview", table });
   }
 
-  verifyState(): Promise<SqlResult> {
-    return this.perform({ type: "verify-state" });
-  }
-
   private async perform(
-    action:
-      | { type: "query"; sql: string; verify: boolean }
-      | { type: "preview"; table: string }
-      | { type: "verify-state" },
+    action: { type: "query"; sql: string } | { type: "preview"; table: string },
   ): Promise<SqlResult> {
     if (this.operation)
       throw new SqlRuntimeError("Já existe uma consulta em execução.", false);

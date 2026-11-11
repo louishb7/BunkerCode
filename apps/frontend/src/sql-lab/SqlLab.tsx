@@ -1,20 +1,44 @@
 import { Page } from "../courses/Page";
 import { SqlInteraction } from "./SqlInteraction";
-import { useState } from "react";
-import { sqlExercises } from "./exercise-catalog";
+import { useEffect, useState } from "react";
+import { sqlRequest } from "./api";
+import {
+  parsePublicSqlExercise,
+  type PublicSqlExercise,
+} from "@bunkercode/content/sql";
 import "./sql-lab.css";
 
 export default function SqlLab() {
-  const [selected, setSelected] = useState(sqlExercises[0]!.id);
-  const exercise = sqlExercises.find((item) => item.id === selected)!;
+  const [sqlExercises, setExercises] = useState<PublicSqlExercise[]>([]);
+  const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [selected, setSelected] = useState("");
+  useEffect(() => {
+    const abort = new AbortController();
+    void sqlRequest("/exercises", "GET", undefined, abort.signal)
+      .then((value) => {
+        if (!Array.isArray(value)) throw new Error("Catálogo SQL inválido.");
+        const data = value.map(parsePublicSqlExercise);
+        setExercises(data);
+        setLoaded(true);
+        setSelected(data[0]?.id ?? "");
+      })
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted)
+          setError(
+            error instanceof Error ? error.message : "Catálogo indisponível.",
+          );
+      });
+    return () => abort.abort();
+  }, []);
+  const exercise = sqlExercises.find((item) => item.id === selected);
   return (
     <Page title="Laboratório SQL" className="sql-lab">
       <header>
         <h1>Laboratório SQL</h1>
         <p>
-          Ambiente temporário para experimentar a interação SQL que será usada
-          nas lições. Explore os dados fictícios e compare atividades
-          configuráveis.
+          Vitrine temporária das atividades SQL disponíveis nas lições. Explore
+          os dados fictícios para experimentar consultas e alterações.
         </p>
       </header>
       <label className="sql-exercise-selector">
@@ -30,7 +54,18 @@ export default function SqlLab() {
           ))}
         </select>
       </label>
-      <SqlInteraction exercise={exercise} />
+      {error && <p role="alert">{error}</p>}
+      {exercise ? (
+        <SqlInteraction exercise={exercise} />
+      ) : (
+        <p role="status">
+          {error
+            ? "Recarregue para tentar novamente."
+            : loaded
+              ? "Nenhuma atividade SQL publicada."
+              : "Carregando catálogo SQL…"}
+        </p>
+      )}
     </Page>
   );
 }

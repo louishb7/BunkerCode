@@ -198,7 +198,11 @@ importers:
         specifier: ^7.3.7
         version: 7.3.7(@types/node@24.19.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)
 
-  packages/content: {}
+  packages/content:
+    dependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.16
+        version: 0.5.16
 
   packages/tactics-core:
     devDependencies:

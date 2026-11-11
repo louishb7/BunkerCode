@@ -53,6 +53,9 @@ await withBrowserFixture(
           env: {
             ...process.env,
             BUNKERCODE_CONTENT_DIR: snapshot ?? content,
+            ...(snapshot
+              ? { BUNKERCODE_SQL_ASSESSMENT_DIR: join(content, "sql") }
+              : {}),
             ...(selectionFile
               ? { BUNKERCODE_PUBLICATION_FILE: selectionFile }
               : {}),

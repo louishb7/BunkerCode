@@ -27,6 +27,9 @@ const StudioPage = __BUNKERCODE_AUTHORING__
       })),
     )
   : undefined;
+const SqlAuthoring = __BUNKERCODE_AUTHORING__
+  ? lazy(() => import("./sql-lab/SqlAuthoring"))
+  : undefined;
 const SqlLab = lazy(() => import("./sql-lab/SqlLab"));
 const TacticsLab = lazy(() => import("./tactics/TacticsLab"));
 
@@ -60,6 +63,16 @@ function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/tactics" element={<TacticsLab />} />
+          {SqlAuthoring && (
+            <Route
+              path="/studio/sql"
+              element={
+                <RequireSession admin>
+                  <SqlAuthoring />
+                </RequireSession>
+              }
+            />
+          )}
           <Route path="/sql" element={<SqlLab />} />
           <Route
             path="/lab/tactics"

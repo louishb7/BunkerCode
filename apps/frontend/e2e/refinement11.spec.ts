@@ -111,12 +111,11 @@ for (const viewport of [
       name: "Nota",
       exact: true,
     });
-    await expect(notes).toHaveCount(2);
+    await expect(notes).toHaveCount(1);
     await expect(notes.getByText("Informação", { exact: true })).toHaveCount(0);
-    await expect(notes.nth(1).locator("p")).toHaveCount(3);
-    await expect(notes.nth(1).locator("em")).toContainText(
-      "será que isso está certo mesmo?",
-    );
+    await expect(notes.first().locator("p")).toHaveCount(1);
+    await expect(notes.first()).toContainText("oração subordinada");
+    await expect(notes.first()).toContainText("Bhaskara");
     await notes.first().scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath(`note-${viewport.width}.png`),
@@ -165,9 +164,9 @@ for (const viewport of [
         .locator(".quiz-feedback")
         .evaluate((node) => getComputedStyle(node).borderColor),
     );
-    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(4);
+    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(2);
     await expect(quiz.locator(".quiz-feedback-text")).toContainText(
-      "Já temos algumas hipóteses para investigar.",
+      "Isso nos dá uma pista importante",
     );
     if (viewport.width < 600) {
       const text = await quiz.locator(".quiz-feedback-text").boundingBox();
@@ -198,7 +197,7 @@ for (const viewport of [
         .locator(".quiz-feedback")
         .evaluate((node) => getComputedStyle(node).borderColor),
     );
-    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(4);
+    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(2);
     if (viewport.width < 600) {
       const text = await quiz.locator(".quiz-feedback-text").boundingBox();
       expect(text!.width).toBeGreaterThanOrEqual(viewport.width * 0.65);

@@ -79,3 +79,12 @@ HANDOFF ou interrupção: usar a mesma estrutura, registrar objetivo original, c
 ## Fixtures do navegador
 
 Apenas o supervisor `scripts/browser-backend.mjs` cria e limpa a fixture de conteúdo pertencente à execução, em diretório temporário nativo fora do checkout. Configuração e `--list` não copiam conteúdo. Encerramento normal, falhas controladas e SIGINT/SIGTERM limpam a cópia; SIGKILL pode deixar resíduo somente no temporário do sistema. Diretórios fornecidos explicitamente por ambiente nunca são removidos; sobreposição com conteúdo canônico é recusada. Exclusão não acompanha symlinks nem adota diretórios de outras execuções. Preservar resultados, traces, capturas e dados locais. Resíduos antigos exigem inventário, dry-run, comprovação de origem e ausência de consumidores ativos antes de limpeza direcionada. `.bunkerlab` permanece intocado; bancos históricos não são abertos nem migrados.
+
+## Infraestrutura SQL
+
+- SQL de aluno nunca executa no PostgreSQL principal nem no processo HTTP NestJS. Usar somente runner SQL descartável e isolado, sem credenciais do produto, com limites explícitos e recuperação verificada.
+- Feedback/snapshot/hash do cliente nunca autoriza progresso. Submit SQL deve ser avaliado independentemente e usar autorização e progresso existentes.
+- Oráculos e casos privados nunca entram em bundles, sourcemaps, manifests ou respostas públicas. Projeções públicas devem ser explícitas e testadas.
+- Definições/datasets usam validação canônica e versões publicadas imutáveis. Não manter catálogo TypeScript paralelo nem substituir versões históricas; mudanças de comportamento exigem nova versão.
+- Studio exige ADMIN, revisão de rascunho e contratos locais de publicação. Reutilizar cursos, leitor e Studio existentes.
+- Mudanças SQL exigem evidência de correção, isolamento, limites, autorização e recuperação antes de declarar a fronteira completa. Política detalhada: `docs/architecture/sql-assessment.md`.

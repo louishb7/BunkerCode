@@ -2,8 +2,13 @@
   "courses": [
     {
       "id": "fundamentos-programacao-javascript",
+      "lessons": ["o-que-significa-programar"]
+    },
+    {
+      "id": "sql-na-pratica",
       "lessons": [
-        "o-que-significa-programar"
+        "seu-primeiro-contato-com-um-banco-de-dados",
+        "encontrando-o-que-importa"
       ]
     }
   ]

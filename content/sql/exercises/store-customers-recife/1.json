@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "id": "store-customers-recife",
+  "version": 1,
+  "status": "published",
+  "title": "Clientes de Recife",
+  "objective": "Filtrar registros por uma característica e conferir quais linhas atendem à condição.",
+  "instructions": "Retorne todas as colunas dos clientes de Recife. A ordem das linhas não importa; mantenha as colunas id, name e city, nessa ordem.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": ["SELECT * FROM customers WHERE city = 'Recife'"],
+    "orderMatters": false
+  }
+}

@@ -139,11 +139,22 @@ export function parseEditorial(
 function scanEditorial(source: string) {
   let exercise = false;
   let sql: SqlPlacement | null = null;
+  let sqlRange: { start: number; end: number } | null = null;
+  let offset = 0;
   let fence:
-    | { marker: string; size: number; language: string; body: string[] }
+    | {
+        marker: string;
+        size: number;
+        language: string;
+        body: string[];
+        start: number;
+      }
     | undefined;
   const ids = new Set<string>();
-  for (const line of source.replaceAll("\r\n", "\n").split("\n")) {
+  for (const raw of source.split(/(?<=\n)/)) {
+    const line = raw.replace(/\r?\n$/, "");
+    const start = offset;
+    offset += raw.length;
     if (!fence) {
       const opening = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
       if (opening)
@@ -152,6 +163,7 @@ function scanEditorial(source: string) {
           size: opening[1]!.length,
           language: opening[2]!.trim().split(/\s+/)[0]!,
           body: [],
+          start,
         };
     } else if (
       new RegExp(`^ {0,3}${fence.marker}{${fence.size},}\\s*$`).test(line)
@@ -170,6 +182,7 @@ function scanEditorial(source: string) {
         if ("kind" in block && block.kind === "sql") {
           if (sql) throw new Error("Atividade SQL duplicada.");
           sql = block;
+          sqlRange = { start: fence.start, end: offset };
         }
         if ("id" in block) {
           if (ids.has(block.id))
@@ -184,13 +197,46 @@ function scanEditorial(source: string) {
     throw new Error("Bloco editorial sem fechamento.");
   if (sql && exercise)
     throw new Error("Uma lição não pode misturar atividades SQL e JavaScript.");
-  return { exercise, sql };
+  return { exercise, sql, sqlRange };
 }
 export function validateEditorial(source: string): boolean {
   return scanEditorial(source).exercise;
 }
 export function lessonSqlPlacement(source: string): SqlPlacement | null {
   return scanEditorial(source).sql;
+}
+
+/** Replace only a recognized top-level SQL fence, preserving surrounding Markdown. */
+export function setLessonSqlPlacement(
+  source: string,
+  value: SqlPlacement,
+): string {
+  const reference = parseSqlPlacement(value);
+  const { exercise, sqlRange } = scanEditorial(source);
+  if (exercise)
+    throw new Error("Uma lição não pode misturar atividades SQL e JavaScript.");
+  const newline =
+    source.includes("\r\n") && !source.replaceAll("\r\n", "").includes("\n")
+      ? "\r\n"
+      : "\n";
+  const block =
+    "```bunker-sql" +
+    newline +
+    JSON.stringify(reference) +
+    newline +
+    "```" +
+    newline;
+  const result = sqlRange
+    ? source.slice(0, sqlRange.start) + block + source.slice(sqlRange.end)
+    : source +
+      (source.trim()
+        ? source.endsWith(newline)
+          ? newline
+          : newline + newline
+        : "") +
+      block;
+  validateEditorial(result);
+  return result;
 }
 
 export interface OutputTest {

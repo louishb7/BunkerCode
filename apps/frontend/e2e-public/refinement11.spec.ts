@@ -46,7 +46,7 @@ for (const viewport of [
       page.getByRole("link", { name: "Editar lição", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByRole("complementary", { name: "Nota" })).toHaveCount(
-      2,
+      1,
     );
     await expect(page.locator(".lesson-nav-position")).toHaveText("01/02");
     await expect(
@@ -63,7 +63,9 @@ for (const viewport of [
     await quiz.getByRole("radio").first().check();
     await quiz.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(quiz.getByRole("status")).toContainText("Resposta incorreta");
-    await quiz.getByRole("button", { name: "Tentar novamente" }).click();
+    await expect(
+      quiz.getByRole("button", { name: "Tentar novamente" }),
+    ).toHaveCount(0);
     await quiz.getByRole("radio").last().check();
     await quiz.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(quiz.getByRole("status")).toContainText("Resposta correta");
@@ -76,7 +78,7 @@ for (const viewport of [
         .locator(".quiz-feedback")
         .evaluate((node) => getComputedStyle(node).borderColor),
     );
-    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(4);
+    await expect(quiz.locator(".quiz-feedback-text p")).toHaveCount(2);
     await quiz.locator(".quiz-feedback").scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath(`public-quiz-${viewport.width}.png`),

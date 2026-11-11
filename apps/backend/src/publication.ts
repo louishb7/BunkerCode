@@ -1,3 +1,4 @@
+import { SqlContent, sqlPublicationFiles } from "./sql/content";
 import {
   accessSync,
   constants,
@@ -7,7 +8,11 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { readManifestSource } from "@bunkercode/content/manifest";
-import { type Course, validSlug } from "@bunkercode/content";
+import {
+  type Course,
+  validSlug,
+  lessonSqlPlacement,
+} from "@bunkercode/content";
 import { loadCourse, loadLesson } from "./content/courses";
 import { loadExercise } from "./content/exercise";
 
@@ -136,7 +141,15 @@ export function selectedPublicationFiles(
     const course = publicationCourse(source, selection);
     files.push(`courses/${id}/course.json`);
     for (const lesson of course.lessons) {
-      loadLesson(id, lesson.slug, root);
+      const sourceLesson = loadLesson(id, lesson.slug, root);
+      const reference = lessonSqlPlacement(sourceLesson.markdown);
+      if (reference && loadExercise(id, lesson.slug, root))
+        throw new Error("Publication cannot mix SQL and JavaScript activities");
+      if (reference)
+        new SqlContent(join(source, "sql")).public(
+          reference.exerciseId,
+          reference.version,
+        );
       files.push(`courses/${id}/lessons/${lesson.slug}/lesson.md`);
       if (loadExercise(id, lesson.slug, root))
         files.push(`courses/${id}/lessons/${lesson.slug}/exercise.json`);
@@ -161,9 +174,10 @@ function expectedEntries(files: readonly string[]): string[] {
 export function validatePublication(directory: string): string[] {
   const entries = publicationInventory(directory, true);
   const courses = readPublicationSelection(join(directory, "publication.json"));
-  const expected = expectedEntries(
-    selectedPublicationFiles(directory, courses),
-  );
+  const expected = expectedEntries([
+    ...selectedPublicationFiles(directory, courses),
+    ...sqlPublicationFiles(directory).keys(),
+  ]);
   if (JSON.stringify(entries) !== JSON.stringify(expected))
     throw new Error("Publication contains missing or unselected files");
   for (const selection of courses) {

@@ -1,3 +1,4 @@
+import { sqlPublicationFiles } from "./sql/content";
 import {
   chmodSync,
   constants,
@@ -50,6 +51,10 @@ export function preparePublication(
       join(destination, file),
       constants.COPYFILE_EXCL,
     );
+  }
+  for (const [file, text] of sqlPublicationFiles(source)) {
+    mkdirSync(dirname(join(destination, file)), { recursive: true });
+    writeFileSync(join(destination, file), text, { flag: "wx" });
   }
   // Only the generated snapshot manifest is projected; authoring stays untouched.
   for (const selection of courses) {

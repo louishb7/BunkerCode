@@ -1,3 +1,5 @@
+import { setLessonSqlPlacement } from "@bunkercode/content";
+import { SqlExercisePicker } from "../sql-lab/SqlExercisePicker";
 import { localIdentityScope } from "../auth/session";
 import {
   lazy,
@@ -303,6 +305,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
             )}
           </select>
         </div>
+        <Link to="/studio/sql">Atividades SQL</Link>
         <button
           ref={newLessonButton}
           className="studio-new-lesson"
@@ -351,6 +354,27 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           {saving ? "Salvando…" : "Salvar alterações"}
         </button>
       </header>
+      <SqlExercisePicker
+        disabled={saving || pendingNotes}
+        onSelect={(reference) => {
+          try {
+            changeBuffer({
+              ...buffer,
+              markdown: setLessonSqlPlacement(buffer.markdown, reference),
+            });
+            setNotice(
+              "Referência SQL alterada no rascunho. Confira a prévia e salve explicitamente.",
+            );
+            setError("");
+          } catch (error) {
+            setError(
+              error instanceof Error
+                ? error.message
+                : "Não foi possível inserir a atividade SQL.",
+            );
+          }
+        }}
+      />
       {creating && (
         <NewLessonDialog
           courseId={id}

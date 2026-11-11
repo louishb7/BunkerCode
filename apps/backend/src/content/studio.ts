@@ -1,4 +1,6 @@
-import { validateEditorial } from "@bunkercode/content";
+import { loadExercise } from "./exercise";
+import { SqlContent } from "../sql/content";
+import { validateEditorial, lessonSqlPlacement } from "@bunkercode/content";
 import {
   constants,
   openSync,
@@ -76,6 +78,16 @@ export function saveLesson(
   root = coursesRoot(),
 ): MarkdownRevision {
   const requested = input(value);
+  const reference = lessonSqlPlacement(requested.markdown);
+  if (reference && loadExercise(id, slug, root))
+    throw new BadRequestException(
+      "Uma lição não pode misturar atividades SQL e JavaScript.",
+    );
+  if (reference)
+    new SqlContent(join(dirname(root), "sql")).public(
+      reference.exerciseId,
+      reference.version,
+    );
   const location = lessonLocation(id, slug, root);
   const directory = dirname(location.path);
   const lockPath = join(directory, ".studio-save.lock");

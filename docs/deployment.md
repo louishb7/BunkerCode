@@ -44,7 +44,7 @@ Não se executa `migrate dev`, `db push`, reset, seed, down migration nem corre�
 
 ## Limites e validação
 
-Essa estrutura automatiza a etapa de migrations para PostgreSQL local ou hospedado, sem escolher ou configurar um provedor de nuvem. A URL real, TLS/CA, permissões, backups, job de release, snapshot e proxy continuam sendo configuração do ambiente de hospedagem. O backend preserva seu bind em loopback; a publicação externa depende da topologia de proxy já documentada. O runner público continua desabilitado.
+Essa estrutura automatiza a etapa de migrations para PostgreSQL local ou hospedado, sem escolher ou configurar um provedor de nuvem. A URL real, TLS/CA, permissões, backups, job de release, snapshot e proxy continuam sendo configuração do ambiente de hospedagem. O backend preserva seu bind em loopback; a publicação externa depende da topologia de proxy já documentada. O runner JavaScript público continua desabilitado. A avaliação SQL é uma capacidade separada e opcional: exige imagem isolada, habilitação explícita e acervo privado fora do snapshot/host estático, conforme [configuração e recuperação SQL](sql-practice.md). O launcher de migrations não provisiona Docker nem habilita essa avaliação.
 
 Os testes de startup cobrem duas inicializações concorrentes com migrations já aplicadas, falha real da CLI sem abertura HTTP, ausência de URL e proteção dos logs. O pacote de evidências da sprint complementa com bancos descartáveis vazios, upgrade com usuário/sessão existentes, repetição idempotente e histórico de migration falha. Nenhum teste deve usar `bunkercode_dev` como fixture.
 

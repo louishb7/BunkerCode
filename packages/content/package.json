@@ -20,6 +20,18 @@
     "./manifest": {
       "types": "./dist/manifest.d.ts",
       "default": "./dist/manifest.js"
+    },
+    "./sql": {
+      "types": "./dist/sql.d.ts",
+      "default": "./dist/sql.js"
+    },
+    "./sql-engine": {
+      "types": "./dist/sql-engine.d.ts",
+      "default": "./dist/sql-engine.js"
+    },
+    "./sql-grading": {
+      "types": "./dist/sql-grading.d.ts",
+      "default": "./dist/sql-grading.js"
     }
   },
   "typesVersions": {
@@ -29,7 +41,19 @@
       ],
       "manifest": [
         "dist/manifest.d.ts"
+      ],
+      "sql": [
+        "dist/sql.d.ts"
+      ],
+      "sql-engine": [
+        "dist/sql-engine.d.ts"
+      ],
+      "sql-grading": [
+        "dist/sql-grading.d.ts"
       ]
     }
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.16"
   }
 }

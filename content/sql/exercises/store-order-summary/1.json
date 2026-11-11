@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "id": "store-order-summary",
+  "version": 1,
+  "status": "published",
+  "title": "Resumir pedidos por cliente",
+  "objective": "Agrupar pedidos e calcular quantidade e soma por cliente.",
+  "instructions": "Para cada customer_id com pedidos, retorne customer_id, COUNT(*) com o nome purchases e SUM(total) com o nome total. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM orders;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT customer_id, COUNT(*) AS purchases, SUM(total) AS total FROM orders GROUP BY customer_id"
+    ],
+    "orderMatters": false
+  }
+}

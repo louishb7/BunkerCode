@@ -1,7 +1,10 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { createSqlEngine, equivalentResults } from "../src/sql-lab/sql-engine";
-import { storeExercise } from "../src/sql-lab/store-exercise";
+import {
+  createSqlEngine,
+  equivalentResults,
+} from "@bunkercode/content/sql-grading";
+import { storeExercise } from "./sql-fixtures";
 import {
   SqlRuntime,
   SqlRuntimeError,
@@ -49,6 +52,7 @@ test("empty schemas, nulls, duplicate column names and large results preserve me
   );
   assert.deepEqual(empty, {
     fields: ["id", "name"],
+    types: [23, 25],
     rows: [],
     truncated: false,
   });
@@ -302,6 +306,7 @@ test("table exploration reads actual records, is allowlisted and preserves gradi
   try {
     assert.deepEqual(await other.preview("sample"), {
       fields: ["value"],
+      types: [23],
       rows: [],
       truncated: false,
     });
@@ -339,7 +344,7 @@ test("lesson SQL references reject invalid, duplicate and mixed activities", asy
 });
 
 test("mutation grading checks independent whole-table state without replay and resets deterministically", async () => {
-  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  const { updateExercise } = await import("./sql-fixtures");
   let mutation = await createSqlEngine(updateExercise);
   try {
     assert.equal((await mutation.verifyState()).correct, false);
@@ -379,7 +384,7 @@ test("mutation grading checks independent whole-table state without replay and r
 });
 
 test("INSERT and DELETE use real SQL, preserve duplicates, nulls and typed values, and reject unintended changes", async () => {
-  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  const { updateExercise } = await import("./sql-fixtures");
   const mutation = await createSqlEngine({
     ...updateExercise,
     schema: [
@@ -421,7 +426,7 @@ test("INSERT and DELETE use real SQL, preserve duplicates, nulls and typed value
 });
 
 test("mutation configurations must cover all tables and fit complete expected state", async () => {
-  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  const { updateExercise } = await import("./sql-fixtures");
   await assert.rejects(
     createSqlEngine({ ...updateExercise, schema: [updateExercise.schema[0]!] }),
     /todas as tabelas/,
@@ -482,8 +487,7 @@ test("separate runtime instances keep requests and disposal independent", async 
 });
 
 test("catalog exercises share the engine and reject incorrect results including wrong ordering", async () => {
-  const { sqlExercises, resolveSqlExercise } =
-    await import("../src/sql-lab/exercise-catalog");
+  const { sqlExercises, resolveSqlExercise } = await import("./sql-fixtures");
   assert.equal(
     new Set(sqlExercises.map((exercise) => exercise.id)).size,
     sqlExercises.length,
@@ -555,10 +559,48 @@ test("preview limits real rows while keeping empty-table fields", async () => {
     assert.equal(preview.truncated, true);
     assert.deepEqual(await instance.preview("empty_sample"), {
       fields: ["name"],
+      types: [25],
       rows: [],
       truncated: false,
     });
   } finally {
     await instance.close();
   }
+});
+
+test("grading preserves PostgreSQL type identity for numeric versus text results", async () => {
+  const numeric = await engine.execute("SELECT 12.50::numeric AS value");
+  const text = await engine.execute("SELECT '12.50'::text AS value");
+  assert.equal(equivalentResults(numeric, text), false);
+});
+
+test("lesson picker replaces only real SQL references and preserves ordinary fences, CRLF and surrounding source", async () => {
+  const { setLessonSqlPlacement, lessonSqlPlacement } =
+    await import("@bunkercode/content");
+  const ref = {
+    kind: "sql" as const,
+    exerciseId: "store-select-columns",
+    version: 1,
+  };
+  const ordinary =
+    "# Title\r\n\r\n````markdown\r\n```bunker-sql\r\n{}\r\n```\r\n````\r\n";
+  const inserted = setLessonSqlPlacement(ordinary, ref);
+  assert.ok(inserted.startsWith(ordinary));
+  assert.deepEqual(lessonSqlPlacement(inserted), ref);
+  assert.ok(!inserted.replaceAll("\r\n", "").includes("\n"));
+  const replaced = setLessonSqlPlacement(inserted + "\r\nAfter\r\n", {
+    ...ref,
+    version: 2,
+  });
+  assert.ok(replaced.startsWith(ordinary));
+  assert.ok(replaced.endsWith("\r\nAfter\r\n"));
+  assert.deepEqual(lessonSqlPlacement(replaced), { ...ref, version: 2 });
+  assert.throws(
+    () =>
+      setLessonSqlPlacement(
+        '```bunker-exercise\n{"kind":"exercise"}\n```',
+        ref,
+      ),
+    /misturar/,
+  );
 });

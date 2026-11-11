@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "id": "store-customer-orders",
+  "version": 1,
+  "status": "published",
+  "title": "Relacionar clientes e pedidos",
+  "objective": "Usar JOIN para identificar a pessoa responsável por cada pedido.",
+  "instructions": "Retorne name do cliente e total de cada pedido, nessa ordem de colunas. Inclua todos os pedidos; um cliente pode aparecer mais de uma vez. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM orders;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT c.name, o.total FROM customers c JOIN orders o ON o.customer_id = c.id"
+    ],
+    "orderMatters": false
+  }
+}

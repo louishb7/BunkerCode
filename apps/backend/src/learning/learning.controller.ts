@@ -1,3 +1,4 @@
+import { SqlService } from "../sql/sql.service";
 import {
   Body,
   Controller,
@@ -15,6 +16,7 @@ import { emptyInput, LearningService } from "./learning.service";
 export class LearningController {
   constructor(
     @Inject(LearningService) private readonly learning: LearningService,
+    @Inject(SqlService) private readonly sql: SqlService,
   ) {}
   @Get()
   summary(@Req() req: AuthenticatedRequest) {
@@ -41,12 +43,15 @@ export class LearningController {
     return this.learning.complete(req.identity.id, course, lesson);
   }
   @Get("courses/:course/lessons/:lesson/solution")
-  solution(
+  async solution(
     @Req() req: AuthenticatedRequest,
     @Param("course") course: string,
     @Param("lesson") lesson: string,
   ) {
-    return this.learning.solution(req.identity.id, course, lesson);
+    return (
+      (await this.sql.solution(req.identity.id, course, lesson)) ??
+      this.learning.solution(req.identity.id, course, lesson)
+    );
   }
   @Get("preferences")
   async preferences(@Req() req: AuthenticatedRequest) {

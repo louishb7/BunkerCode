@@ -58,7 +58,7 @@ export default defineConfig({
         BUNKERCODE_BROWSER_PUBLIC_COURSES:
           process.env.BUNKERCODE_BROWSER_OWNED_CONTENT_DIR ===
           process.env.BUNKERCODE_BROWSER_CONTENT_DIR
-            ? '[{"id":"fundamentos-programacao-javascript","lessons":["o-que-significa-programar"]},{"id":"typescript","lessons":["values-and-types"]}]'
+            ? '[{"id":"fundamentos-programacao-javascript","lessons":["o-que-significa-programar"]},{"id":"typescript","lessons":["values-and-types"]},{"id":"sql-na-pratica","lessons":["seu-primeiro-contato-com-um-banco-de-dados","encontrando-o-que-importa"]}]'
             : "",
         NODE_PATH: "",
         BUNKERCODE_STUDIO_ORIGIN: "http://127.0.0.1:5184",

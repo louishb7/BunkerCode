@@ -4,6 +4,7 @@ import type { Course, CourseSummary } from "../src/courses/api";
 
 const ids = [
   "fundamentos-programacao-javascript",
+  "sql-na-pratica",
   "typescript",
   "nodejs",
   "nestjs",
@@ -91,11 +92,12 @@ for (const viewport of [
       if (viewport.width >= 1280) {
         expect(card.descriptionLines).toBeLessThanOrEqual(3);
         expect(card.height).toBeLessThanOrEqual(240);
-        expect(card.bottom).toBeLessThan(viewport.height);
+        if (card.top === metrics[0]!.top)
+          expect(card.bottom).toBeLessThan(viewport.height);
       }
     }
     if (viewport.width >= 1280) {
-      const rows = viewport.width >= 1440 ? 1 : 2;
+      const rows = Math.ceil(courses.length / (viewport.width >= 1440 ? 4 : 2));
       expect(new Set(metrics.map((card) => card.top)).size).toBe(rows);
       expect(new Set(metrics.map((card) => card.metadataBottom)).size).toBe(
         rows,

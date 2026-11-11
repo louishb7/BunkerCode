@@ -11,7 +11,11 @@ const identities = new Set([
 ]);
 export function CourseArtwork({ id }: { id: string }) {
   const technology =
-    id === "fundamentos-programacao-javascript" ? "javascript" : id;
+    id === "fundamentos-programacao-javascript"
+      ? "javascript"
+      : id === "sql-na-pratica"
+        ? "postgresql"
+        : id;
   return (
     <div
       aria-hidden="true"

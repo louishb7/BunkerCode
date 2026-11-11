@@ -957,3 +957,26 @@
 .note-edit-trigger {
   margin-top: 8px;
 }
+.studio-sql-picker {
+  margin: 0 0 18px;
+  min-width: 0;
+}
+.studio-sql-picker label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.studio-sql-picker select {
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.studio-sql-picker select:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}

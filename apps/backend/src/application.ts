@@ -67,7 +67,7 @@ export async function createApplication(quiet = false) {
     allowedHeaders: ["Authorization", "Content-Type", "X-Bunkercode-Client"],
   });
   app.use(
-    "/learning",
+    ["/learning", "/sql"],
     (req: Request, res: Response, next: NextFunction) => {
       res.setHeader("Cache-Control", "no-store");
       if (req.method !== "GET" && req.method !== "HEAD") {
@@ -85,8 +85,9 @@ export async function createApplication(quiet = false) {
       }
       next();
     },
-    json({ limit: "4kb" }),
   );
+  app.use("/learning", json({ limit: "4kb" }));
+  app.use("/sql", json({ limit: "110kb" }));
   app.use(
     "/auth",
     (req: Request, res: Response, next: NextFunction) => {
@@ -114,6 +115,7 @@ export async function createApplication(quiet = false) {
       req.method !== "GET" &&
       req.method !== "HEAD" &&
       (req.path.toLowerCase().startsWith("/content/courses") ||
+        req.path.toLowerCase().startsWith("/content/sql") ||
         req.path.toLowerCase().startsWith("/practice"))
     ) {
       if (config.profile === "public") {
@@ -157,6 +159,7 @@ export async function createApplication(quiet = false) {
   });
   // Markdown can expand through JSON escapes; the decoded byte limit remains 256 KiB.
   app.use("/content/courses", json({ limit: 1600 * 1024 }));
+  app.use("/content/sql", json({ limit: "220kb" }));
   app.use("/practice", json({ limit: 800 * 1024 }));
   app.use(
     (error: unknown, _req: Request, res: Response, next: NextFunction) => {
