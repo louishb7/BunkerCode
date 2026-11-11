@@ -24,6 +24,7 @@ import {
   indentWithTab,
 } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
+import { sql } from "@codemirror/lang-sql";
 import {
   bracketMatching,
   indentOnInput,
@@ -83,9 +84,10 @@ const theme = (dark: boolean) =>
         outline: "1px solid var(--editor-accent, #e8bd68)",
       },
       ".cm-activeLine": { backgroundColor: "var(--editor-surface, #ffffff05)" },
-      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground": {
-        backgroundColor: "var(--editor-selection, #455163)",
-      },
+      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
+        {
+          backgroundColor: "var(--editor-selection, #455163)",
+        },
       "&.cm-focused": {
         outline: "2px solid var(--editor-accent, #e8bd68)",
         outlineOffset: "-2px",
@@ -155,7 +157,9 @@ export function CodeEditor({
               ? javascript({
                   typescript: initialLanguage.current === "typescript",
                 })
-              : [],
+              : initialLanguage.current === "sql"
+                ? sql()
+                : [],
           ),
           syntaxHighlighting(darcula),
           themeConfig.current.of(theme(initialDark.current)),
@@ -213,7 +217,9 @@ export function CodeEditor({
       effects: languageConfig.current.reconfigure(
         language === "typescript" || language === "javascript"
           ? javascript({ typescript: language === "typescript" })
-          : [],
+          : language === "sql"
+            ? sql()
+            : [],
       ),
     });
   }, [language]);

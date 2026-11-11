@@ -27,6 +27,7 @@ const StudioPage = __BUNKERCODE_AUTHORING__
       })),
     )
   : undefined;
+const SqlLab = lazy(() => import("./sql-lab/SqlLab"));
 const TacticsLab = lazy(() => import("./tactics/TacticsLab"));
 
 class RouteBoundary extends Component<
@@ -59,6 +60,7 @@ function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/tactics" element={<TacticsLab />} />
+          <Route path="/sql" element={<SqlLab />} />
           <Route
             path="/lab/tactics"
             element={

@@ -16,6 +16,8 @@ export default defineConfig(({ command, isPreview }) => {
       "Public profile requires a production build and static hosting/preview",
     );
   return {
+    optimizeDeps: { exclude: ["@electric-sql/pglite"] },
+    worker: { format: "es" },
     define: { __BUNKERCODE_AUTHORING__: JSON.stringify(authoring) },
     publicDir: authoring ? "public" : false,
     resolve: {
