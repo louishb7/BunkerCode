@@ -147,11 +147,11 @@
 .sql-challenge {
   overflow-wrap: anywhere;
 }
-.sql-editor {
+.sql-interaction:not(.sql-lesson) .sql-editor {
   --reading-background: var(--color-bunker);
   --reading-text: var(--color-text);
 }
-[data-site-theme="light"] .sql-editor {
+[data-site-theme="light"] .sql-interaction:not(.sql-lesson) .sql-editor {
   --editor-surface: #eeeef1;
   --editor-muted: #585962;
   --editor-line: #85858e;
@@ -166,4 +166,88 @@
   --editor-function: #70501c;
   --editor-selection: #c5d3e3;
   --editor-raised: #e0e0e7;
+}
+
+.sql-schema {
+  min-width: 0;
+}
+.sql-schema summary {
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 32px;
+}
+.sql-schema select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 6px 0 12px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-bunker);
+  color: var(--color-text);
+}
+.sql-schema > button {
+  margin-top: 16px;
+}
+.sql-schema details > div {
+  margin-top: 12px;
+}
+.sql-schema summary:focus-visible,
+.sql-schema select:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+.sql-editor .cm-scroller {
+  min-height: 150px;
+  max-height: 280px;
+}
+.sql-editor .cm-content {
+  min-height: 150px;
+}
+
+.sql-lesson-workspace {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+.sql-lesson .sql-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.sql-lesson .sql-notice {
+  margin-top: 0;
+}
+.sql-lesson .sql-workspace {
+  gap: 16px;
+}
+.sql-exercise-selector {
+  display: block;
+  margin-bottom: 20px;
+}
+.sql-exercise-selector select {
+  display: block;
+  max-width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.sql-lesson {
+  --color-subtle: var(--reading-muted);
+}
+/* Override CodeMirror's injected theme specificity only within SQL practice. */
+.sql-interaction .sql-editor .cm-scroller {
+  height: clamp(150px, 22dvh, 220px);
+  min-height: 150px;
+}
+.sql-interaction .sql-editor .cm-content {
+  min-height: 100%;
+}
+.sql-lesson .sql-editor .cm-scroller {
+  height: clamp(150px, 18dvh, 180px);
 }

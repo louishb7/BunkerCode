@@ -7,7 +7,11 @@ import {
   SqlRuntimeError,
   type SqlWorker,
 } from "../src/sql-lab/sql-runtime";
-import type { SqlRequest, SqlResponse } from "../src/sql-lab/exercise";
+import {
+  sqlSessionKey,
+  type SqlRequest,
+  type SqlResponse,
+} from "../src/sql-lab/exercise";
 
 let engine: Awaited<ReturnType<typeof createSqlEngine>>;
 before(async () => {
@@ -254,5 +258,307 @@ test("the same SQL engine accepts a different lesson definition without the stor
     await assert.rejects(configured.execute("SELECT * FROM customers", false));
   } finally {
     await configured.close();
+  }
+});
+
+test("session identity ignores object references and changes for exercise or version", () => {
+  assert.equal(
+    sqlSessionKey(storeExercise),
+    sqlSessionKey({ ...storeExercise }),
+  );
+  assert.notEqual(
+    sqlSessionKey(storeExercise),
+    sqlSessionKey({ ...storeExercise, version: 2 }),
+  );
+  assert.notEqual(
+    sqlSessionKey(storeExercise),
+    sqlSessionKey({ ...storeExercise, id: "other" }),
+  );
+});
+
+test("table exploration reads actual records, is allowlisted and preserves grading", async () => {
+  const preview = await engine.preview("orders");
+  assert.deepEqual(preview.fields, ["id", "customer_id", "total", "note"]);
+  assert.equal(preview.rows.length, 4);
+  assert.equal(preview.rows[1]![3], null);
+  await assert.rejects(
+    engine.preview("pg_catalog.pg_authid"),
+    /não disponível/,
+  );
+  await assert.rejects(
+    engine.preview('customers"; DELETE FROM customers;--'),
+    /não disponível/,
+  );
+  assert.equal(
+    (await engine.execute(storeExercise.expectedQuery, true)).correct,
+    true,
+  );
+  const other = await createSqlEngine({
+    ...storeExercise,
+    schema: [{ name: "sample", columns: [{ name: "value", type: "integer" }] }],
+    setupSql: "CREATE TABLE sample(value integer);",
+    expectedQuery: "SELECT value FROM sample",
+  });
+  try {
+    assert.deepEqual(await other.preview("sample"), {
+      fields: ["value"],
+      rows: [],
+      truncated: false,
+    });
+  } finally {
+    await other.close();
+  }
+});
+
+test("lesson SQL references reject invalid, duplicate and mixed activities", async () => {
+  const { parseSqlPlacement, lessonSqlPlacement, validateEditorial } =
+    await import("@bunkercode/content");
+  const block =
+    '```bunker-sql\n{"kind":"sql","exerciseId":"store-customers-recife","version":1}\n```';
+  assert.deepEqual(lessonSqlPlacement(block), {
+    kind: "sql",
+    exerciseId: storeExercise.id,
+    version: 1,
+  });
+  assert.equal(lessonSqlPlacement("```sql\nSELECT 1;\n```"), null);
+  for (const reference of [
+    null,
+    { kind: "sql", exerciseId: "../bad", version: 1 },
+    { kind: "sql", exerciseId: "valid", version: 0 },
+    { kind: "sql", exerciseId: "valid", version: 1, setupSql: "untrusted" },
+  ])
+    assert.throws(() => parseSqlPlacement(reference));
+  assert.throws(() => validateEditorial(block + "\n\n" + block), /duplicada/);
+  assert.throws(
+    () =>
+      validateEditorial(
+        block + '\n\n```bunker-exercise\n{"kind":"exercise"}\n```',
+      ),
+    /misturar/,
+  );
+});
+
+test("mutation grading checks independent whole-table state without replay and resets deterministically", async () => {
+  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  let mutation = await createSqlEngine(updateExercise);
+  try {
+    assert.equal((await mutation.verifyState()).correct, false);
+    await mutation.execute("UPDATE customers SET city = 'Recife' WHERE id = 2");
+    const changed = await mutation.preview("customers");
+    assert.equal((await engine.preview("customers")).rows[1]![2], "Olinda");
+    assert.equal(changed.rows[1]![2], "Recife");
+    assert.equal((await mutation.verifyState()).correct, true);
+    assert.equal((await mutation.verifyState()).correct, true);
+    assert.deepEqual(await mutation.preview("customers"), changed);
+    await mutation.execute("UPDATE customers SET city = 'Recife'");
+    assert.equal((await mutation.verifyState()).correct, false);
+    await mutation.execute("UPDATE customers SET city = 'Natal' WHERE id = 4");
+    assert.equal((await mutation.verifyState()).correct, true);
+    await mutation.execute(
+      "UPDATE orders SET total = total + 1 WHERE id = 101",
+    );
+    assert.equal((await mutation.verifyState()).correct, false);
+    for (const sql of [
+      "COMMIT",
+      "ROLLBACK",
+      "BEGIN",
+      "SET ROLE postgres",
+      "UPDATE customers SET city = 'Natal'; DELETE FROM orders",
+      "CREATE TABLE unexpected AS SELECT 1 AS id",
+      "UPDATE customers SET missing = 1",
+    ]) {
+      await assert.rejects(mutation.execute(sql), sql);
+    }
+    await mutation.close();
+    mutation = await createSqlEngine(updateExercise);
+    assert.equal((await mutation.preview("customers")).rows[1]![2], "Olinda");
+    assert.equal((await mutation.verifyState()).correct, false);
+  } finally {
+    await mutation.close();
+  }
+});
+
+test("INSERT and DELETE use real SQL, preserve duplicates, nulls and typed values, and reject unintended changes", async () => {
+  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  const mutation = await createSqlEngine({
+    ...updateExercise,
+    schema: [
+      {
+        name: "sample",
+        columns: [
+          { name: "value", type: "integer" },
+          { name: "note", type: "text" },
+          { name: "amount", type: "numeric" },
+          { name: "active", type: "boolean" },
+        ],
+      },
+    ],
+    setupSql:
+      "CREATE TABLE sample(value integer, note text, amount numeric(8,2), active boolean); INSERT INTO sample VALUES (1,NULL,2.50,true),(1,NULL,2.50,true),(2,'keep',8.00,false);",
+    expectedSql:
+      "INSERT INTO sample VALUES (3,NULL,4.75,true); DELETE FROM sample WHERE value = 2;",
+  });
+  try {
+    await assert.rejects(
+      mutation.execute("INSERT INTO sample VALUES ('bad',NULL,1,true)"),
+    );
+    assert.equal((await mutation.verifyState()).correct, false);
+    await mutation.execute("INSERT INTO sample VALUES (3,NULL,4.75,true)");
+    await mutation.execute("DELETE FROM sample WHERE value = 2");
+    assert.equal((await mutation.verifyState()).correct, true);
+    const before = await mutation.preview("sample");
+    await mutation.verifyState();
+    assert.deepEqual(await mutation.preview("sample"), before);
+    await mutation.execute("INSERT INTO sample VALUES (3,NULL,4.75,true)");
+    assert.equal((await mutation.verifyState()).correct, false);
+    await assert.rejects(
+      mutation.execute("DELETE FROM sample", true),
+      /separadamente/,
+    );
+  } finally {
+    await mutation.close();
+  }
+});
+
+test("mutation configurations must cover all tables and fit complete expected state", async () => {
+  const { updateExercise } = await import("../src/sql-lab/update-exercise");
+  await assert.rejects(
+    createSqlEngine({ ...updateExercise, schema: [updateExercise.schema[0]!] }),
+    /todas as tabelas/,
+  );
+  await assert.rejects(
+    createSqlEngine({
+      ...updateExercise,
+      limits: { ...updateExercise.limits, maxRows: 1 },
+    }),
+    /limite de linhas/,
+  );
+});
+
+test("comparison distinguishes SQL NULL, non-finite floats, text and numeric values", async () => {
+  const nullResult = await engine.execute("SELECT NULL::float8 AS value");
+  const nanResult = await engine.execute("SELECT 'NaN'::float8 AS value");
+  const infinityResult = await engine.execute(
+    "SELECT 'Infinity'::float8 AS value",
+  );
+  assert.equal(equivalentResults(nanResult, nullResult), false);
+  assert.equal(equivalentResults(infinityResult, nullResult), false);
+  assert.equal(equivalentResults(nanResult, nanResult), true);
+  assert.equal(
+    equivalentResults(
+      { fields: ["v"], rows: [[1]], truncated: false },
+      { fields: ["v"], rows: [["1"]], truncated: false },
+    ),
+    false,
+  );
+  assert.equal(
+    equivalentResults(
+      { fields: ["v"], rows: [[{ a: 1, b: 2 }]], truncated: false },
+      { fields: ["v"], rows: [[{ b: 2, a: 1 }]], truncated: false },
+    ),
+    true,
+  );
+});
+
+test("separate runtime instances keep requests and disposal independent", async () => {
+  const a = new FakeWorker(),
+    b = new FakeWorker();
+  const first = new SqlRuntime(storeExercise, () => a);
+  const second = new SqlRuntime(storeExercise, () => b);
+  const runA = first.preview("customers");
+  const runB = second.execute("SELECT 1");
+  a.ready();
+  b.ready();
+  await tick();
+  assert.equal(a.requests.at(-1)?.type, "preview");
+  assert.equal(b.requests.at(-1)?.type, "query");
+  const discarded = assert.rejects(runA, /descartado/);
+  first.dispose();
+  b.result();
+  await discarded;
+  assert.deepEqual((await runB).rows, [[1]]);
+  assert.equal(b.terminated, false);
+  second.dispose();
+});
+
+test("catalog exercises share the engine and reject incorrect results including wrong ordering", async () => {
+  const { sqlExercises, resolveSqlExercise } =
+    await import("../src/sql-lab/exercise-catalog");
+  assert.equal(
+    new Set(sqlExercises.map((exercise) => exercise.id)).size,
+    sqlExercises.length,
+  );
+  assert.throws(
+    () =>
+      resolveSqlExercise({
+        kind: "sql",
+        exerciseId: storeExercise.id,
+        version: 99,
+      }),
+    /não disponível/,
+  );
+  for (const exercise of sqlExercises) {
+    assert.equal(
+      resolveSqlExercise({
+        kind: "sql",
+        exerciseId: exercise.id,
+        version: exercise.version,
+      }),
+      exercise,
+    );
+    assert.ok(exercise.objective);
+    if (exercise.mode !== "query") continue;
+    const instance = await createSqlEngine(exercise);
+    try {
+      assert.equal(
+        (await instance.execute(exercise.expectedQuery, true)).correct,
+        true,
+        exercise.id,
+      );
+      assert.equal(
+        (await instance.execute("SELECT 0 AS wrong", true)).correct,
+        false,
+        exercise.id,
+      );
+      if (exercise.orderMatters)
+        assert.equal(
+          (
+            await instance.execute(
+              exercise.expectedQuery.replace("DESC", "ASC"),
+              true,
+            )
+          ).correct,
+          false,
+        );
+      const preview = await instance.preview("customers");
+      assert.equal(preview.rows.length, 4);
+    } finally {
+      await instance.close();
+    }
+  }
+});
+
+test("preview limits real rows while keeping empty-table fields", async () => {
+  const instance = await createSqlEngine({
+    ...storeExercise,
+    schema: [
+      { name: "sample", columns: [{ name: "value", type: "integer" }] },
+      { name: "empty_sample", columns: [{ name: "name", type: "text" }] },
+    ],
+    setupSql:
+      "CREATE TABLE sample(value integer); INSERT INTO sample SELECT generate_series(1,15); CREATE TABLE empty_sample(name text);",
+    expectedQuery: "SELECT value FROM sample",
+  });
+  try {
+    const preview = await instance.preview("sample");
+    assert.equal(preview.rows.length, 10);
+    assert.equal(preview.truncated, true);
+    assert.deepEqual(await instance.preview("empty_sample"), {
+      fields: ["name"],
+      rows: [],
+      truncated: false,
+    });
+  } finally {
+    await instance.close();
   }
 });

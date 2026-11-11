@@ -15,7 +15,12 @@ self.onmessage = async (event: MessageEvent<SqlRequest>) => {
       reply({
         type: "result",
         id: request.id,
-        result: await engine.execute(request.sql, request.verify),
+        result:
+          request.type === "verify-state"
+            ? await engine.verifyState()
+            : request.type === "preview"
+              ? await engine.preview(request.table)
+              : await engine.execute(request.sql, request.verify),
       });
     }
   } catch (error: unknown) {

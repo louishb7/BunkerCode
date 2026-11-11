@@ -84,7 +84,24 @@ export class SqlRuntime {
     });
   }
 
-  async execute(sql: string, verify = false): Promise<SqlResult> {
+  execute(sql: string, verify = false): Promise<SqlResult> {
+    return this.perform({ type: "query", sql, verify });
+  }
+
+  preview(table: string): Promise<SqlResult> {
+    return this.perform({ type: "preview", table });
+  }
+
+  verifyState(): Promise<SqlResult> {
+    return this.perform({ type: "verify-state" });
+  }
+
+  private async perform(
+    action:
+      | { type: "query"; sql: string; verify: boolean }
+      | { type: "preview"; table: string }
+      | { type: "verify-state" },
+  ): Promise<SqlResult> {
     if (this.operation)
       throw new SqlRuntimeError("Já existe uma consulta em execução.", false);
     const operation = Symbol();
@@ -130,7 +147,7 @@ export class SqlRuntime {
       if (this.operation !== operation)
         throw new SqlRuntimeError("Ambiente descartado.", true);
       const response = await this.request(
-        { type: "query", id: ++this.sequence, sql, verify },
+        { ...action, id: ++this.sequence },
         this.exercise.limits.queryMs,
       );
       if (response.type === "error")

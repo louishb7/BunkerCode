@@ -193,3 +193,13 @@ test("note formatting preserves selected text and validates authoring links", ()
   ])
     assert.equal(safeAuthoringLink(value), false);
 });
+
+test("SQL reference roundtrips through source and visual editing without executable SQL configuration", () => {
+  const source =
+    'Antes\n\n```bunker-sql\n{"kind":"sql","exerciseId":"store-customers-recife","version":1}\n```\n\nDepois';
+  const opened = openVisual(source);
+  assert.ok(opened.document, opened.error);
+  const serialized = markdownManager.serialize(opened.document);
+  assert.ok(openVisual(serialized).document);
+  assert.ok(serialized.includes('"exerciseId":"store-customers-recife"'));
+});

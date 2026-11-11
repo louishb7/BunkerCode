@@ -3,7 +3,7 @@ import { learningRequest, learningLessonPath } from "../learning/api";
 import { useAuth } from "../auth/Auth";
 import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
-import { validateEditorial } from "@bunkercode/content";
+import { validateEditorial, lessonSqlPlacement } from "@bunkercode/content";
 import { LessonAppearance, ReadingArticle, StudySplit } from "./ReadingTools";
 import { recordActivity } from "../product/activity-store";
 import { memo, lazy, Suspense, useEffect, useMemo, useState } from "react";
@@ -22,6 +22,13 @@ import { useLessonNavigation } from "../product/SiteHeader";
 import { LessonNavigation } from "./LessonNavigation";
 import { Markdown, lessonBody } from "./Markdown";
 
+import { resolveSqlExercise } from "../sql-lab/exercise-catalog";
+import type { SqlExercise } from "../sql-lab/exercise";
+const SqlInteraction = lazy(() =>
+  import("../sql-lab/SqlInteraction").then((module) => ({
+    default: module.SqlInteraction,
+  })),
+);
 const LessonMarkdown = memo(Markdown);
 const PracticePanel = lazy(() => import("../practice/PracticePanel"));
 
@@ -121,6 +128,25 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     };
   }, [id, slug]);
   const body = lessonBody(lesson.markdown, lesson.title);
+  let sqlExercise: SqlExercise | undefined;
+  let sqlError = "";
+  let hasSql = false;
+  try {
+    const reference = lessonSqlPlacement(body);
+    hasSql = !!reference;
+    if (reference) {
+      if (exercise)
+        throw new Error(
+          "Uma lição não pode misturar atividades SQL e JavaScript.",
+        );
+      // Recreated configuration is safe: session identity is explicit.
+      sqlExercise = { ...resolveSqlExercise(reference) };
+    }
+  } catch (error) {
+    sqlError =
+      error instanceof Error ? error.message : "Atividade SQL inválida.";
+  }
+  const interactive = !!exercise || !!sqlExercise;
   const lessonNumber =
     lesson.course.lessons.findIndex((item) => item.slug === slug) + 1;
   const moduleIndex =
@@ -157,13 +183,13 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     [exercise],
   );
   return (
-    <LessonAppearance practice={!!exercise}>
+    <LessonAppearance practice={interactive}>
       <LessonNavigation lesson={lesson} />
       <Page
         title={`${lesson.title} · ${lesson.course.title}`}
-        className={`lesson-reader ${exercise ? "practice-workspace" : ""}`}
+        className={`lesson-reader ${interactive ? "practice-workspace" : ""}`}
       >
-        {exercise && (
+        {interactive && (
           <div
             className="mobile-workspace-switch"
             role="group"
@@ -185,8 +211,8 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
           </div>
         )}
         <StudySplit
-          key={exercise ? "practice" : "reading"}
-          practice={!!exercise}
+          key={interactive ? "practice" : "reading"}
+          practice={interactive}
           mobileView={mobileView}
           left={
             <ReadingArticle
@@ -220,7 +246,20 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
               </header>
               <div className="prose">
                 {body.trim() ? (
-                  <LessonMarkdown source={body} exercise={exercisePrompt} />
+                  <LessonMarkdown
+                    source={body}
+                    exercise={exercisePrompt}
+                    sqlExercise={
+                      sqlError ? (
+                        <p role="alert">{sqlError}</p>
+                      ) : sqlExercise ? (
+                        <aside className="editorial-note">
+                          Pratique “{sqlExercise.title}” na área de código. O
+                          feedback é local.
+                        </aside>
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   <p>
                     Esta lição ainda está vazia. Escreva seu conteúdo no arquivo
@@ -241,7 +280,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                 <div className="lesson-progress">
                   {completed ? (
                     <p role="status">Lição concluída</p>
-                  ) : practice && !exercise && !practiceError ? (
+                  ) : practice &&
+                    !exercise &&
+                    !hasSql &&
+                    !sqlError &&
+                    !practiceError ? (
                     <button
                       type="button"
                       disabled={completing}
@@ -252,7 +295,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                   ) : (
                     <p className="text-sm text-subtle">
                       Em andamento
-                      {exercise ? " · conclusão por Submit aprovado" : ""}
+                      {hasSql
+                        ? " · feedback SQL local, sem conclusão persistente"
+                        : exercise
+                          ? " · conclusão por Submit aprovado"
+                          : ""}
                     </p>
                   )}
                   {syncError && <p role="alert">{syncError}</p>}
@@ -276,7 +323,18 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
             </ReadingArticle>
           }
           right={
-            exercise ? (
+            sqlExercise ? (
+              <div
+                className="sql-lesson-workspace"
+                aria-label="Área de código SQL"
+              >
+                <Suspense
+                  fallback={<p role="status">Carregando atividade SQL…</p>}
+                >
+                  <SqlInteraction exercise={sqlExercise} lessonAppearance />
+                </Suspense>
+              </div>
+            ) : exercise ? (
               <div
                 aria-label="Área de código"
                 className="programming-workspace min-w-0"

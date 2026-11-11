@@ -461,3 +461,34 @@ anonymousTest(
     await checkPublicShell(page, info);
   },
 );
+
+anonymousTest(
+  "public SQL practice executes and verifies without authentication or SQL API calls",
+  async ({ page }) => {
+    anonymousTest.setTimeout(90000);
+    const sqlRequests: string[] = [];
+    page.on("request", (request) => {
+      if (/\/api\/(practice|sql)(\/|$)/.test(request.url()))
+        sqlRequests.push(request.url());
+    });
+    await page.goto("/sql");
+    await expect(
+      page.getByRole("link", { name: "Entrar", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("textbox", { name: "Consulta SQL" })
+      .fill("SELECT * FROM customers WHERE city = 'Recife'");
+    await page.getByRole("button", { name: "Verificar resposta" }).click();
+    await expect(page.locator(".sql-workspace [role=status]")).toHaveText(
+      "Resposta correta!",
+      { timeout: 65000 },
+    );
+    await page.getByRole("button", { name: "Ver registros" }).click();
+    await expect(
+      page
+        .getByRole("region", { name: "Registros de customers" })
+        .locator("tbody tr"),
+    ).toHaveCount(4);
+    expect(sqlRequests).toEqual([]);
+  },
+);

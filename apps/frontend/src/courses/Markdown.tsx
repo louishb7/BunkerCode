@@ -1,16 +1,20 @@
 import { validateEditorial } from "@bunkercode/content";
 import { EditorialBlock } from "./EditorialBlock";
-import { Children, isValidElement } from "react";
+import { Children, isValidElement, lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeSanitize from "rehype-sanitize";
 
+const SqlLessonActivity = lazy(() => import("../sql-lab/SqlLessonActivity"));
+
 export function Markdown({
   source,
   exercise,
+  sqlExercise,
 }: {
   source: string;
   exercise?: React.ReactNode;
+  sqlExercise?: React.ReactNode;
 }) {
   try {
     validateEditorial(source);
@@ -34,7 +38,12 @@ export function Markdown({
           rehypeHighlight,
           {
             detect: false,
-            plainText: ["bunker-quiz", "bunker-note", "bunker-exercise"],
+            plainText: [
+              "bunker-quiz",
+              "bunker-note",
+              "bunker-exercise",
+              "bunker-sql",
+            ],
           },
         ],
       ]}
@@ -62,6 +71,21 @@ export function Markdown({
             ? (child.props.className ?? "")
             : "";
           const language = /language-([\w-]+)/.exec(className)?.[1] ?? "texto";
+          if (
+            language === "bunker-sql" &&
+            isValidElement<{ children?: React.ReactNode }>(child)
+          )
+            return (
+              sqlExercise ?? (
+                <Suspense
+                  fallback={<p role="status">Carregando atividade SQL…</p>}
+                >
+                  <SqlLessonActivity
+                    source={String(child.props.children ?? "")}
+                  />
+                </Suspense>
+              )
+            );
           if (language === "bunker-exercise")
             return (
               exercise ?? (

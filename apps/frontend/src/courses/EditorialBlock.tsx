@@ -154,7 +154,8 @@ export function EditorialBlock({
 }) {
   try {
     const block = parseEditorial(language, source);
-    if ("kind" in block && block.kind === "exercise") return null;
+    if ("kind" in block && (block.kind === "exercise" || block.kind === "sql"))
+      return null;
     return "question" in block ? (
       <QuizBlock key={source} quiz={block} />
     ) : (

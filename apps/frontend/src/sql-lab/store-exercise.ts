@@ -1,7 +1,11 @@
 import type { SqlExercise } from "./exercise";
 
-export const storeExercise: SqlExercise = {
+export const storeExercise = {
+  mode: "query",
   id: "store-customers-recife",
+  version: 1,
+  objective:
+    "Filtrar registros por uma característica e conferir quais linhas atendem à condição.",
   title: "Clientes de Recife",
   instructions:
     "Retorne todas as colunas dos clientes de Recife. A ordem das linhas não importa; mantenha as colunas id, name e city, nessa ordem.",
@@ -16,7 +20,7 @@ export const storeExercise: SqlExercise = {
     {
       name: "customers",
       columns: [
-        { name: "id", type: "integer · chave primária" },
+        { name: "id", type: "integer", primaryKey: true },
         { name: "name", type: "text" },
         { name: "city", type: "text" },
       ],
@@ -24,8 +28,8 @@ export const storeExercise: SqlExercise = {
     {
       name: "orders",
       columns: [
-        { name: "id", type: "integer · chave primária" },
-        { name: "customer_id", type: "integer" },
+        { name: "id", type: "integer", primaryKey: true },
+        { name: "customer_id", type: "integer", references: "customers.id" },
         { name: "total", type: "numeric(8,2)" },
         { name: "note", type: "text ou NULL" },
       ],
@@ -35,4 +39,4 @@ export const storeExercise: SqlExercise = {
     "As tabelas são relacionadas por orders.customer_id e customers.id.",
   expectedQuery: "SELECT * FROM customers WHERE city = 'Recife'",
   limits: { maxRows: 100, initializationMs: 60000, queryMs: 15000 },
-};
+} satisfies SqlExercise;

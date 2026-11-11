@@ -24,7 +24,18 @@ test("Studio previews inert Markdown, waits for real disk confirmation and works
 }, info) => {
   const executions: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/api/learning")) executions.push(request.url());
+    const path = new URL(request.url()).pathname;
+    const mutation = !["GET", "HEAD"].includes(request.method());
+    const routineLearning =
+      path === "/api/learning/preferences" || path.endsWith("/visit");
+    // Authenticated reading synchronizes preferences/visits. Inert Markdown must
+    // never start execution, submit a solution or authorize completion.
+    if (
+      mutation &&
+      (/^\/api\/practice(?:\/|$)/.test(path) ||
+        (/^\/api\/learning(?:\/|$)/.test(path) && !routineLearning))
+    )
+      executions.push(`${request.method()} ${path}`);
   });
   await page.goto(reader);
   await page.getByRole("link", { name: "Editar lição" }).click();

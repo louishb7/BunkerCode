@@ -192,3 +192,7 @@ Cadastre uma conta e provisione ADMIN pelo comando local descrito em [autentica�
 ## Primeira lição de um curso vazio
 
 No perfil privado, abra a apresentação do curso e use **Criar primeira lição**. O diálogo existente pede título/slug, cria o arquivo pelo comando local protegido e abre o Studio. A partir daí, use edição visual, prévia e **Salvar alterações**, confira o Markdown físico e reabra a lição. O botão e o módulo de criação não existem no build público. Não use um arquivo vazio como substituto de conteúdo autoral indisponível.
+
+## Atividades SQL demonstrativas
+
+Uma referência `bunker-sql` associa uma atividade SQL registrada ao workspace do leitor e à Prévia do Studio. Edite o bloco pela fonte Markdown; o modo visual preserva a referência, mas não cria datasets nem oráculos. SQL em fences comuns permanece texto inerte. A [configuração e os limites atuais](sql-practice.md#configuração-e-autoria) incluem uma amostra não publicada em `docs/examples/sql-select-pilot.md`. Feedback SQL é local e não registra conclusão persistente.

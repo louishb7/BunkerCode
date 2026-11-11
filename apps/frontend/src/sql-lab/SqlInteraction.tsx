@@ -1,21 +1,48 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { CodeEditor } from "../practice/CodeEditor";
-import type { SqlExercise, SqlResult } from "./exercise";
+import { sqlSessionKey, type SqlExercise, type SqlResult } from "./exercise";
 import { SqlRuntime, SqlRuntimeError } from "./sql-runtime";
+import { SqlTable } from "./SqlTable";
 import "./sql-lab.css";
 
 // Callers own lesson framing. No routing, progress, drafts or API dependency.
-export function SqlInteraction({ exercise }: { exercise: SqlExercise }) {
-  return <InteractionSession key={exercise.id} exercise={exercise} />;
+export function SqlInteraction({
+  exercise,
+  lessonAppearance = false,
+}: {
+  exercise: SqlExercise;
+  lessonAppearance?: boolean;
+}) {
+  return (
+    <InteractionSession
+      key={sqlSessionKey(exercise)}
+      exercise={exercise}
+      lessonAppearance={lessonAppearance}
+    />
+  );
 }
 
-function InteractionSession({ exercise }: { exercise: SqlExercise }) {
+function InteractionSession({
+  exercise: configuration,
+  lessonAppearance,
+}: {
+  exercise: SqlExercise;
+  lessonAppearance: boolean;
+}) {
+  // Snapshot once per explicit identity/version, independent of parent references.
+  const [exercise] = useState(() => configuration);
   const [sql, setSql] = useState(exercise.starterSql);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SqlResult | null>(null);
   const [message, setMessage] = useState(
     "Os dados iniciais serão carregados ao executar uma consulta.",
   );
+  const [table, setTable] = useState(exercise.schema[0]?.name ?? "");
+  const [preview, setPreview] = useState<SqlResult | null>(null);
+  const [previewMessage, setPreviewMessage] = useState(
+    "Selecione uma tabela e veja até 10 registros reais.",
+  );
+  const tableId = useId();
   const runtime = useRef<SqlRuntime | null>(null);
   const revision = useRef(0);
   const generation = useRef(0);
@@ -45,6 +72,10 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
     running.current = false;
     setBusy(false);
     setResult(null);
+    setPreview(null);
+    setPreviewMessage(
+      "O banco foi descartado. Abra os registros para recriá-lo.",
+    );
     setMessage(
       cancel
         ? "Consulta cancelada e ambiente descartado. Os dados iniciais serão recriados na próxima execução."
@@ -58,11 +89,29 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
     const submittedRevision = revision.current;
     setBusy(true);
     setResult(null);
-    setMessage(verify ? "Verificando resposta…" : "Executando consulta…");
+    setMessage(
+      verify
+        ? "Verificando resposta…"
+        : exercise.mode === "mutation"
+          ? "Executando comando…"
+          : "Executando consulta…",
+    );
     try {
-      const value = await runtime.current.execute(sql, verify);
+      const value = await (exercise.mode === "mutation" && verify
+        ? runtime.current.verifyState()
+        : runtime.current.execute(sql, verify));
+      if (
+        exercise.mode === "mutation" &&
+        !verify &&
+        currentGeneration === generation.current
+      ) {
+        setPreview(null);
+        setPreviewMessage(
+          "Comando aplicado. Abra os registros para ver o estado atual.",
+        );
+      }
       if (currentGeneration !== generation.current) return;
-      if (submittedRevision !== revision.current) {
+      if (exercise.mode === "query" && submittedRevision !== revision.current) {
         setMessage(
           "A consulta mudou durante a execução. Execute novamente para ver o resultado atual.",
         );
@@ -73,12 +122,17 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
         verify
           ? value.correct
             ? "Resposta correta!"
-            : "Ainda não corresponde ao resultado esperado. Confira as colunas e as linhas."
-          : "Consulta concluída.",
+            : exercise.mode === "mutation"
+              ? "O estado ainda não corresponde ao esperado. Confira todas as linhas e tabelas."
+              : "Ainda não corresponde ao resultado esperado. Confira as colunas e as linhas."
+          : exercise.mode === "mutation"
+            ? `Comando concluído. ${value.affectedRows ?? 0} ${value.affectedRows === 1 ? "linha afetada" : "linhas afetadas"}. Verifique o estado quando terminar.`
+            : "Consulta concluída.",
       );
     } catch (error: unknown) {
       if (currentGeneration !== generation.current) return;
       if (
+        exercise.mode === "query" &&
         submittedRevision !== revision.current &&
         error instanceof SqlRuntimeError &&
         !error.discarded
@@ -87,6 +141,10 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
           "A consulta mudou durante a execução. Execute novamente para ver o resultado atual.",
         );
         return;
+      }
+      if (error instanceof SqlRuntimeError && error.discarded) {
+        setPreview(null);
+        setPreviewMessage(error.message);
       }
       if (error instanceof SqlRuntimeError)
         setMessage(
@@ -105,29 +163,99 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
       }
     }
   };
+  const explore = async () => {
+    if (running.current || !runtime.current) return;
+    running.current = true;
+    const currentGeneration = ++generation.current;
+    setBusy(true);
+    setPreviewMessage("Carregando registros…");
+    try {
+      const value = await runtime.current.preview(table);
+      if (currentGeneration !== generation.current) return;
+      setPreview(value);
+      setPreviewMessage(
+        value.truncated
+          ? "Primeiros 10 registros; há mais linhas."
+          : `${value.rows.length} registros na prévia.`,
+      );
+    } catch (error) {
+      if (currentGeneration !== generation.current) return;
+      setPreview(null);
+      setPreviewMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar os registros.",
+      );
+      if (error instanceof SqlRuntimeError && error.discarded) {
+        setResult(null);
+        setMessage(error.message);
+      }
+    } finally {
+      if (currentGeneration === generation.current) {
+        running.current = false;
+        setBusy(false);
+      }
+    }
+  };
   return (
-    <div className="sql-interaction">
+    <div className={`sql-interaction ${lessonAppearance ? "sql-lesson" : ""}`}>
       <p className="sql-notice">
-        O banco existe apenas nesta página. Cancelar ou reiniciar descarta o
-        ambiente. Use uma única consulta SELECT por vez; múltiplos comandos e
-        comandos como EXPLAIN não são aceitos.
+        O banco existe apenas nesta sessão de prática. Cancelar ou reiniciar
+        descarta o ambiente.{" "}
+        {exercise.mode === "mutation"
+          ? "Use um único SELECT, INSERT, UPDATE ou DELETE por execução. Alterações se acumulam nesta sessão descartável. Verificar estado não executa seu comando novamente."
+          : "Use uma única consulta SELECT por vez; múltiplos comandos e comandos como EXPLAIN não são aceitos."}
       </p>
       <div className="sql-layout">
         <aside className="sql-schema" aria-label="Tabelas disponíveis">
-          <h2>Dados disponíveis</h2>
-          <p>{exercise.schemaNote}</p>
-          {exercise.schema.map((table) => (
-            <div key={table.name}>
-              <h3>{table.name}</h3>
-              <ul>
-                {table.columns.map((column) => (
+          <details open={!lessonAppearance}>
+            <summary>Dados disponíveis</summary>
+            <p>{exercise.schemaNote}</p>
+            <label htmlFor={tableId}>Tabela</label>
+            <select
+              id={tableId}
+              value={table}
+              disabled={busy}
+              onChange={(event) => {
+                setTable(event.target.value);
+                setPreview(null);
+                setPreviewMessage("Abra os registros desta tabela.");
+              }}
+            >
+              {exercise.schema.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <ul>
+              {exercise.schema
+                .find((item) => item.name === table)
+                ?.columns.map((column) => (
                   <li key={column.name}>
                     <code>{column.name}</code> · {column.type}
+                    {column.primaryKey && " · chave primária"}
+                    {column.references &&
+                      ` · referência a ${column.references}`}
                   </li>
                 ))}
-              </ul>
+            </ul>
+            <button
+              type="button"
+              disabled={busy || !table}
+              onClick={() => void explore()}
+            >
+              Ver registros
+            </button>
+            <div aria-busy={busy}>
+              <p className="sql-preview-status" role="status">
+                {previewMessage}
+              </p>
+              {preview && (
+                <SqlTable result={preview} label={`Registros de ${table}`} />
+              )}
             </div>
-          ))}
+          </details>
           <button type="button" onClick={() => discard(false)}>
             Reiniciar banco
           </button>
@@ -135,6 +263,7 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
         <div className="sql-workspace">
           <section className="sql-challenge">
             <h2>{exercise.title}</h2>
+            <p className="sql-local-feedback">Objetivo: {exercise.objective}</p>
             <p>{exercise.instructions}</p>
             <p className="sql-local-feedback">
               A verificação oferece feedback local e não registra conclusão de
@@ -142,7 +271,9 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
             </p>
           </section>
           <section aria-labelledby={titleId}>
-            <h2 id={titleId}>Sua consulta</h2>
+            <h2 id={titleId}>
+              {exercise.mode === "mutation" ? "Seu comando" : "Sua consulta"}
+            </h2>
             <p id={helpId}>
               Use Tab para indentar; Esc e Tab movem o foco para fora do editor.
             </p>
@@ -152,15 +283,18 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
                 language="sql"
                 label="Consulta SQL"
                 variant="example"
-                siteAppearance
+                lessonAppearance={lessonAppearance}
+                siteAppearance={!lessonAppearance}
                 keyboardHelpId={helpId}
                 onChange={(value) => {
                   revision.current++;
                   setSql(value);
-                  setResult(null);
-                  setMessage(
-                    "Consulta alterada. Execute ou verifique novamente.",
-                  );
+                  if (exercise.mode === "query") {
+                    setResult(null);
+                    setMessage(
+                      "Consulta alterada. Execute ou verifique novamente.",
+                    );
+                  }
                 }}
                 formatRequest={0}
                 onFormatState={() => undefined}
@@ -173,14 +307,18 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
                 disabled={busy}
                 onClick={() => void run(false)}
               >
-                Executar consulta
+                {exercise.mode === "mutation"
+                  ? "Executar comando"
+                  : "Executar consulta"}
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void run(true)}
               >
-                Verificar resposta
+                {exercise.mode === "mutation"
+                  ? "Verificar estado"
+                  : "Verificar resposta"}
               </button>
               {busy && (
                 <button type="button" onClick={() => discard(true)}>
@@ -196,56 +334,19 @@ function InteractionSession({ exercise }: { exercise: SqlExercise }) {
             </p>
             {result && (
               <>
-                <p>
-                  {result.rows.length}{" "}
-                  {result.rows.length === 1
-                    ? "linha exibida"
-                    : "linhas exibidas"}
-                  {result.truncated
-                    ? ` (limite de ${exercise.limits.maxRows}; há mais resultados)`
-                    : ""}
-                  .
-                </p>
-                {result.rows.length === 0 && (
-                  <p>Nenhuma linha corresponde à consulta.</p>
-                )}
                 {result.fields.length > 0 && (
-                  <div
-                    className="sql-table-scroll"
-                    role="region"
-                    aria-label="Resultado da consulta"
-                    tabIndex={0}
-                  >
-                    <table>
-                      <thead>
-                        <tr>
-                          {result.fields.map((field, index) => (
-                            <th key={index} scope="col">
-                              {field}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.rows.map((row, index) => (
-                          <tr key={index}>
-                            {row.map((value, column) => (
-                              <td key={column}>
-                                {value === null ? (
-                                  <em>NULL</em>
-                                ) : typeof value === "object" ? (
-                                  JSON.stringify(value)
-                                ) : (
-                                  String(value)
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <p>
+                    {result.rows.length}{" "}
+                    {result.rows.length === 1
+                      ? "linha exibida"
+                      : "linhas exibidas"}
+                    {result.truncated
+                      ? ` (limite de ${exercise.limits.maxRows}; há mais resultados)`
+                      : ""}
+                    .
+                  </p>
                 )}
+                <SqlTable result={result} label="Resultado da consulta" />
               </>
             )}
           </section>

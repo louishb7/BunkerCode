@@ -95,13 +95,36 @@ export function parseNote(value: unknown): Note {
 export interface ExercisePlacement {
   kind: "exercise";
 }
+export interface SqlPlacement {
+  kind: "sql";
+  exerciseId: string;
+  version: number;
+}
+export function parseSqlPlacement(value: unknown): SqlPlacement {
+  const block = object(value);
+  fields(block, ["kind", "exerciseId", "version"]);
+  if (
+    block.kind !== "sql" ||
+    !Number.isSafeInteger(block.version) ||
+    Number(block.version) < 1
+  )
+    throw new Error(
+      "Referência SQL inválida: use kind sql e versão inteira positiva.",
+    );
+  return {
+    kind: "sql",
+    exerciseId: id(block.exerciseId),
+    version: Number(block.version),
+  };
+}
 export function parseEditorial(
   language: string,
   source: string,
-): Quiz | Note | ExercisePlacement {
+): Quiz | Note | ExercisePlacement | SqlPlacement {
   if (source.length > 32768)
     throw new Error("Bloco editorial excede o limite.");
   const value: unknown = JSON.parse(source);
+  if (language === "bunker-sql") return parseSqlPlacement(value);
   if (language === "bunker-quiz") return parseQuiz(value);
   if (language === "bunker-note") return parseNote(value);
   if (language === "bunker-exercise") {
@@ -113,8 +136,9 @@ export function parseEditorial(
   throw new Error("Tipo editorial desconhecido.");
 }
 /** Special blocks are top-level fenced JSON; ordinary code fences remain inert. */
-export function validateEditorial(source: string): boolean {
+function scanEditorial(source: string) {
   let exercise = false;
+  let sql: SqlPlacement | null = null;
   let fence:
     | { marker: string; size: number; language: string; body: string[] }
     | undefined;
@@ -135,12 +159,17 @@ export function validateEditorial(source: string): boolean {
       if (
         fence.language === "bunker-quiz" ||
         fence.language === "bunker-note" ||
-        fence.language === "bunker-exercise"
+        fence.language === "bunker-exercise" ||
+        fence.language === "bunker-sql"
       ) {
         const block = parseEditorial(fence.language, fence.body.join("\n"));
         if ("kind" in block && block.kind === "exercise") {
           if (exercise) throw new Error("Marcador de exercício duplicado.");
           exercise = true;
+        }
+        if ("kind" in block && block.kind === "sql") {
+          if (sql) throw new Error("Atividade SQL duplicada.");
+          sql = block;
         }
         if ("id" in block) {
           if (ids.has(block.id))
@@ -153,7 +182,15 @@ export function validateEditorial(source: string): boolean {
   }
   if (fence?.language.startsWith("bunker-"))
     throw new Error("Bloco editorial sem fechamento.");
-  return exercise;
+  if (sql && exercise)
+    throw new Error("Uma lição não pode misturar atividades SQL e JavaScript.");
+  return { exercise, sql };
+}
+export function validateEditorial(source: string): boolean {
+  return scanEditorial(source).exercise;
+}
+export function lessonSqlPlacement(source: string): SqlPlacement | null {
+  return scanEditorial(source).sql;
 }
 
 export interface OutputTest {
