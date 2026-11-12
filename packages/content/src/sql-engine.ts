@@ -45,8 +45,14 @@ async function tableSnapshot(
   return states;
 }
 
-export async function createPracticeEngine(exercise: PublicSqlExercise) {
+export async function createPracticeEngine(
+  exercise: PublicSqlExercise,
+  observe?: (phase: "pgliteMs" | "setupMs", milliseconds: number) => void,
+) {
+  const start = performance.now();
   const db = await PGlite.create();
+  observe?.("pgliteMs", Math.round(performance.now() - start));
+  const setup = performance.now();
   try {
     await db.exec(exercise.setupSql);
     const tables = await db.query<{ name: string }>(
@@ -75,6 +81,7 @@ export async function createPracticeEngine(exercise: PublicSqlExercise) {
     await db.exec("SET SESSION AUTHORIZATION bunkercode_student");
     if (exercise.mode === "query")
       await db.exec("SET default_transaction_read_only=on");
+    observe?.("setupMs", Math.round(performance.now() - setup));
     const select = async (sql: string): Promise<SqlResult> => {
       const statement = sql.trim().replace(/;\s*$/, "");
       const result = await db.query<unknown[]>(

@@ -29,6 +29,8 @@ export class PrismaService
       await this.user.findFirst({ select: { id: true, username: true } });
       await this.session.findFirst({ select: { id: true } });
       await this.authThrottle.findFirst({ select: { key: true } });
+      await this.sqlQuota.findFirst({ select: { key: true } });
+      await this.sqlRunnerSlot.findUniqueOrThrow({ where: { id: 1 } });
     } catch (error) {
       await this.$disconnect();
       throw databaseStartupError(error);

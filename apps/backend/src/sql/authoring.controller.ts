@@ -1,4 +1,3 @@
-import { evaluateSql } from "./runner";
 import {
   Body,
   Controller,
@@ -8,7 +7,11 @@ import {
   Param,
   Post,
   Put,
+  Req,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
+import type { AuthenticatedRequest } from "../auth/auth.guard";
 import { RequireIdentity } from "../auth/auth.guard";
 import { SqlService, sqlInput } from "./sql.service";
 import { sqlObject } from "@bunkercode/content/sql";
@@ -37,10 +40,18 @@ export class SqlAuthoringController {
   @Post("drafts/:id/test") async test(
     @Param("id") id: string,
     @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.validate(id, body, false);
+    return this.validate(id, body, false, request, response);
   }
-  private async validate(id: string, body: unknown, publish: boolean) {
+  private async validate(
+    id: string,
+    body: unknown,
+    publish: boolean,
+    request: AuthenticatedRequest,
+    response: Response,
+  ) {
     const draft = sqlInput(() => {
       const b = sqlObject(body, ["revision"]);
       const d = this.sql.content.draft(id);
@@ -52,14 +63,24 @@ export class SqlAuthoringController {
       draft.definition.dataset.id,
       draft.definition.dataset.version,
     );
-    if (
-      !(await evaluateSql(
-        draft.definition,
-        dataset,
-        draft.definition.assessment.reference,
-      ))
-    )
-      throw new Error("Referência inválida.");
+    const abort = new AbortController();
+    const cancel = () => {
+      if (!response.writableFinished) abort.abort();
+    };
+    response.on("close", cancel);
+    try {
+      if (
+        !(await this.sql.authoring(
+          request.identity.id,
+          draft.definition,
+          dataset,
+          abort.signal,
+        ))
+      )
+        throw new Error("Referência inválida.");
+    } finally {
+      response.off("close", cancel);
+    }
     return publish
       ? this.sql.content.publish(id, draft.revision)
       : { valid: true };
@@ -67,7 +88,9 @@ export class SqlAuthoringController {
   @Post("drafts/:id/publish") async publish(
     @Param("id") id: string,
     @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.validate(id, body, true);
+    return this.validate(id, body, true, request, response);
   }
 }

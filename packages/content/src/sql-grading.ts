@@ -119,56 +119,105 @@ export async function createSqlEngine(exercise: TrustedSqlExercise) {
     },
   };
 }
+export type SqlGradePhase =
+  | "referencePgliteMs"
+  | "referenceSetupMs"
+  | "studentPgliteMs"
+  | "studentSetupMs"
+  | "referenceInitMs"
+  | "referenceQueryMs"
+  | "referenceCloseMs"
+  | "studentInitMs"
+  | "studentQueryMs"
+  | "gradingMs"
+  | "studentCloseMs";
+export type SqlGradeObserver = (
+  phase: SqlGradePhase,
+  milliseconds: number,
+) => void;
+async function measured<T>(
+  phase: SqlGradePhase,
+  observer: SqlGradeObserver | undefined,
+  work: () => Promise<T>,
+): Promise<T> {
+  const start = performance.now();
+  try {
+    return await work();
+  } finally {
+    observer?.(phase, Math.round(performance.now() - start));
+  }
+}
 async function referenceResult(
   definition: SqlDefinition,
   dataset: SqlDataset,
+  observer?: SqlGradeObserver,
 ): Promise<SqlResult | SqlResult[]> {
-  const reference = await createPracticeEngine(
-    publicSqlExercise(definition, dataset),
+  const reference = await measured("referenceInitMs", observer, () =>
+    createPracticeEngine(publicSqlExercise(definition, dataset), (phase, ms) =>
+      observer?.(
+        phase === "pgliteMs" ? "referencePgliteMs" : "referenceSetupMs",
+        ms,
+      ),
+    ),
   );
   try {
-    let expected: SqlResult | SqlResult[];
-    if (definition.mode === "query")
-      expected = await reference.execute(definition.assessment.reference[0]!);
-    else {
-      for (const sql of definition.assessment.reference)
-        await reference.execute(sql);
-      expected = await reference.snapshot();
-    }
-    if (
-      (Array.isArray(expected) ? expected : [expected]).some((r) => r.truncated)
-    )
-      throw new Error("Referência excede limites.");
-    return expected;
+    return await measured("referenceQueryMs", observer, async () => {
+      let expected: SqlResult | SqlResult[];
+      if (definition.mode === "query")
+        expected = await reference.execute(definition.assessment.reference[0]!);
+      else {
+        for (const sql of definition.assessment.reference)
+          await reference.execute(sql);
+        expected = await reference.snapshot();
+      }
+      if (
+        (Array.isArray(expected) ? expected : [expected]).some(
+          (r) => r.truncated,
+        )
+      )
+        throw new Error("Referência excede limites.");
+      return expected;
+    });
   } finally {
-    await reference.close();
+    await measured("referenceCloseMs", observer, () => reference.close());
   }
 }
 export async function gradeSql(
   definition: SqlDefinition,
   dataset: SqlDataset,
   steps: string[],
+  observer?: SqlGradeObserver,
 ): Promise<boolean> {
   if (definition.mode === "query" && steps.length !== 1)
     throw new Error("Consulta requer um comando.");
-  const expected = await referenceResult(definition, dataset);
+  const expected = await referenceResult(definition, dataset, observer);
   (globalThis as { gc?: () => void }).gc?.();
-  const student = await createPracticeEngine(
-    publicSqlExercise(definition, dataset),
+  const student = await measured("studentInitMs", observer, () =>
+    createPracticeEngine(publicSqlExercise(definition, dataset), (phase, ms) =>
+      observer?.(
+        phase === "pgliteMs" ? "studentPgliteMs" : "studentSetupMs",
+        ms,
+      ),
+    ),
   );
   try {
-    if (definition.mode === "query")
-      return equivalentResults(
-        await student.execute(steps[0]!),
-        expected as SqlResult,
-        definition.assessment.orderMatters,
-      );
-    for (const sql of steps) await student.execute(sql);
-    const actual = await student.snapshot();
-    return actual.every((r, i) =>
-      equivalentResults(r, (expected as SqlResult[])[i]!),
+    const actual = await measured("studentQueryMs", observer, async () => {
+      if (definition.mode === "query") return student.execute(steps[0]!);
+      for (const sql of steps) await student.execute(sql);
+      return student.snapshot();
+    });
+    return await measured("gradingMs", observer, async () =>
+      definition.mode === "query"
+        ? equivalentResults(
+            actual as SqlResult,
+            expected as SqlResult,
+            definition.assessment.orderMatters,
+          )
+        : (actual as SqlResult[]).every((r, i) =>
+            equivalentResults(r, (expected as SqlResult[])[i]!),
+          ),
     );
   } finally {
-    await student.close();
+    await measured("studentCloseMs", observer, () => student.close());
   }
 }

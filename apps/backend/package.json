@@ -13,6 +13,7 @@
     "db:generate": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js generate",
     "db:migrate": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "sql:recover": "node dist/sql/recover.js",
     "admin:grant": "tsx src/auth/provision-admin.ts",
     "db:deploy:local": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate deploy",
     "db:status:local": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local node_modules/prisma/build/index.js migrate status",

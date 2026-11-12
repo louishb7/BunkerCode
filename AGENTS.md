@@ -90,3 +90,5 @@ Apenas o supervisor `scripts/browser-backend.mjs` cria e limpa a fixture de cont
 - Definições/datasets usam validação canônica e versões publicadas imutáveis. Não manter catálogo TypeScript paralelo nem substituir versões históricas; mudanças de comportamento exigem nova versão.
 - Studio exige ADMIN, revisão de rascunho e contratos locais de publicação. Reutilizar cursos, leitor e Studio existentes.
 - Mudanças SQL exigem evidência de correção, isolamento, limites, autorização e recuperação antes de declarar a fronteira completa. Política detalhada: `docs/architecture/sql-assessment.md`.
+
+- A admissão SQL usa cotas e uma vaga persistente próprias no PostgreSQL, sem consumir AuthThrottle ou executar SQL de aluno no produto. Todas as réplicas da instalação compartilham banco, segredo e daemon. Claim não expira automaticamente; falha de cleanup exige recuperação explícita com consumidores parados e inventário comprovado. Rootful fica restrito a desenvolvimento; implantação rootless exige prova de identidade sem acesso rootful e limites efetivos.

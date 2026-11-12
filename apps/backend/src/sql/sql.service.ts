@@ -1,3 +1,5 @@
+import { SqlAdmission } from "./admission";
+import type { SqlDefinition, SqlDataset } from "@bunkercode/content/sql";
 import {
   parseSqlSteps,
   sqlObject,
@@ -5,7 +7,7 @@ import {
   sqlVersion,
   publicSqlExercise,
 } from "@bunkercode/content/sql";
-import { evaluateSql, stopSqlRuns } from "./runner";
+import { evaluateSql, stopSqlRuns, sqlRunnerSuspended } from "./runner";
 import { ContentReader } from "../content/content-reader";
 import { lessonSqlPlacement } from "@bunkercode/content";
 import {
@@ -34,27 +36,54 @@ export function sqlInput<T>(work: () => T): T {
 @Injectable()
 export class SqlService {
   readonly content: SqlContent;
-  private readonly recent = new Map<string, number[]>();
-  onApplicationShutdown() {
-    return stopSqlRuns();
+  private readonly admission = new SqlAdmission();
+  private stopping = false;
+  private readonly runs = new Set<Promise<boolean>>();
+  async onApplicationShutdown() {
+    this.stopping = true;
+    await stopSqlRuns();
+    await Promise.allSettled([...this.runs]);
+    await this.admission.close();
   }
-  private rate(userId: string) {
-    const now = Date.now();
-    for (const [id, events] of this.recent)
-      if (events.at(-1)! <= now - 60000) this.recent.delete(id);
-    const events = (this.recent.get(userId) ?? []).filter(
-      (at) => at > now - 60000,
+  private async run(
+    definition: SqlDefinition,
+    dataset: SqlDataset,
+    steps: string[],
+    signal?: AbortSignal,
+  ) {
+    if (this.stopping) throw new HttpException("Runner SQL encerrando.", 503);
+    if (signal?.aborted) throw new HttpException("Avaliação cancelada.", 409);
+    const work = (async () => {
+      const owner = await this.admission.claim();
+      try {
+        if (this.stopping)
+          throw new HttpException("Runner SQL encerrando.", 503);
+        return await evaluateSql(definition, dataset, steps, signal, owner);
+      } finally {
+        await this.admission.finish(owner, sqlRunnerSuspended());
+      }
+    })();
+    this.runs.add(work);
+    try {
+      return await work;
+    } finally {
+      this.runs.delete(work);
+    }
+  }
+
+  async authoring(
+    userId: string,
+    definition: SqlDefinition,
+    dataset: SqlDataset,
+    signal?: AbortSignal,
+  ) {
+    await this.admission.consume(userId, "authoring");
+    return this.run(
+      definition,
+      dataset,
+      definition.assessment.reference,
+      signal,
     );
-    if (
-      events.length >= 6 ||
-      (!this.recent.has(userId) && this.recent.size >= 1024)
-    )
-      throw new HttpException(
-        "Muitas verificações SQL. Aguarde um minuto.",
-        429,
-      );
-    events.push(now);
-    this.recent.set(userId, events);
   }
   assessment(id: string, version: number) {
     const root =
@@ -101,7 +130,7 @@ export class SqlService {
     signal?: AbortSignal,
     submission?: { authorization: string | undefined },
   ) {
-    this.rate(userId);
+    await this.admission.consume(userId, submission ? "submit" : "check");
     const input = sqlInput(() => {
       const b = sqlObject(body);
       sqlObject(
@@ -137,7 +166,7 @@ export class SqlService {
       );
     const assessment = this.assessment(input.exerciseId, input.version),
       revision = sqlRevision(assessment);
-    const passed = await evaluateSql(
+    const passed = await this.run(
       assessment.definition,
       assessment.dataset,
       input.steps,

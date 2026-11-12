@@ -1,11 +1,19 @@
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import {
+  sqlDocker,
+  attachSqlDocker,
+  sqlDockerMode,
+  assertNoSqlContainers,
+} from "./docker";
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { HttpException } from "@nestjs/common";
 import type { SqlDataset, SqlDefinition } from "@bunkercode/content/sql";
-const exec = promisify(execFile);
+const event = (data: Record<string, unknown>) =>
+  console.info(JSON.stringify({ event: "sql_runner", ...data }));
+export function sqlRunnerSuspended() {
+  return disabled;
+}
 export const SQL_RUN_LIMITS = {
   timeoutMs: 30000,
   memoryMiB: 1024,
@@ -44,22 +52,27 @@ export async function sqlRunnerStatus() {
       503,
     );
   try {
-    const info = await exec(
-      "docker",
+    const info = await sqlDocker(
       [
         "info",
         "--format",
-        "{{.OSType}}|{{.CgroupVersion}}|{{json .SecurityOptions}}",
+        "{{.OSType}}|{{.CgroupVersion}}|{{json .SecurityOptions}}|{{.CgroupDriver}}",
       ],
-      { timeout: 4000, maxBuffer: 4096 },
+      4000,
+      4096,
     );
     if (
       !info.stdout.startsWith("linux|2|") ||
       !info.stdout.includes("name=seccomp,profile=builtin")
     )
       throw new Error("Missing isolation");
-    const inspect = await exec(
-      "docker",
+    if (
+      sqlDockerMode().mode === "rootless" &&
+      (!info.stdout.includes("name=rootless") ||
+        !info.stdout.trim().endsWith("|systemd"))
+    )
+      throw new Error("Daemon is not rootless");
+    const inspect = await sqlDocker(
       [
         "image",
         "inspect",
@@ -67,7 +80,8 @@ export async function sqlRunnerStatus() {
         "--format",
         '{{.Id}}|{{index .Config.Labels "bunkercode.sql.revision"}}',
       ],
-      { timeout: 4000, maxBuffer: 1024 },
+      4000,
+      1024,
     );
     const [image, revision] = inspect.stdout.trim().split("|");
     if (
@@ -75,6 +89,13 @@ export async function sqlRunnerStatus() {
       revision !== sqlRunnerRevision()
     )
       throw new Error("Stale image");
+    try {
+      await assertNoSqlContainers();
+    } catch {
+      disabled = true;
+      event({ phase: "orphan_detected", suspended: true });
+      throw new Error("Orphan detected");
+    }
     return image!;
   } catch {
     throw new HttpException(
@@ -96,6 +117,7 @@ export async function evaluateSql(
   dataset: SqlDataset,
   steps: string[],
   signal?: AbortSignal,
+  runId = randomUUID(),
 ): Promise<boolean> {
   if (signal?.aborted) throw new HttpException("Avaliação cancelada.", 409);
   if (active.size >= SQL_RUN_LIMITS.concurrent)
@@ -106,7 +128,9 @@ export async function evaluateSql(
   const payload = JSON.stringify({ definition, dataset, steps });
   if (Buffer.byteLength(payload) > SQL_RUN_LIMITS.inputBytes)
     throw new HttpException("Avaliação SQL excede limites.", 413);
-  const id = randomUUID(),
+  if (!/^[a-f0-9-]{36}$/.test(runId)) throw new Error("Invalid run identity");
+  const started = performance.now();
+  const id = runId,
     name = "bunkercode-sql-" + id;
   let cancelled = signal?.aborted ?? false,
     terminate: (() => void) | undefined;
@@ -117,15 +141,17 @@ export async function evaluateSql(
   signal?.addEventListener("abort", cancel, { once: true });
   const work = Promise.resolve().then(async () => {
     let failure: unknown;
+    const timings: Record<string, unknown> = {};
+    let phaseStart = performance.now();
     let passed: boolean | undefined;
-    let created = false;
     let creationAttempted = false;
     try {
       const image = await sqlRunnerStatus();
+      timings.readinessMs = Math.round(performance.now() - phaseStart);
+      phaseStart = performance.now();
       if (cancelled) throw new HttpException("Avaliação cancelada.", 409);
       creationAttempted = true;
-      await exec(
-        "docker",
+      await sqlDocker(
         [
           "create",
           "--pull",
@@ -162,26 +188,21 @@ export async function evaluateSql(
           "/tmp",
           image,
         ],
-        { timeout: 5000, maxBuffer: 2048 },
+        5000,
+        2048,
       );
-      created = true;
+      timings.createMs = Math.round(performance.now() - phaseStart);
+      phaseStart = performance.now();
       if (cancelled) throw new HttpException("Avaliação cancelada.", 409);
       passed = await new Promise<boolean>((resolve, reject) => {
-        const process = spawn(
-          "docker",
-          ["start", "--attach", "--interactive", name],
-          { stdio: ["pipe", "pipe", "pipe"] },
-        );
+        const process = attachSqlDocker(name);
         let output = "",
           bytes = 0,
           stopped: string | undefined;
         let killing: Promise<unknown> | undefined;
         const stop = (reason: string) => {
           stopped ??= reason;
-          killing ??= exec("docker", ["kill", name], {
-            timeout: 4000,
-            maxBuffer: 2048,
-          })
+          killing ??= sqlDocker(["kill", name], 4000, 2048)
             .catch(() => undefined)
             .finally(() => {
               // Bound the CLI connection too, even if the daemon acknowledges kill
@@ -228,11 +249,43 @@ export async function evaluateSql(
             if (
               !result ||
               typeof result !== "object" ||
-              Object.keys(result).length !== 1 ||
+              Object.keys(result).some(
+                (key) => !["passed", "metrics"].includes(key),
+              ) ||
               !("passed" in result) ||
               typeof result.passed !== "boolean"
             )
               throw new Error("Invalid runner response");
+            if ("metrics" in result) {
+              const metrics = result.metrics;
+              const allowed = [
+                "referenceInitMs",
+                "referencePgliteMs",
+                "referenceSetupMs",
+                "studentPgliteMs",
+                "studentSetupMs",
+                "referenceQueryMs",
+                "referenceCloseMs",
+                "studentInitMs",
+                "studentQueryMs",
+                "gradingMs",
+                "studentCloseMs",
+                "maxRssKiB",
+              ];
+              if (
+                !metrics ||
+                typeof metrics !== "object" ||
+                Object.entries(metrics).some(
+                  ([key, value]) =>
+                    !allowed.includes(key) ||
+                    typeof value !== "number" ||
+                    !Number.isFinite(value) ||
+                    value < 0,
+                )
+              )
+                throw new Error("Invalid runner metrics");
+              timings.engine = metrics;
+            }
             resolve(result.passed);
           })().catch(reject);
         });
@@ -241,25 +294,35 @@ export async function evaluateSql(
     } catch (error) {
       failure = error;
     }
+    timings.executionMs = Math.round(performance.now() - phaseStart);
+    phaseStart = performance.now();
     try {
       // Attempt cleanup even if docker create timed out after daemon creation.
       if (creationAttempted)
-        await exec("docker", ["rm", "--force", name], {
-          timeout: 5000,
-          maxBuffer: 2048,
-        });
-    } catch (error) {
-      if (
-        created ||
-        !(error instanceof Error && error.message.includes("No such container"))
-      ) {
-        disabled = true;
-        failure = new HttpException(
-          "Falha de limpeza: runner SQL suspenso. Inspecione os containers antes de reiniciar.",
-          503,
-        );
-      }
+        await sqlDocker(["rm", "--force", name], 5000, 2048);
+    } catch {
+      // Even "No such container" cannot confirm cleanup after an uncertain create.
+      // Retain the shared claim until an operator reconciles the daemon inventory.
+      disabled = true;
+      failure = new HttpException(
+        "Falha de limpeza: runner SQL suspenso. Inspecione os containers antes de reiniciar.",
+        503,
+      );
     }
+    timings.cleanupMs = Math.round(performance.now() - phaseStart);
+    event({
+      runId: id,
+      phase: "finished",
+      status: disabled
+        ? "suspended"
+        : cancelled
+          ? "cancelled"
+          : failure
+            ? "failed"
+            : "evaluated",
+      ...timings,
+      totalMs: Math.round(performance.now() - started),
+    });
     signal?.removeEventListener("abort", cancel);
     active.delete(id);
     if (failure) throw failure;

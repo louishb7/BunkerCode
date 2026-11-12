@@ -4,5 +4,5 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["test/*.test.ts"]
+  "include": ["test/*.test.ts", "test/fixtures/*.ts"]
 }

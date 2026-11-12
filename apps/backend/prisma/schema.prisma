@@ -87,3 +87,19 @@ model ApprovedSolution {
 
   @@id([userId, courseId, lessonSlug, exerciseId, revision])
 }
+
+// Separate SQL metadata budgets. The singleton claim never expires automatically.
+model SqlQuota {
+  key       String   @id @db.Char(64)
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model SqlRunnerSlot {
+  id        Int       @id
+  owner     String?   @db.Uuid
+  claimedAt DateTime?
+  suspended Boolean   @default(false)
+}

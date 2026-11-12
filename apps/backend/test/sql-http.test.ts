@@ -13,7 +13,7 @@ const origin = "http://127.0.0.1:5173";
 test(
   "SQL HTTP keeps private authoring, identity, version and resource boundaries server-side",
   { timeout: 90000 },
-  async (t) => {
+  async () => {
     const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-http-"));
     cpSync(resolve("../../content/sql"), join(root, "sql"), {
       recursive: true,
@@ -218,10 +218,9 @@ test(
         ).status,
         400,
       );
-      assert.equal(
-        (await send("/sql/check", student.accessToken, {})).status,
-        429,
-      );
+      const limited = await send("/sql/check", student.accessToken, {});
+      assert.equal(limited.status, 429);
+      assert.ok(Number(limited.headers.get("Retry-After")) > 0);
       assert.equal(
         (
           await send("/sql/check", admin.accessToken, {}, "POST", {
@@ -354,20 +353,8 @@ test(
         await db.lessonCompletion.count({ where: { userId: { in: ids } } }),
         0,
       );
-      // Fill only the service's bounded map, without touching Docker or identities.
-      for (let i = 0; i < 1022; i++)
-        await assert.rejects(service.check("capacity-" + i, {}), {
-          status: 400,
-        });
-      await assert.rejects(service.check("overflow", {}), { status: 429 });
+      // Shared quota/cardinality/expiry races are exercised across processes in sql-admission.test.ts.
       await assert.rejects(service.check(admin.user.id, {}), { status: 400 });
-      const now = Date.now();
-      const clock = t.mock.method(Date, "now", () => now + 60001);
-      try {
-        await assert.rejects(service.check("overflow", {}), { status: 400 });
-      } finally {
-        clock.mock.restore();
-      }
     } finally {
       await db.user.deleteMany({ where: { id: { in: ids } } });
       await app.close();
