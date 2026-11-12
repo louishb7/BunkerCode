@@ -20,7 +20,9 @@ test("SQL laboratory executes, verifies, recovers and resets without application
   const editor = page.getByRole("textbox", { name: "Consulta SQL" });
   const status = page.locator(".sql-workspace [role=status]");
   const execute = page.getByRole("button", { name: "Executar consulta" });
-  const verify = page.getByRole("button", { name: "Verificar resposta" });
+  await expect(
+    page.getByRole("button", { name: "Verificar resposta" }),
+  ).toHaveCount(0);
   const write = async (sql: string) => editor.fill(sql);
   await expect(editor).toBeVisible();
   await expect(
@@ -28,7 +30,9 @@ test("SQL laboratory executes, verifies, recovers and resets without application
   ).toBeVisible();
   apiRequests.length = 0;
   await execute.click();
-  await expect(status).toHaveText("Consulta concluída.", { timeout: 65000 });
+  await expect(status).toContainText("Ainda não corresponde", {
+    timeout: 65000,
+  });
   await expect(page.getByRole("cell", { name: "Ana Lima" })).toBeVisible();
   await write(
     "SELECT * FROM customers WHERE city = 'Recife' ORDER BY name DESC;",
@@ -36,8 +40,7 @@ test("SQL laboratory executes, verifies, recovers and resets without application
   await execute.click();
   await expect(page.getByText("2 linhas exibidas.")).toBeVisible();
   await expect(page.locator("tbody tr").first()).toContainText("Carla Souza");
-  await verify.click();
-  await expect(status).toContainText("Verificação anônima indisponível");
+  await expect(status).toContainText("Resposta correta nesta prática!");
   await write(
     "SELECT c.name, count(*)::int AS purchases FROM customers c JOIN orders o ON c.id = o.customer_id GROUP BY c.id, c.name ORDER BY c.id;",
   );
@@ -200,9 +203,11 @@ authenticatedTest(
     const editor = page.getByRole("textbox", { name: "Consulta SQL" });
     const sql = "SELECT * FROM customers WHERE city = 'Recife'";
     await editor.fill(sql);
-    await page.getByRole("button", { name: "Verificar resposta" }).click();
+    await page.getByRole("button", { name: "Executar consulta" }).click();
     const status = page.locator(".sql-workspace [role=status]");
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText("Resposta correta nesta prática!", {
+      timeout: 45000,
+    });
     await page.getByLabel("Tabela", { exact: true }).selectOption("orders");
     await page.getByRole("button", { name: "Ver registros" }).click();
     const records = page.getByRole("region", { name: "Registros de orders" });
@@ -213,7 +218,9 @@ authenticatedTest(
       records.getByRole("columnheader", { name: "customer_id", exact: true }),
     ).toBeVisible();
     await expect(editor).toHaveText(sql);
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText("Resposta correta nesta prática!", {
+      timeout: 45000,
+    });
     await page.setViewportSize({ width: 375, height: 812 });
     expect(
       await page.evaluate(
@@ -404,7 +411,9 @@ authenticatedTest(
     await execute.click();
     await expect(status).toContainText("1 linha afetada");
     await verify.click();
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText("Resposta correta!", {
+      timeout: 45000,
+    });
     await editor.fill("DELETE FROM customers");
     await expect(status).toContainText("Texto alterado e ainda não executado");
     await expect(status).not.toContainText("Resposta correta!");
@@ -428,7 +437,9 @@ authenticatedTest(
     await ready;
     await editor.fill("UPDATE customers SET city = 'Unexecuted'");
     release();
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText("Resposta correta!", {
+      timeout: 45000,
+    });
     await expect(status).toContainText(
       "somente o estado dos comandos executados",
     );
@@ -465,7 +476,9 @@ authenticatedTest(
       .selectOption("store-customers-recife");
     await expect(editor).toHaveText("SELECT * FROM customers;");
     await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(status).toHaveText("Consulta concluída.", { timeout: 65000 });
+    await expect(status).toContainText("Ainda não corresponde", {
+      timeout: 65000,
+    });
   },
 );
 
@@ -509,7 +522,7 @@ authenticatedTest(
     await expect(status).toContainText(
       "Consulta cancelada e ambiente descartado",
     );
-    await expect(status).not.toContainText("Resposta correta!");
+    await expect(status).not.toContainText("Resposta correta nesta prática!");
     await verify.click();
     await expect(status).toContainText("Envie de 1 a 20 comandos SQL");
     await page.getByRole("button", { name: "Ver registros" }).click();
@@ -563,14 +576,14 @@ authenticatedTest(
       const editor = page.getByRole("textbox", { name: "Consulta SQL" });
       await expect(editor).toHaveText(exercise.starterSql);
       await editor.fill(exercise.expectedQuery);
-      await page.getByRole("button", { name: "Verificar resposta" }).click();
+      await page.getByRole("button", { name: "Executar consulta" }).click();
       await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-        "Resposta correta!",
+        "Resposta correta nesta prática!",
         { timeout: 65000 },
       );
       if (exercise.orderMatters) {
         await editor.fill(exercise.expectedQuery.replace("DESC", "ASC"));
-        await page.getByRole("button", { name: "Verificar resposta" }).click();
+        await page.getByRole("button", { name: "Executar consulta" }).click();
         await expect(
           page.locator(".sql-workspace [role=status]"),
         ).toContainText("Ainda não corresponde", { timeout: 45000 });
@@ -607,8 +620,8 @@ test("real Worker failure discards the session and the next action recovers", as
     "O laboratório falhou",
   );
   await page.getByRole("button", { name: "Executar consulta" }).click();
-  await expect(page.locator(".sql-workspace [role=status]")).toHaveText(
-    "Consulta concluída.",
+  await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+    "Ainda não corresponde",
     { timeout: 65000 },
   );
 });
@@ -635,8 +648,10 @@ authenticatedTest(
       page.getByText("Lição concluída", { exact: true }),
     ).toHaveCount(0);
     await editor.fill("SELECT id,name FROM customers ORDER BY id DESC");
-    await page.getByRole("button", { name: "Verificar resposta" }).click();
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(status).toContainText("Resposta correta nesta prática!", {
+      timeout: 45000,
+    });
     await expect(
       page.getByText("Lição concluída", { exact: true }),
     ).toHaveCount(0);
@@ -769,6 +784,9 @@ authenticatedTest(
     await page.getByRole("button", { name: "Novo exercício" }).click();
     await page.getByLabel("ID do exercício").fill(exerciseId);
     await page
+      .getByLabel("Publicar resultado esperado", { exact: false })
+      .check();
+    await page
       .getByLabel("Título", { exact: true })
       .fill("Listar materiais — criação pelo Studio");
     await page
@@ -787,6 +805,9 @@ authenticatedTest(
       .getByLabel("Referência 1", { exact: true })
       .fill("SELECT name FROM items");
     await page
+      .getByLabel("Publicar resultado esperado", { exact: false })
+      .uncheck();
+    await page
       .getByRole("button", { name: "Prévia do exercício", exact: true })
       .click();
     const preview = page.locator('[aria-label="Prévia do exercício SQL"]'); // section with aria-label has region semantics.
@@ -796,6 +817,9 @@ authenticatedTest(
       { timeout: 65000 },
     );
     await expect(preview.getByRole("cell", { name: "Caderno" })).toBeVisible();
+    await page
+      .getByLabel("Publicar resultado esperado", { exact: false })
+      .check();
     await page.getByRole("button", { name: "Salvar rascunho" }).click();
     await expect(page.locator(".sql-authoring > [role=status]")).toContainText(
       "Rascunho salvo",
@@ -804,6 +828,14 @@ authenticatedTest(
     await expect(page.locator(".sql-authoring > [role=status]")).toContainText(
       "Referência aprovada",
       { timeout: 45000 },
+    );
+    await preview
+      .getByRole("textbox", { name: "Consulta SQL" })
+      .fill("SELECT name FROM items");
+    await preview.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(preview.locator(".sql-workspace [role=status]")).toContainText(
+      "Resposta correta nesta prática!",
+      { timeout: 65000 },
     );
     await page.getByRole("button", { name: "Publicar versão" }).click();
     await expect(page.locator(".sql-authoring > [role=status]")).toContainText(
@@ -892,9 +924,9 @@ authenticatedTest(
       await page
         .getByRole("textbox", { name: "Consulta SQL" })
         .fill("SELECT name FROM items");
-      await page.getByRole("button", { name: "Verificar resposta" }).click();
+      await page.getByRole("button", { name: "Executar consulta" }).click();
       await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-        "Resposta correta!",
+        "Resposta correta nesta prática!",
         { timeout: 45000 },
       );
     } finally {
@@ -906,3 +938,265 @@ authenticatedTest(
     }
   },
 );
+
+// Diagnostic capture is opt-in, local to this test, and never sent to an API.
+async function captureSqlTimings(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    const Original = window.Worker;
+    const samples: Record<string, unknown>[] = [];
+    Object.defineProperty(window, "__sqlMeasurements", { value: samples });
+    window.Worker = class extends Original {
+      private measured: boolean;
+      private created = performance.timeOrigin + performance.now();
+      private requests = new Map<number, number>();
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.measured = String(url).includes("sql.worker");
+        if (this.measured)
+          this.addEventListener("message", (event) => {
+            const received = performance.timeOrigin + performance.now();
+            samples.push({
+              type: event.data.type,
+              created: this.created,
+              started: this.requests.get(event.data.id),
+              received,
+              diagnostics: event.data.diagnostics,
+            });
+          });
+      }
+      override postMessage(
+        message: unknown,
+        transfer?: Transferable[] | StructuredSerializeOptions,
+      ) {
+        const transferable = Array.isArray(transfer)
+          ? transfer
+          : (transfer?.transfer ?? []);
+        if (
+          this.measured &&
+          message &&
+          typeof message === "object" &&
+          "id" in message &&
+          typeof message.id === "number"
+        ) {
+          this.requests.set(
+            message.id,
+            performance.timeOrigin + performance.now(),
+          );
+          super.postMessage({ ...message, measure: true }, transferable);
+        } else super.postMessage(message, transferable);
+      }
+    };
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (
+          !(event.target instanceof Element) ||
+          !event.target
+            .closest("button")
+            ?.textContent?.includes("Executar consulta")
+        )
+          return;
+        const started = performance.now();
+        const sql = document.querySelector(".cm-content")?.textContent;
+        const status = document.querySelector(".sql-workspace [role=status]");
+        if (!status) return;
+        const observer = new MutationObserver(() => {
+          const message = status.textContent ?? "";
+          if (
+            /A consulta mudou durante|cancelada|Banco descartado|tempo limite/.test(
+              message,
+            )
+          ) {
+            observer.disconnect();
+            return;
+          }
+          if (
+            !/Resposta correta nesta prática|Consulta executada|Erro SQL/.test(
+              message,
+            )
+          )
+            return;
+          observer.disconnect();
+          const committed = performance.now() - started;
+          requestAnimationFrame(() =>
+            samples.push({
+              type: "visible",
+              sql,
+              committedMs: committed,
+              frameMs: performance.now() - started,
+              message,
+            }),
+          );
+        });
+        observer.observe(status, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+      },
+      true,
+    );
+  });
+}
+
+for (const loggedIn of [false, true]) {
+  const practiceTest = loggedIn ? authenticatedTest : test;
+  practiceTest(
+    `canonical formative loop is local for ${loggedIn ? "authenticated" : "anonymous"} learners, with recoverable errors and measured feedback`,
+    async ({ page }) => {
+      practiceTest.setTimeout(150000);
+      await captureSqlTimings(page);
+      const writes: string[] = [];
+      page.on("request", (request) => {
+        if (
+          request.method() === "POST" &&
+          /\/api\/(sql\/(check|submit)|learning\/.*\/(complete|submit))/.test(
+            request.url(),
+          )
+        )
+          writes.push(request.url());
+      });
+      const lessons = [
+        {
+          slug: "seu-primeiro-contato-com-um-banco-de-dados",
+          correct: "SELECT id,name FROM customers ORDER BY id DESC",
+          wrong: "SELECT name FROM customers",
+          equivalent: "SELECT id,name FROM customers WHERE true",
+          secondWrong: "SELECT name,id FROM customers",
+        },
+        {
+          slug: "encontrando-o-que-importa",
+          correct:
+            "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+          wrong:
+            "SELECT name,city FROM customers WHERE city = 'Recife' ORDER BY name DESC",
+          equivalent:
+            "SELECT name,city FROM customers WHERE NOT(city = 'Recife') ORDER BY name DESC",
+          secondWrong:
+            "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+        },
+      ];
+      for (const [index, lesson] of lessons.entries()) {
+        await page.goto(`/courses/sql-na-pratica/lessons/${lesson.slug}`);
+        const editor = page.getByRole("textbox", { name: "Consulta SQL" }),
+          execute = page.getByRole("button", { name: "Executar consulta" }),
+          status = page.locator(".sql-workspace [role=status]");
+        await expect(editor).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Verificar resposta" }),
+        ).toHaveCount(0);
+        await expect(
+          page.getByRole("button", { name: "Submit · concluir lição" }),
+        ).toHaveCount(loggedIn ? 1 : 0);
+        // First action initializes the actual Worker and PGlite, including real data exploration.
+        await page.locator(".sql-schema summary").click();
+        await page.getByRole("button", { name: "Ver registros" }).click();
+        await expect(
+          page.getByRole("region", { name: "Registros de customers" }),
+        ).toBeVisible({ timeout: 65000 });
+        const queries = [
+          lesson.wrong,
+          lesson.correct,
+          lesson.secondWrong,
+          "SELECT missing FROM customers",
+          lesson.equivalent,
+          "SELECT * FROM customers WHERE false",
+          "SELECT * FROM customers",
+          "SELECT c.name,o.total FROM customers c JOIN orders o ON c.id=o.customer_id",
+          "SELECT count(*) FROM orders",
+          ...Array<string>(12).fill(lesson.correct),
+        ];
+        for (const [queryIndex, sql] of queries.entries()) {
+          const previous = await editor.textContent();
+          await editor.fill(sql);
+          if (previous !== sql)
+            await expect(status).not.toContainText(
+              "Resposta correta nesta prática!",
+            );
+          await execute.click();
+          await expect(execute).toBeEnabled();
+          await expect(status).toContainText(
+            sql === "SELECT missing FROM customers"
+              ? "Erro SQL"
+              : [1, 4].includes(queryIndex) || queryIndex >= 9
+                ? "Resposta correta nesta prática!"
+                : "Ainda não corresponde",
+            { timeout: 65000 },
+          );
+          await expect(
+            page.getByText("Lição concluída", { exact: true }),
+          ).toHaveCount(0);
+        }
+        // An obsolete result is discarded even when it would have matched the oracle.
+        await editor.fill(
+          lesson.correct.replace(
+            "FROM customers",
+            "FROM customers CROSS JOIN (SELECT pg_sleep(0.3)) AS delay",
+          ),
+        );
+        await execute.click();
+        await editor.fill(lesson.wrong);
+        await expect(status).toContainText("A consulta mudou durante", {
+          timeout: 10000,
+        });
+        await expect(status).not.toContainText(
+          "Resposta correta nesta prática!",
+        );
+        await execute.click();
+        await expect(status).toContainText("Ainda não corresponde");
+        await page.getByRole("button", { name: "Reiniciar banco" }).click();
+        await expect(status).toContainText("Banco descartado");
+        await editor.fill(lesson.correct);
+        await execute.click();
+        await expect(status).toContainText("Resposta correta nesta prática!", {
+          timeout: 65000,
+        });
+        await status.scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: test
+            .info()
+            .outputPath(
+              `canonical-${loggedIn ? "account" : "anonymous"}-${index + 1}.png`,
+            ),
+          fullPage: true,
+        });
+        await page.waitForTimeout(30); // allow the diagnostic frame callback to complete
+        const timingFile = test
+          .info()
+          .outputPath(`sql-timings-${index + 1}.json`);
+        await writeFile(
+          timingFile,
+          JSON.stringify(
+            await page.evaluate(() => ({
+              samples: (window as Window & { __sqlMeasurements?: unknown })
+                .__sqlMeasurements,
+              resources: performance
+                .getEntriesByType("resource")
+                .filter((entry) =>
+                  /\.(js|css|wasm|data)(\?|$)/.test(entry.name),
+                )
+                .map((entry) => ({
+                  name: entry.name.split("/").pop(),
+                  startTime: entry.startTime,
+                  duration: entry.duration,
+                  bytes: (entry as PerformanceResourceTiming).transferSize,
+                })),
+              navigation: performance
+                .getEntriesByType("navigation")
+                .map((entry) => entry.toJSON()),
+            })),
+            null,
+            2,
+          ),
+        );
+        await test
+          .info()
+          .attach(`sql-timings-${index + 1}.json`, {
+            path: timingFile,
+            contentType: "application/json",
+          });
+      }
+      expect(writes).toEqual([]);
+    },
+  );
+}

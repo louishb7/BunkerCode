@@ -3,15 +3,17 @@ export type SqlExercise = PublicSqlExercise;
 export type { SqlResult } from "@bunkercode/content/sql-engine";
 import type { SqlResult } from "@bunkercode/content/sql-engine";
 
-export type SqlRequest =
+export type SqlRequest = (
   | { type: "initialize"; id: number; exercise: SqlExercise }
   | { type: "preview"; id: number; table: string }
-  | { type: "query"; id: number; sql: string };
+  | { type: "query"; id: number; sql: string }
+) & { measure?: boolean };
 
-export type SqlResponse =
+export type SqlResponse = (
   | { type: "ready"; id: number }
   | { type: "result"; id: number; result: SqlResult }
-  | { type: "error"; id: number; error: { message: string; code?: string } };
+  | { type: "error"; id: number; error: { message: string; code?: string } }
+) & { diagnostics?: Record<string, number> };
 
 // Bump version for any configuration change within the same identity.
 export function sqlSessionKey(exercise: Pick<SqlExercise, "id" | "version">) {

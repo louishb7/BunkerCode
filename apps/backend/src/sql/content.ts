@@ -28,7 +28,9 @@ import {
   sqlId,
   sqlVersion,
   sqlObject,
+  sqlFormativeSource,
   type SqlDefinition,
+  type SqlFormativeOracle,
   type SqlDataset,
   type PublicSqlExercise,
 } from "@bunkercode/content/sql";
@@ -88,8 +90,21 @@ export class SqlContent {
     );
     if (d.id !== id || d.version !== version || d.status !== "published")
       throw new NotFoundException("Versão SQL não publicada.");
-    this.dataset(d.dataset.id, d.dataset.version);
+    const dataset = this.dataset(d.dataset.id, d.dataset.version);
+    this.validateOracle(d, dataset);
     return d;
+  }
+  private validateOracle(definition: SqlDefinition, dataset: SqlDataset) {
+    if (
+      definition.formative?.oracle &&
+      definition.formative.oracle.sourceDigest !==
+        createHash("sha256")
+          .update(sqlFormativeSource(definition, dataset))
+          .digest("hex")
+    )
+      throw new BadRequestException(
+        "Oráculo desatualizado para a fonte canônica.",
+      );
   }
   public(id: string, version: number): PublicSqlExercise {
     if (existsSync(join(this.root, "public"))) {
@@ -250,13 +265,25 @@ export class SqlContent {
       return this.draft(d.id);
     });
   }
-  publish(id: string, revision: unknown) {
+  publish(id: string, revision: unknown, oracle?: SqlFormativeOracle) {
     const dir = this.path(["exercises", sqlId(id)]);
     return this.lock(dir, () => {
       const draft = this.draft(id);
       if (draft.revision !== revision)
         throw new ConflictException("Rascunho mudou durante validação.");
-      const published = { ...draft.definition, status: "published" as const };
+      if (!!draft.definition.formative !== !!oracle)
+        throw new BadRequestException(
+          "Publicação formativa exige geração independente do oráculo.",
+        );
+      const published = parseSqlDefinition({
+        ...draft.definition,
+        status: "published",
+        ...(oracle ? { formative: { kind: "public-result", oracle } } : {}),
+      });
+      this.validateOracle(
+        published,
+        this.dataset(published.dataset.id, published.dataset.version),
+      );
       this.write(dir, published.version + ".json", published, true);
       return published;
     });

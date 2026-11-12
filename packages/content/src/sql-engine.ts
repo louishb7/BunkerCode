@@ -47,14 +47,19 @@ async function tableSnapshot(
 
 export async function createPracticeEngine(
   exercise: PublicSqlExercise,
-  observe?: (phase: "pgliteMs" | "setupMs", milliseconds: number) => void,
+  observe?: (
+    phase: "pgliteMs" | "datasetMs" | "setupMs",
+    milliseconds: number,
+  ) => void,
 ) {
   const start = performance.now();
   const db = await PGlite.create();
   observe?.("pgliteMs", Math.round(performance.now() - start));
   const setup = performance.now();
   try {
+    const loading = performance.now();
     await db.exec(exercise.setupSql);
+    observe?.("datasetMs", performance.now() - loading);
     const tables = await db.query<{ name: string }>(
       "SELECT tablename AS name FROM pg_catalog.pg_tables WHERE schemaname = 'public' ORDER BY tablename",
     );

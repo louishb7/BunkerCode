@@ -1,0 +1,55 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "ff902ad81c9c60108a2c58b3dda1cf26ab08f41dc617c4ae488e8e24a0d64523",
+      "exercise": {
+        "id": "store-customer-orders",
+        "version": 2
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": [
+          "name",
+          "total"
+        ],
+        "types": [
+          25,
+          1700
+        ],
+        "rows": [
+          "[[\"string\",\"Ana Lima\"],[\"string\",\"35.50\"]]",
+          "[[\"string\",\"Ana Lima\"],[\"string\",\"59.90\"]]",
+          "[[\"string\",\"Bruno Alves\"],[\"string\",\"120.00\"]]",
+          "[[\"string\",\"Carla Souza\"],[\"string\",\"89.00\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-customer-orders",
+  "version": 2,
+  "status": "published",
+  "title": "Relacionar clientes e pedidos",
+  "objective": "Usar JOIN para identificar a pessoa responsável por cada pedido.",
+  "instructions": "Retorne name do cliente e total de cada pedido, nessa ordem de colunas. Inclua todos os pedidos; um cliente pode aparecer mais de uma vez. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM orders;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT c.name, o.total FROM customers c JOIN orders o ON o.customer_id = c.id"
+    ],
+    "orderMatters": false
+  }
+}

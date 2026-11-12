@@ -19,7 +19,12 @@ const require = createRequire(
 const context = mkdtempSync(join(tmpdir(), "bunkercode-sql-image-"));
 mkdirSync(join(context, "content"));
 const hash = createHash("sha256");
-for (const file of ["sql.js", "sql-engine.js", "sql-grading.js"]) {
+for (const file of [
+  "sql.js",
+  "sql-engine.js",
+  "sql-grading.js",
+  "sql-comparison.js",
+]) {
   const from = new URL("packages/content/dist/" + file, root);
   hash.update(readFileSync(from));
   copyFileSync(from, join(context, "content", file));

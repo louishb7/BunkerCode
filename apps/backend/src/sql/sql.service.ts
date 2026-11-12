@@ -7,7 +7,12 @@ import {
   sqlVersion,
   publicSqlExercise,
 } from "@bunkercode/content/sql";
-import { evaluateSql, stopSqlRuns, sqlRunnerSuspended } from "./runner";
+import {
+  evaluateSql,
+  generateSqlOracle,
+  stopSqlRuns,
+  sqlRunnerSuspended,
+} from "./runner";
 import { ContentReader } from "../content/content-reader";
 import { lessonSqlPlacement } from "@bunkercode/content";
 import {
@@ -38,7 +43,7 @@ export class SqlService {
   readonly content: SqlContent;
   private readonly admission = new SqlAdmission();
   private stopping = false;
-  private readonly runs = new Set<Promise<boolean>>();
+  private readonly runs = new Set<Promise<unknown>>();
   async onApplicationShutdown() {
     this.stopping = true;
     await stopSqlRuns();
@@ -50,6 +55,7 @@ export class SqlService {
     dataset: SqlDataset,
     steps: string[],
     signal?: AbortSignal,
+    generate = false,
   ) {
     if (this.stopping) throw new HttpException("Runner SQL encerrando.", 503);
     if (signal?.aborted) throw new HttpException("Avaliação cancelada.", 409);
@@ -58,7 +64,25 @@ export class SqlService {
       try {
         if (this.stopping)
           throw new HttpException("Runner SQL encerrando.", 503);
-        return await evaluateSql(definition, dataset, steps, signal, owner);
+        return generate
+          ? {
+              valid: true as const,
+              oracle: await generateSqlOracle(
+                definition,
+                dataset,
+                signal,
+                owner,
+              ),
+            }
+          : {
+              valid: await evaluateSql(
+                definition,
+                dataset,
+                steps,
+                signal,
+                owner,
+              ),
+            };
       } finally {
         await this.admission.finish(owner, sqlRunnerSuspended());
       }
@@ -83,6 +107,7 @@ export class SqlService {
       dataset,
       definition.assessment.reference,
       signal,
+      !!definition.formative,
     );
   }
   assessment(id: string, version: number) {
@@ -166,7 +191,7 @@ export class SqlService {
       );
     const assessment = this.assessment(input.exerciseId, input.version),
       revision = sqlRevision(assessment);
-    const passed = await this.run(
+    const { valid: passed } = await this.run(
       assessment.definition,
       assessment.dataset,
       input.steps,

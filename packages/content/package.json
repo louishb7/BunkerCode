@@ -32,6 +32,10 @@
     "./sql-grading": {
       "types": "./dist/sql-grading.d.ts",
       "default": "./dist/sql-grading.js"
+    },
+    "./sql-comparison": {
+      "types": "./dist/sql-comparison.d.ts",
+      "default": "./dist/sql-comparison.js"
     }
   },
   "typesVersions": {
@@ -50,6 +54,9 @@
       ],
       "sql-grading": [
         "dist/sql-grading.d.ts"
+      ],
+      "sql-comparison": [
+        "dist/sql-comparison.d.ts"
       ]
     }
   },

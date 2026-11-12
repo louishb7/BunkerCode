@@ -38,10 +38,10 @@ Para escolher várias colunas, separe os nomes com vírgula. A ordem que você e
 
 Prepare uma lista de todos os clientes com **identificador e nome**, nessa ordem de colunas. A equipe não precisa da cidade nesse relatório. Nenhum cliente deve ficar de fora; a ordem das linhas ainda não importa.
 
-Use os nomes reais das colunas da tabela. Execute para inspecionar sua tentativa. Se estiver em sua conta, **Verificar resposta** compara a consulta no servidor sem concluir a lição; **Submit · concluir lição** avalia novamente e registra a conclusão quando aprovada. Sem conta, a exploração e a execução continuam disponíveis.
+Use os nomes reais das colunas da tabela. **Executar consulta** mostra o resultado e oferece feedback automático neste navegador, mesmo sem conta. O resultado esperado é material didático público. Esse feedback não salva progresso; **Submit · concluir lição**, disponível em sua conta, avalia independentemente no servidor e registra a conclusão quando aprovada.
 
 ```bunker-sql
-{"kind":"sql","exerciseId":"store-select-columns","version":1}
+{"kind":"sql","exerciseId":"store-select-columns","version":2}
 ```
 
 Antes de avançar, explique com suas palavras: qual parte da sua consulta escolhe as informações e qual parte indica sua origem? Escreva seu entendimento próprio no material de estudo; este texto inicial não substitui essa autoria.

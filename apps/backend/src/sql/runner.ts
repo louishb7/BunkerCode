@@ -8,7 +8,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { HttpException } from "@nestjs/common";
-import type { SqlDataset, SqlDefinition } from "@bunkercode/content/sql";
+import {
+  parseSqlFormativeOracle,
+  type SqlFormativeOracle,
+  type SqlDataset,
+  type SqlDefinition,
+} from "@bunkercode/content/sql";
 const event = (data: Record<string, unknown>) =>
   console.info(JSON.stringify({ event: "sql_runner", ...data }));
 export function sqlRunnerSuspended() {
@@ -26,11 +31,11 @@ export const SQL_RUN_LIMITS = {
 let disabled = false;
 const active = new Map<
   string,
-  { cancel: () => void; done: Promise<boolean> }
+  { cancel: () => void; done: Promise<unknown> }
 >();
 export function sqlRunnerRevision() {
   const hash = createHash("sha256");
-  for (const file of ["sql", "sql-engine", "sql-grading"])
+  for (const file of ["sql", "sql-engine", "sql-grading", "sql-comparison"])
     hash.update(readFileSync(require.resolve("@bunkercode/content/" + file)));
   hash.update(readFileSync(join(__dirname, "runner-main.cjs")));
   hash.update(
@@ -119,13 +124,46 @@ export async function evaluateSql(
   signal?: AbortSignal,
   runId = randomUUID(),
 ): Promise<boolean> {
+  return (await runSql(definition, dataset, steps, signal, runId)).passed;
+}
+export async function generateSqlOracle(
+  definition: SqlDefinition,
+  dataset: SqlDataset,
+  signal?: AbortSignal,
+  runId = randomUUID(),
+): Promise<SqlFormativeOracle> {
+  const result = await runSql(
+    definition,
+    dataset,
+    definition.assessment.reference,
+    signal,
+    runId,
+    true,
+  );
+  if (!result.passed || !result.formative)
+    throw new Error("Oráculo não confirmado pelo runner.");
+  return result.formative;
+}
+async function runSql(
+  definition: SqlDefinition,
+  dataset: SqlDataset,
+  steps: string[],
+  signal?: AbortSignal,
+  runId = randomUUID(),
+  generate = false,
+): Promise<{ passed: boolean; formative?: SqlFormativeOracle }> {
   if (signal?.aborted) throw new HttpException("Avaliação cancelada.", 409);
   if (active.size >= SQL_RUN_LIMITS.concurrent)
     throw new HttpException(
       "Runner SQL ocupado. Aguarde e tente novamente.",
       429,
     );
-  const payload = JSON.stringify({ definition, dataset, steps });
+  const payload = JSON.stringify({
+    definition,
+    dataset,
+    steps,
+    ...(generate ? { operation: "formative" } : {}),
+  });
   if (Buffer.byteLength(payload) > SQL_RUN_LIMITS.inputBytes)
     throw new HttpException("Avaliação SQL excede limites.", 413);
   if (!/^[a-f0-9-]{36}$/.test(runId)) throw new Error("Invalid run identity");
@@ -143,7 +181,8 @@ export async function evaluateSql(
     let failure: unknown;
     const timings: Record<string, unknown> = {};
     let phaseStart = performance.now();
-    let passed: boolean | undefined;
+    let assessed:
+      { passed: boolean; formative?: SqlFormativeOracle } | undefined;
     let creationAttempted = false;
     try {
       const image = await sqlRunnerStatus();
@@ -194,7 +233,10 @@ export async function evaluateSql(
       timings.createMs = Math.round(performance.now() - phaseStart);
       phaseStart = performance.now();
       if (cancelled) throw new HttpException("Avaliação cancelada.", 409);
-      passed = await new Promise<boolean>((resolve, reject) => {
+      assessed = await new Promise<{
+        passed: boolean;
+        formative?: SqlFormativeOracle;
+      }>((resolve, reject) => {
         const process = attachSqlDocker(name);
         let output = "",
           bytes = 0,
@@ -217,7 +259,8 @@ export async function evaluateSql(
         );
         const collect = (chunk: Buffer, stdout: boolean) => {
           bytes += chunk.length;
-          if (bytes > SQL_RUN_LIMITS.outputBytes) stop("output");
+          if (bytes > (generate ? 68000 : SQL_RUN_LIMITS.outputBytes))
+            stop("output");
           else if (stdout) output += chunk.toString("utf8");
         };
         process.stdout.on("data", (c: Buffer) => collect(c, true));
@@ -250,7 +293,12 @@ export async function evaluateSql(
               !result ||
               typeof result !== "object" ||
               Object.keys(result).some(
-                (key) => !["passed", "metrics"].includes(key),
+                (key) =>
+                  !(
+                    generate
+                      ? ["passed", "metrics", "formative"]
+                      : ["passed", "metrics"]
+                  ).includes(key),
               ) ||
               !("passed" in result) ||
               typeof result.passed !== "boolean"
@@ -286,7 +334,16 @@ export async function evaluateSql(
                 throw new Error("Invalid runner metrics");
               timings.engine = metrics;
             }
-            resolve(result.passed);
+            const formative =
+              generate && "formative" in result
+                ? parseSqlFormativeOracle(result.formative)
+                : undefined;
+            if (generate && (!result.passed || !formative))
+              throw new Error("Invalid formative response");
+            resolve({
+              passed: result.passed,
+              ...(formative ? { formative } : {}),
+            });
           })().catch(reject);
         });
         process.stdin.end(payload);
@@ -328,9 +385,9 @@ export async function evaluateSql(
     if (failure) throw failure;
     if (cancelled)
       throw new HttpException("Avaliação cancelada. Ambiente descartado.", 409);
-    if (passed === undefined)
+    if (assessed === undefined)
       throw new HttpException("Runner SQL sem confirmação.", 503);
-    return passed;
+    return assessed;
   });
   active.set(id, { cancel, done: work });
   return work;

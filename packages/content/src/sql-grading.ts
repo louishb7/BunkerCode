@@ -4,45 +4,12 @@ import {
   type SqlDefinition,
   type SqlDataset,
   type PublicSqlExercise,
+  parseSqlFormativeOracle,
+  sqlFormativeSource,
 } from "./sql";
 import type { SqlResult } from "./sql-engine";
-// Preserve SQL NULL versus non-finite floats, and normalize JSON object key order.
-function canonicalCell(value: unknown): unknown {
-  if (value === null) return ["null"];
-  if (value instanceof Date) return ["date", value.toISOString()];
-  if (Array.isArray(value)) return ["array", value.map(canonicalCell)];
-  if (typeof value === "object")
-    return [
-      "object",
-      Object.entries(value)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, item]) => [key, canonicalCell(item)]),
-    ];
-  if (["string", "boolean", "number", "bigint"].includes(typeof value))
-    return [typeof value, String(value)];
-  throw new Error("Tipo de valor SQL não suportado para comparação.");
-}
-
-export function equivalentResults(
-  actual: SqlResult,
-  expected: SqlResult,
-  orderMatters = false,
-): boolean {
-  if (actual.truncated || expected.truncated) return false;
-  const canonical = (rows: unknown[][]) => {
-    const serialized = rows.map((row) =>
-      JSON.stringify(row.map(canonicalCell)),
-    );
-    return orderMatters ? serialized : serialized.sort();
-  };
-  return (
-    JSON.stringify(actual.fields) === JSON.stringify(expected.fields) &&
-    JSON.stringify(actual.types) === JSON.stringify(expected.types) &&
-    JSON.stringify(canonical(actual.rows)) ===
-      JSON.stringify(canonical(expected.rows))
-  );
-}
-
+import { canonicalResult, equivalentResults } from "./sql-comparison";
+export { equivalentResults } from "./sql-comparison";
 export type TrustedSqlExercise = PublicSqlExercise &
   (
     | { mode: "query"; expectedQuery: string; orderMatters?: boolean }
@@ -153,11 +120,14 @@ async function referenceResult(
   observer?: SqlGradeObserver,
 ): Promise<SqlResult | SqlResult[]> {
   const reference = await measured("referenceInitMs", observer, () =>
-    createPracticeEngine(publicSqlExercise(definition, dataset), (phase, ms) =>
-      observer?.(
-        phase === "pgliteMs" ? "referencePgliteMs" : "referenceSetupMs",
-        ms,
-      ),
+    createPracticeEngine(
+      publicSqlExercise(definition, dataset),
+      (phase, ms) =>
+        phase !== "datasetMs" &&
+        observer?.(
+          phase === "pgliteMs" ? "referencePgliteMs" : "referenceSetupMs",
+          ms,
+        ),
     ),
   );
   try {
@@ -193,11 +163,14 @@ export async function gradeSql(
   const expected = await referenceResult(definition, dataset, observer);
   (globalThis as { gc?: () => void }).gc?.();
   const student = await measured("studentInitMs", observer, () =>
-    createPracticeEngine(publicSqlExercise(definition, dataset), (phase, ms) =>
-      observer?.(
-        phase === "pgliteMs" ? "studentPgliteMs" : "studentSetupMs",
-        ms,
-      ),
+    createPracticeEngine(
+      publicSqlExercise(definition, dataset),
+      (phase, ms) =>
+        phase !== "datasetMs" &&
+        observer?.(
+          phase === "pgliteMs" ? "studentPgliteMs" : "studentSetupMs",
+          ms,
+        ),
     ),
   );
   try {
@@ -220,4 +193,45 @@ export async function gradeSql(
   } finally {
     await measured("studentCloseMs", observer, () => student.close());
   }
+}
+
+// Called only by the isolated publication runner, never by the HTTP process.
+export async function generateFormativeOracle(
+  definition: SqlDefinition,
+  dataset: SqlDataset,
+) {
+  if (
+    definition.mode !== "query" ||
+    definition.formative?.kind !== "public-result"
+  )
+    throw new Error("Atividade sem autorização para resultado público.");
+  const first = canonicalResult(
+    (await referenceResult(definition, dataset)) as SqlResult,
+    definition.assessment.orderMatters,
+  );
+  (globalThis as { gc?: () => void }).gc?.();
+  const second = canonicalResult(
+    (await referenceResult(definition, dataset)) as SqlResult,
+    definition.assessment.orderMatters,
+  );
+  if (JSON.stringify(first) !== JSON.stringify(second))
+    throw new Error("Referência formativa não determinística.");
+  return parseSqlFormativeOracle({
+    format: 1,
+    kind: "public-result",
+    sourceDigest: Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(sqlFormativeSource(definition, dataset)),
+        ),
+      ),
+    )
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join(""),
+    exercise: { id: definition.id, version: definition.version },
+    dataset: definition.dataset,
+    orderMatters: definition.assessment.orderMatters,
+    expected: first,
+  });
 }

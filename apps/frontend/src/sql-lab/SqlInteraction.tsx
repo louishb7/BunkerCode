@@ -9,7 +9,7 @@ import { SqlRuntime, SqlRuntimeError } from "./sql-runtime";
 import { SqlTable } from "./SqlTable";
 import "./sql-lab.css";
 
-// Local execution stays separate from explicit server checks and submission.
+// Public formative feedback never authorizes persistent completion.
 export function SqlInteraction({
   exercise,
   lessonAppearance = false,
@@ -48,6 +48,7 @@ function InteractionSession({
   const request = useRef<AbortController | null>(null);
   // Snapshot once per explicit identity/version, independent of parent references.
   const [exercise] = useState(() => configuration);
+  const localAssessment = exercise.mode === "query" && !!exercise.formative;
   const [sql, setSql] = useState(exercise.starterSql);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SqlResult | null>(null);
@@ -226,7 +227,11 @@ function InteractionSession({
       setMessage(
         exercise.mode === "mutation"
           ? `Comando concluído. ${value.affectedRows ?? 0} ${value.affectedRows === 1 ? "linha afetada" : "linhas afetadas"}. ${steps.current.length} ${steps.current.length === 1 ? "passo" : "passos"} na solução desta sessão.${submittedRevision !== revision.current ? " O texto do editor mudou durante a execução e ainda não foi executado." : ""}`
-          : "Consulta concluída.",
+          : value.correct === true
+            ? "Resposta correta nesta prática! Feedback local; nenhuma conclusão foi registrada."
+            : value.correct === false
+              ? "Consulta executada. Ainda não corresponde ao resultado esperado. Confira colunas, tipos, linhas e ordem."
+              : "Consulta concluída.",
       );
     } catch (error: unknown) {
       if (currentGeneration !== generation.current) return;
@@ -381,6 +386,7 @@ function InteractionSession({
     if (!approved || running.current || !runtime.current) return;
     if (exercise.mode === "query") {
       revision.current++;
+      setResult(null);
       setSql(approved[0]!);
       setMessage(
         "Solução aprovada carregada no editor. Execute para inspecionar.",
@@ -529,6 +535,14 @@ function InteractionSession({
             <p className="sql-local-feedback">
               {previewOnly ? (
                 "Prévia local do rascunho. Teste a referência e publique pela barra de autoria; esta prévia não registra conclusão."
+              ) : localAssessment ? (
+                <>
+                  Executar compara o resultado automaticamente neste navegador,
+                  sem login. O resultado esperado é material didático público.{" "}
+                  {lesson && user
+                    ? "Submit avalia independentemente no servidor e registra a conclusão quando aprovado."
+                    : "O feedback local não salva progresso na conta."}
+                </>
               ) : !user ? (
                 "Executar e explorar estão disponíveis sem login. A verificação anônima está indisponível nesta instalação."
               ) : (
@@ -565,7 +579,9 @@ function InteractionSession({
                   if (exercise.mode === "query") {
                     setResult(null);
                     setMessage(
-                      "Consulta alterada. Execute ou verifique novamente.",
+                      localAssessment
+                        ? "Consulta alterada. Execute novamente para receber feedback do texto atual."
+                        : "Consulta alterada. Execute ou verifique novamente.",
                     );
                   } else
                     setMessage(
@@ -587,7 +603,7 @@ function InteractionSession({
                   ? "Executar comando"
                   : "Executar consulta"}
               </button>
-              {!previewOnly && (
+              {!previewOnly && !localAssessment && (
                 <button
                   type="button"
                   disabled={busy}

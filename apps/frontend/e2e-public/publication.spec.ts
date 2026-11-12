@@ -463,7 +463,7 @@ anonymousTest(
 );
 
 anonymousTest(
-  "public SQL practice executes anonymously and explains blocked anonymous verification",
+  "public SQL practice automatically assesses anonymously without remote grading",
   async ({ page }) => {
     anonymousTest.setTimeout(90000);
     const sqlRequests: string[] = [];
@@ -479,16 +479,14 @@ anonymousTest(
       .getByRole("textbox", { name: "Consulta SQL" })
       .fill("SELECT * FROM customers WHERE city = 'Recife'");
     await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(page.locator(".sql-workspace [role=status]")).toHaveText(
-      "Consulta concluída.",
+    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+      "Resposta correta nesta prática!",
       { timeout: 65000 },
     );
     await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(2);
-    await page.getByRole("button", { name: "Verificar resposta" }).click();
-    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Verificação anônima indisponível",
-      { timeout: 65000 },
-    );
+    await expect(
+      page.getByRole("button", { name: "Verificar resposta" }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Ver registros" }).click();
     await expect(
       page
@@ -513,9 +511,8 @@ anonymousTest(
     await expect(
       page.getByRole("button", { name: "Submit · concluir lição" }),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Verificação anônima indisponível",
+      "Resposta correta nesta prática!",
     );
     await expect(
       page.getByText("Lição concluída", { exact: true }),
@@ -536,6 +533,26 @@ anonymousTest(
     await expect(page.locator(".lesson-heading h1")).toHaveText(
       "Encontrando o que importa",
     );
+    await page.getByRole("button", { name: "Código", exact: true }).click();
+    await page
+      .getByRole("textbox", { name: "Consulta SQL" })
+      .fill(
+        "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+      );
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+      "Ainda não corresponde",
+      { timeout: 65000 },
+    );
+    await page
+      .getByRole("textbox", { name: "Consulta SQL" })
+      .fill(
+        "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+      );
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
+      "Resposta correta nesta prática!",
+    );
     expect(sqlRequests).toEqual([]);
   },
 );
@@ -547,7 +564,7 @@ test("published SQL course keeps private authoring absent and records only trust
   test.setTimeout(100000);
   expect((await request.get("/api/content/sql/authoring")).status()).toBe(404);
   const response = await request.get(
-    "/api/content/sql/exercises/store-select-columns/1",
+    "/api/content/sql/exercises/store-select-columns/2",
   );
   expect(response.status()).toBe(200);
   const text = await response.text();

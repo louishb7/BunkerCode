@@ -16,6 +16,21 @@ export interface SqlDataset {
     rows: SqlCell[][];
   }[];
 }
+// Public teaching material. Canonical tagged cells preserve SQL types across JSON.
+export interface SqlFormativeOracle {
+  format: 1;
+  kind: "public-result";
+  sourceDigest: string;
+  exercise: { id: string; version: number };
+  dataset: { id: string; version: number };
+  orderMatters: boolean;
+  expected: {
+    fields: string[];
+    types: number[];
+    rows: string[];
+    truncated: false;
+  };
+}
 export interface SqlDefinition {
   format: 1;
   id: string;
@@ -28,8 +43,10 @@ export interface SqlDefinition {
   mode: "query" | "mutation";
   dataset: { id: string; version: number };
   assessment: { reference: string[]; orderMatters: boolean };
+  formative?: { kind: "public-result"; oracle?: SqlFormativeOracle };
 }
 export interface PublicSqlExercise {
+  formative?: SqlFormativeOracle;
   id: string;
   version: number;
   title: string;
@@ -246,6 +263,7 @@ export function parseSqlDefinition(value: unknown): SqlDefinition {
     "mode",
     "dataset",
     "assessment",
+    ...(d.formative === undefined ? [] : ["formative"]),
   ]);
   if (
     d.format !== 1 ||
@@ -260,7 +278,31 @@ export function parseSqlDefinition(value: unknown): SqlDefinition {
   const reference = parseSqlSteps(a.reference);
   if (d.mode === "query" && reference.length !== 1)
     fail("Consulta requer uma única referência.");
+  let formative: SqlDefinition["formative"];
+  if (d.formative !== undefined) {
+    const f = sqlObject(d.formative);
+    fields(f, f.oracle === undefined ? ["kind"] : ["kind", "oracle"]);
+    if (f.kind !== "public-result" || d.mode !== "query")
+      fail("Formativo público exige consulta e adesão explícita.");
+    if (d.status === "draft" && f.oracle !== undefined)
+      fail("Oráculo de rascunho deve ser gerado novamente.");
+    const oracle =
+      f.oracle === undefined ? undefined : parseSqlFormativeOracle(f.oracle);
+    if (d.status === "published" && !oracle)
+      fail("Publicação exige oráculo gerado.");
+    if (oracle)
+      validateOracleBinding(
+        oracle,
+        d.id,
+        d.version,
+        dataset.id,
+        dataset.version,
+        a.orderMatters,
+      );
+    formative = { kind: "public-result", ...(oracle ? { oracle } : {}) };
+  }
   return {
+    ...(formative ? { formative } : {}),
     format: 1,
     id: sqlId(d.id),
     version: sqlVersion(d.version),
@@ -317,6 +359,9 @@ export function publicSqlExercise(
   )
     fail("Dataset não corresponde à atividade.");
   return {
+    ...(definition.formative?.oracle
+      ? { formative: definition.formative.oracle }
+      : {}),
     id: definition.id,
     version: definition.version,
     title: definition.title,
@@ -356,6 +401,7 @@ export function parsePublicSqlExercise(value: unknown): PublicSqlExercise {
     "schema",
     "schemaNote",
     "limits",
+    ...(p.formative === undefined ? [] : ["formative"]),
   ]);
   if (p.mode !== "query" && p.mode !== "mutation")
     fail("Modo público inválido.");
@@ -399,7 +445,22 @@ export function parsePublicSqlExercise(value: unknown): PublicSqlExercise {
       }),
     };
   });
+  const formative =
+    p.formative === undefined
+      ? undefined
+      : parseSqlFormativeOracle(p.formative);
+  if (formative) {
+    if (p.mode !== "query") fail("Formativo público incompatível com mutação.");
+    validateOracleBinding(
+      formative,
+      p.id,
+      p.version,
+      dataset.id,
+      dataset.version,
+    );
+  }
   return {
+    ...(formative ? { formative } : {}),
     id: sqlId(p.id),
     version: sqlVersion(p.version),
     title: text(p.title, 160),
@@ -413,4 +474,100 @@ export function parsePublicSqlExercise(value: unknown): PublicSqlExercise {
     schemaNote: text(p.schemaNote, 1000),
     limits: { maxRows: 100, initializationMs: 60000, queryMs: 5000 },
   };
+}
+
+export function parseSqlFormativeOracle(value: unknown): SqlFormativeOracle {
+  const o = sqlObject(value, [
+    "format",
+    "kind",
+    "sourceDigest",
+    "exercise",
+    "dataset",
+    "orderMatters",
+    "expected",
+  ]);
+  if (
+    o.format !== 1 ||
+    o.kind !== "public-result" ||
+    typeof o.sourceDigest !== "string" ||
+    !/^[a-f0-9]{64}$/.test(o.sourceDigest) ||
+    new TextEncoder().encode(JSON.stringify(value)).length > 65536
+  )
+    fail("Oráculo público inválido ou acima de 64 KiB.");
+  const exercise = sqlObject(o.exercise, ["id", "version"]),
+    dataset = sqlObject(o.dataset, ["id", "version"]);
+  const e = sqlObject(o.expected, ["fields", "types", "rows", "truncated"]);
+  if (
+    !Array.isArray(e.fields) ||
+    !e.fields.length ||
+    e.fields.length > 64 ||
+    !Array.isArray(e.types) ||
+    e.types.length !== e.fields.length ||
+    !Array.isArray(e.rows) ||
+    e.rows.length > SQL_LIMITS.maxRows ||
+    e.truncated !== false
+  )
+    fail("Resultado público inválido ou truncado.");
+  const names = e.fields.map((v) => text(v, 63));
+  const types = e.types.map((v) => {
+    if (!Number.isSafeInteger(v) || Number(v) < 1 || Number(v) > 4294967295)
+      fail("Tipo PostgreSQL inválido.");
+    return Number(v);
+  });
+  const rows = e.rows.map((v) => {
+    const encoded = text(v, 65536);
+    const row: unknown = JSON.parse(encoded);
+    if (
+      !Array.isArray(row) ||
+      row.length !== names.length ||
+      row.some((cell) => !Array.isArray(cell))
+    )
+      fail("Linha canônica inválida.");
+    return encoded;
+  });
+  return {
+    format: 1,
+    kind: "public-result",
+    sourceDigest: text(o.sourceDigest, 64),
+    exercise: { id: sqlId(exercise.id), version: sqlVersion(exercise.version) },
+    dataset: { id: sqlId(dataset.id), version: sqlVersion(dataset.version) },
+    orderMatters: boolean(o.orderMatters),
+    expected: { fields: names, types, rows, truncated: false },
+  };
+}
+function validateOracleBinding(
+  o: SqlFormativeOracle,
+  id: unknown,
+  version: unknown,
+  datasetId: unknown,
+  datasetVersion: unknown,
+  orderMatters?: unknown,
+) {
+  if (
+    o.exercise.id !== id ||
+    o.exercise.version !== version ||
+    o.dataset.id !== datasetId ||
+    o.dataset.version !== datasetVersion ||
+    (orderMatters !== undefined && o.orderMatters !== orderMatters)
+  )
+    fail("Oráculo não corresponde à versão da atividade/dataset/comparação.");
+}
+
+// Digest binds generated material to its canonical private source; it is a
+// freshness check, not answer protection or evidence of learner correctness.
+export function sqlFormativeSource(
+  definition: SqlDefinition,
+  dataset: SqlDataset,
+): string {
+  return JSON.stringify({
+    id: definition.id,
+    version: definition.version,
+    title: definition.title,
+    objective: definition.objective,
+    instructions: definition.instructions,
+    starterSql: definition.starterSql,
+    mode: definition.mode,
+    dataset,
+    assessment: definition.assessment,
+  });
 }

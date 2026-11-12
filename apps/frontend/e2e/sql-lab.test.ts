@@ -604,3 +604,122 @@ test("lesson picker replaces only real SQL references and preserves ordinary fen
     /misturar/,
   );
 });
+
+test("public formative comparison reuses SQL semantics after JSON transport, independently from private grading", async () => {
+  const { parseSqlDefinition, publicSqlExercise } =
+    await import("@bunkercode/content/sql");
+  const { generateFormativeOracle } =
+    await import("@bunkercode/content/sql-grading");
+  const { matchesFormative } =
+    await import("@bunkercode/content/sql-comparison");
+  const { createPracticeEngine } =
+    await import("@bunkercode/content/sql-engine");
+  const { readFileSync } = await import("node:fs");
+  const { dataset } = await import("./sql-fixtures");
+  const definition = parseSqlDefinition(
+    JSON.parse(
+      readFileSync(
+        new URL(
+          "../../../content/sql/exercises/store-filter-sort/2.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ),
+  );
+  const oracle = JSON.parse(JSON.stringify(definition.formative!.oracle!));
+  const local = await createPracticeEngine(
+    publicSqlExercise(definition, dataset),
+  );
+  try {
+    for (const sql of [
+      definition.assessment.reference[0]!,
+      "SELECT name,city FROM customers WHERE NOT(city = 'Recife') ORDER BY name DESC",
+    ])
+      assert.equal(matchesFormative(await local.execute(sql), oracle), true);
+    for (const sql of [
+      "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+      "SELECT name FROM customers",
+      "SELECT city,name FROM customers",
+      "SELECT name,city FROM customers WHERE false",
+      "SELECT name,city FROM customers WHERE city <> 'Recife' UNION ALL SELECT name,city FROM customers WHERE city <> 'Recife'",
+      "SELECT * FROM generate_series(1,200)",
+    ])
+      assert.equal(
+        matchesFormative(await local.execute(sql), oracle),
+        false,
+        sql,
+      );
+    await assert.rejects(local.execute("DELETE FROM customers"));
+    await assert.rejects(local.execute("SELECT missing FROM customers"));
+    assert.equal(
+      matchesFormative(
+        await local.execute(definition.assessment.reference[0]!),
+        oracle,
+      ),
+      true,
+    );
+  } finally {
+    await local.close();
+  }
+  for (const reference of [
+    "SELECT NULL::float8 AS value",
+    "SELECT 'NaN'::float8 AS value",
+    "SELECT 'Infinity'::float8 AS value",
+    "SELECT 1::bigint AS value",
+    "SELECT '2026-11-12'::date AS value",
+    "SELECT 1 AS value WHERE false",
+    "SELECT 1 AS value UNION ALL SELECT 1 AS value",
+  ]) {
+    const d = {
+      ...definition,
+      status: "draft" as const,
+      formative: { kind: "public-result" as const },
+      assessment: { reference: [reference], orderMatters: false },
+    };
+    const generated = JSON.parse(
+      JSON.stringify(await generateFormativeOracle(d, dataset)),
+    );
+    const instance = await createPracticeEngine(publicSqlExercise(d, dataset));
+    try {
+      assert.equal(
+        matchesFormative(await instance.execute(reference), generated),
+        true,
+        reference,
+      );
+      assert.equal(
+        matchesFormative(
+          await instance.execute("SELECT 'wrong'::text AS value"),
+          generated,
+        ),
+        false,
+      );
+    } finally {
+      await instance.close();
+    }
+  }
+});
+
+test("canonical JSON cell keys use locale-independent ordering across browser and publication runtimes", async () => {
+  const { canonicalResult } =
+    await import("../../../packages/content/src/sql-comparison");
+  const result = canonicalResult(
+    {
+      fields: ["value"],
+      types: [114],
+      rows: [[{ ä: 3, Z: 2, a: 1 }]],
+      truncated: false,
+    },
+    false,
+  );
+  assert.deepEqual(JSON.parse(result.rows[0]!), [
+    [
+      "object",
+      [
+        ["Z", ["number", "2"]],
+        ["a", ["number", "1"]],
+        ["ä", ["number", "3"]],
+      ],
+    ],
+  ]);
+});

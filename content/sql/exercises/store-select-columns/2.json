@@ -1,0 +1,55 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "bd4e721273c35e09fdd0e23093129e7b8caec01307997c1af52cb22721be4572",
+      "exercise": {
+        "id": "store-select-columns",
+        "version": 2
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": [
+          "id",
+          "name"
+        ],
+        "types": [
+          23,
+          25
+        ],
+        "rows": [
+          "[[\"number\",\"1\"],[\"string\",\"Ana Lima\"]]",
+          "[[\"number\",\"2\"],[\"string\",\"Bruno Alves\"]]",
+          "[[\"number\",\"3\"],[\"string\",\"Carla Souza\"]]",
+          "[[\"number\",\"4\"],[\"string\",\"Daniel Costa\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-select-columns",
+  "version": 2,
+  "status": "published",
+  "title": "Escolher colunas dos clientes",
+  "objective": "Selecionar apenas as informações necessárias de uma tabela.",
+  "instructions": "Retorne id e name de todos os clientes, nessa ordem de colunas. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT id, name FROM customers"
+    ],
+    "orderMatters": false
+  }
+}

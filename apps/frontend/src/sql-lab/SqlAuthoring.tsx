@@ -4,6 +4,7 @@ import { Page } from "../courses/Page";
 import { sqlRequest } from "./api";
 import {
   parseSqlDataset,
+  parsePublicSqlExercise,
   parseSqlDefinition,
   publicSqlExercise,
   sqlObject,
@@ -118,6 +119,9 @@ export default function SqlAuthoring() {
     const next = definition
       ? {
           ...definition,
+          ...(definition.formative
+            ? { formative: { kind: "public-result" as const } }
+            : {}),
           status: "draft" as const,
           version:
             definition.status === "published"
@@ -154,7 +158,9 @@ export default function SqlAuthoring() {
   }
   function change(patch: Partial<SqlDefinition>) {
     if (draft) {
-      setDraft({ ...draft, ...patch });
+      const updated = { ...draft, ...patch };
+      if (!updated.formative) delete updated.formative;
+      setDraft(updated);
       setDirty(true);
       setPreview(null);
       setMessage("Alterações não salvas.");
@@ -386,6 +392,7 @@ export default function SqlAuthoring() {
                     onChange={(e) =>
                       change({
                         mode: e.target.value === "query" ? "query" : "mutation",
+                        formative: undefined,
                       })
                     }
                   >
@@ -428,6 +435,31 @@ export default function SqlAuthoring() {
                   onChange={(e) => change({ starterSql: e.target.value })}
                 />
               </label>
+              {draft.mode === "query" && (
+                <label className="sql-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!!draft.formative}
+                    onChange={(e) =>
+                      change({
+                        formative: e.target.checked
+                          ? { kind: "public-result" }
+                          : undefined,
+                      })
+                    }
+                  />
+                  Publicar resultado esperado como material didático (feedback
+                  automático ao executar)
+                </label>
+              )}
+              {draft.formative && (
+                <p>
+                  O resultado esperado será inspecionável. Salve e teste a
+                  referência para gerar a prévia formativa no runner isolado. A
+                  publicação gera novamente o resultado, sem copiar o SQL
+                  privado.
+                </p>
+              )}
               <section className="sql-challenge">
                 <h2>Avaliação privada</h2>
                 <p>
@@ -515,11 +547,15 @@ export default function SqlAuthoring() {
                   disabled={dirty || !revision || publishedVersion}
                   onClick={() =>
                     void action(async () => {
-                      await sqlRequest(
-                        `/authoring/drafts/${draft.id}/test`,
-                        "POST",
-                        { revision },
+                      const tested = sqlObject(
+                        await sqlRequest(
+                          `/authoring/drafts/${draft.id}/test`,
+                          "POST",
+                          { revision },
+                        ),
+                        ["valid", "preview"],
                       );
+                      setPreview(parsePublicSqlExercise(tested.preview));
                       setMessage(
                         "Referência aprovada no runner isolado. Nenhuma publicação foi feita.",
                       );

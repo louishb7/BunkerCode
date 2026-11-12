@@ -1,0 +1,53 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "873be4fb0eb74b43d3f5e23937151c242ae6b1fec19a031496298eb9dbd48211",
+      "exercise": {
+        "id": "store-filter-sort",
+        "version": 2
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": true,
+      "expected": {
+        "fields": [
+          "name",
+          "city"
+        ],
+        "types": [
+          25,
+          25
+        ],
+        "rows": [
+          "[[\"string\",\"Daniel Costa\"],[\"string\",\"Natal\"]]",
+          "[[\"string\",\"Bruno Alves\"],[\"string\",\"Olinda\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-filter-sort",
+  "version": 2,
+  "status": "published",
+  "title": "Filtrar e ordenar clientes",
+  "objective": "Combinar WHERE e ORDER BY para recortar e organizar registros.",
+  "instructions": "Retorne name e city dos clientes que não moram em Recife. Ordene pelo nome em ordem decrescente (Z a A).",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT name, city FROM customers WHERE city <> 'Recife' ORDER BY name DESC"
+    ],
+    "orderMatters": true
+  }
+}

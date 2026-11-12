@@ -23,7 +23,7 @@ import {
   parsePublicSqlExercise,
 } from "@bunkercode/content/sql";
 const canonical = new SqlContent(resolve("../../content/sql"));
-test("canonical SQL has six immutable definitions, reusable typed dataset and strict private/public projections", () => {
+test("canonical SQL has six curated exercises and immutable versions, reusable typed dataset and strict private/public projections", () => {
   const list = canonical.list();
   assert.equal(list.length, 6);
   const dataset = canonical.dataset("store", 1);
@@ -230,4 +230,121 @@ test("Studio and publication resolve SQL references and refuse mixed JavaScript 
     /mix SQL/,
   );
   assert.equal(readFileSync(file, "utf8"), markdown);
+});
+
+test("opt-in public oracle is bounded, version-bound, derived and cannot be reused by edited drafts", async () => {
+  const { generateFormativeOracle } =
+    await import("@bunkercode/content/sql-grading");
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-formative-"));
+  const store = new SqlContent(root);
+  const dataset = canonical.dataset("store", 1);
+  store.saveDataset(dataset);
+  const definition = parseSqlDefinition({
+    ...canonical.definition("store-select-columns", 1),
+    id: "public-material",
+    status: "draft",
+    formative: { kind: "public-result" },
+  });
+  const saved = store.saveDraft(definition, null);
+  const oracle = await generateFormativeOracle(definition, dataset);
+  for (const reference of [
+    "SELECT random() AS value",
+    "SELECT * FROM generate_series(1,101)",
+    "SELECT repeat('x',70000) AS value",
+  ]) {
+    await assert.rejects(
+      generateFormativeOracle(
+        {
+          ...definition,
+          assessment: { reference: [reference], orderMatters: false },
+        },
+        dataset,
+      ),
+    );
+  }
+  await assert.rejects(
+    generateFormativeOracle({ ...definition, formative: undefined }, dataset),
+  );
+
+  assert.throws(() => store.publish(definition.id, saved.revision));
+  assert.throws(() =>
+    store.publish(definition.id, saved.revision, {
+      ...oracle,
+      exercise: { ...oracle.exercise, version: 2 },
+    }),
+  );
+  store.publish(definition.id, saved.revision, oracle);
+  const payload = store.public(definition.id, 1);
+  assert.deepEqual(
+    parsePublicSqlExercise(JSON.parse(JSON.stringify(payload))),
+    payload,
+  );
+  assert.ok(
+    !JSON.stringify(payload).includes(definition.assessment.reference[0]!),
+  );
+  assert.equal(payload.formative?.expected.rows.length, 4);
+  for (const changed of [
+    { ...payload, version: 2 },
+    { ...payload, dataset: { ...payload.dataset, version: 2 } },
+    { ...payload, mode: "mutation" },
+    { ...payload, formative: { ...oracle, privateCases: ["secret"] } },
+    {
+      ...payload,
+      formative: {
+        ...oracle,
+        expected: { ...oracle.expected, truncated: true },
+      },
+    },
+    {
+      ...payload,
+      formative: {
+        ...oracle,
+        expected: {
+          ...oracle.expected,
+          rows: Array(101).fill(oracle.expected.rows[0]),
+        },
+      },
+    },
+    {
+      ...payload,
+      formative: {
+        ...oracle,
+        expected: {
+          ...oracle.expected,
+          rows: ['[["string","' + "x".repeat(65536) + '"]]'],
+        },
+      },
+    },
+  ])
+    assert.throws(() => parsePublicSqlExercise(changed));
+  assert.throws(() =>
+    parseSqlDefinition({
+      ...definition,
+      formative: { kind: "public-result", oracle },
+    }),
+  );
+  assert.throws(() => parseSqlDefinition({ ...definition, mode: "mutation" }));
+  const second = store.saveDraft(
+    {
+      ...definition,
+      version: 2,
+      assessment: {
+        ...definition.assessment,
+        reference: ["SELECT name FROM customers"],
+      },
+    },
+    saved.revision,
+  );
+  assert.equal(store.public(definition.id, 1).formative?.exercise.version, 1);
+  assert.throws(() =>
+    store.publish(definition.id, second.revision, {
+      ...oracle,
+      exercise: { ...oracle.exercise, version: 2 },
+    }),
+  );
+  const file = join(root, "exercises", definition.id, "1.json");
+  const published = JSON.parse(readFileSync(file, "utf8"));
+  published.assessment.reference = ["SELECT name FROM customers"];
+  writeFileSync(file, JSON.stringify(published));
+  assert.throws(() => store.public(definition.id, 1), /desatualizado/);
 });

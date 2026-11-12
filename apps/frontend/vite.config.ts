@@ -22,7 +22,7 @@ export default defineConfig(({ command, isPreview }) => {
     publicDir: authoring ? "public" : false,
     resolve: {
       alias: [
-        ...["sql", "sql-engine"].map((name) => ({
+        ...["sql", "sql-engine", "sql-comparison"].map((name) => ({
           find: new RegExp("^@bunkercode/content/" + name + "$"),
           replacement: fileURLToPath(
             new URL(

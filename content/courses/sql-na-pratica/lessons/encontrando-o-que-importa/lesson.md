@@ -42,10 +42,10 @@ A equipe quer uma lista de clientes que **não moram em Recife**. Retorne apenas
 Observe as cidades reais no explorador. Monte sua condição de diferença e escolha a direção da ordenação. Um resultado com as pessoas certas, mas sem a ordem solicitada, ainda não atende ao relatório.
 
 ```bunker-sql
-{"kind":"sql","exerciseId":"store-filter-sort","version":1}
+{"kind":"sql","exerciseId":"store-filter-sort","version":2}
 ```
 
-Execute para investigar. **Verificar resposta** oferece feedback do servidor para quem está em sua conta. **Submit · concluir lição** é a ação que registra uma solução aprovada e a conclusão. Uma execução bem-sucedida, por si só, não conclui a lição. Se o serviço estiver indisponível, preserve sua consulta e tente novamente; não há aprovação local substituta.
+**Executar consulta** mostra os dados e compara automaticamente o resultado neste navegador, mesmo sem conta. Confira tanto o filtro quanto a ordem das linhas. O resultado esperado é material didático público; acertar localmente não salva progresso. **Submit · concluir lição** avalia independentemente no servidor e registra a conclusão quando aprovada. Se esse serviço estiver indisponível, a prática local continua disponível.
 
 Depois do desafio, explique: o que mudaria se você removesse `WHERE`? E se trocasse apenas `DESC` por `ASC`? Registre sua justificativa, em vez de guardar somente uma consulta que passou.
 

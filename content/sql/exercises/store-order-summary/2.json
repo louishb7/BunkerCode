@@ -1,0 +1,56 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "291aff2826f323b55aa6c6eda08fafff8cb4ca42f90a20ad96a0a4a8ff3f16a7",
+      "exercise": {
+        "id": "store-order-summary",
+        "version": 2
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": [
+          "customer_id",
+          "purchases",
+          "total"
+        ],
+        "types": [
+          23,
+          20,
+          1700
+        ],
+        "rows": [
+          "[[\"number\",\"1\"],[\"number\",\"2\"],[\"string\",\"95.40\"]]",
+          "[[\"number\",\"2\"],[\"number\",\"1\"],[\"string\",\"120.00\"]]",
+          "[[\"number\",\"3\"],[\"number\",\"1\"],[\"string\",\"89.00\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-order-summary",
+  "version": 2,
+  "status": "published",
+  "title": "Resumir pedidos por cliente",
+  "objective": "Agrupar pedidos e calcular quantidade e soma por cliente.",
+  "instructions": "Para cada customer_id com pedidos, retorne customer_id, COUNT(*) com o nome purchases e SUM(total) com o nome total. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM orders;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT customer_id, COUNT(*) AS purchases, SUM(total) AS total FROM orders GROUP BY customer_id"
+    ],
+    "orderMatters": false
+  }
+}

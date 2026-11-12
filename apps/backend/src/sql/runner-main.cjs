@@ -5,7 +5,10 @@ const {
   parseSqlSteps,
   sqlObject,
 } = require("/app/content/sql.js");
-const { gradeSql } = require("/app/content/sql-grading.js");
+const {
+  gradeSql,
+  generateFormativeOracle,
+} = require("/app/content/sql-grading.js");
 const { readFileSync } = require("node:fs");
 function kernelBoundary() {
   const read = (path) => readFileSync(path, "utf8").trim();
@@ -42,13 +45,23 @@ process.stdin.on("data", (chunk) => {
 process.stdin.on("end", async () => {
   try {
     kernelBoundary();
+    const raw = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     const input = sqlObject(
-      JSON.parse(Buffer.concat(chunks).toString("utf8")),
-      ["definition", "dataset", "steps"],
+      raw,
+      raw.operation === undefined
+        ? ["definition", "dataset", "steps"]
+        : ["definition", "dataset", "steps", "operation"],
     );
+    if (input.operation !== undefined && input.operation !== "formative")
+      throw new Error("Invalid operation");
     const definition = parseSqlDefinition(input.definition),
       dataset = parseSqlDataset(input.dataset),
       steps = parseSqlSteps(input.steps);
+    if (input.operation === "formative") {
+      const formative = await generateFormativeOracle(definition, dataset);
+      process.stdout.write(JSON.stringify({ passed: true, formative }));
+      return;
+    }
     const metrics = {};
     const passed = await gradeSql(definition, dataset, steps, (phase, ms) => {
       metrics[phase] = ms;

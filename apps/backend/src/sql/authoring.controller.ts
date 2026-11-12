@@ -14,7 +14,7 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "../auth/auth.guard";
 import { RequireIdentity } from "../auth/auth.guard";
 import { SqlService, sqlInput } from "./sql.service";
-import { sqlObject } from "@bunkercode/content/sql";
+import { sqlObject, publicSqlExercise } from "@bunkercode/content/sql";
 @RequireIdentity("ADMIN")
 @Controller("content/sql/authoring")
 export class SqlAuthoringController {
@@ -69,21 +69,37 @@ export class SqlAuthoringController {
     };
     response.on("close", cancel);
     try {
-      if (
-        !(await this.sql.authoring(
-          request.identity.id,
-          draft.definition,
+      const result = await this.sql.authoring(
+        request.identity.id,
+        draft.definition,
+        dataset,
+        abort.signal,
+      );
+      if (!result.valid) throw new Error("Referência inválida.");
+      if (publish)
+        return this.sql.content.publish(
+          id,
+          draft.revision,
+          "oracle" in result ? result.oracle : undefined,
+        );
+      // Recheck the saved revision after the asynchronous runner operation.
+      if (this.sql.content.draft(id).revision !== draft.revision)
+        throw new Error("Rascunho mudou durante validação.");
+      return {
+        valid: true,
+        preview: publicSqlExercise(
+          {
+            ...draft.definition,
+            ...("oracle" in result
+              ? { formative: { kind: "public-result", oracle: result.oracle } }
+              : {}),
+          },
           dataset,
-          abort.signal,
-        ))
-      )
-        throw new Error("Referência inválida.");
+        ),
+      };
     } finally {
       response.off("close", cancel);
     }
-    return publish
-      ? this.sql.content.publish(id, draft.revision)
-      : { valid: true };
   }
   @Post("drafts/:id/publish") async publish(
     @Param("id") id: string,
