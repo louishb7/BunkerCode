@@ -272,7 +272,7 @@ Login/cadastro reutilizam marca, ícones e tipografia existentes em duas áreas 
 
 O módulo `learning` usa a identidade verificada da autenticação existente para conclusões, última visita, preferências e soluções aprovadas em PostgreSQL. Conteúdo e rascunhos continuam nos seus meios existentes. A Home retoma pela conta, e o curso/leitor exibem progresso real da projeção publicada. O Submit local ganhou persistência transacional somente após aprovação autoritativa; Run não salva solução na conta, e o perfil público continua sem executor. Preferências de conta são independentes do contexto local do visitante. As descrições anteriores de progresso exclusivamente local representam o estado anterior à Sprint 2. [Contratos, políticas e limites atuais](../learning-state.md).
 
-A entrada de deploy (`pnpm start`/`start:public`) aplica migrations versionadas antes de abrir HTTP; o build gera Prisma Client offline. `DIRECT_URL` opcional separa conexão de migration do pooler da aplicação. O desenvolvimento e a entrada direta não migram automaticamente. [Fluxo de deploy e nuvem](../deployment.md).
+A entrada de deploy (`pnpm start`/`start:public`) aplica migrations versionadas antes de abrir HTTP; o build gera Prisma Client offline. `DIRECT_URL` opcional separa conexão de migration do pooler da aplicação. O desenvolvimento (`pnpm dev`) reutiliza o mesmo launcher com `--dev`, carrega os arquivos locais pelo Node e aplica migrations pendentes antes de iniciar o watcher TypeScript. Novas migrations durante a sessão exigem reiniciar o comando. Somente as entradas diretas (`start:authoring`/`dist/main.js`) não migram automaticamente. [Fluxo de deploy e nuvem](../deployment.md).
 
 ## SQL nas lições: conteúdo versionado e avaliação separada
 

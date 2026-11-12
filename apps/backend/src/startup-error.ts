@@ -39,7 +39,7 @@ export function databaseStartupError(error: unknown): StartupError {
       "The configured PostgreSQL database does not exist. Select the existing development database or follow docs/authentication.md for initial setup.";
   else if (["42P01", "42703", "P2021", "P2022"].some((code) => codes.has(code)))
     message =
-      "Required identity tables/columns are missing. Check db:status:local and apply reviewed migrations with db:deploy:local (backend workspace). Never reset the database.";
+      "Required database tables/columns are missing. Restart pnpm dev to apply versioned migrations, or check db:status:local and apply reviewed migrations with db:deploy:local (backend workspace). Never reset the database.";
   else if (["42501", "P1010"].some((code) => codes.has(code)))
     message =
       "PostgreSQL denied access. Check the configured role's permissions on the identity database and schema.";

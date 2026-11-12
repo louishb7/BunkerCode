@@ -1,5 +1,5 @@
-// Deployment entry point: migrate the configured PostgreSQL before opening HTTP.
-// The low-level dist/main.js and local authoring commands remain migration-free.
+// Development/deployment entry point: migrate before opening HTTP.
+// --dev starts the TypeScript watcher; low-level entry points remain migration-free.
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { access } from "node:fs/promises";
@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 const backend = fileURLToPath(new URL("../apps/backend/", import.meta.url));
+const development = process.argv[2] === "--dev";
+const label = development ? "Dev" : "Deploy";
 let child;
 let stopping;
 let phase = "configuration";
@@ -55,6 +57,13 @@ function databaseUrl(key) {
   }
 }
 async function start() {
+  if (
+    process.argv.length > (development ? 3 : 2) ||
+    (development &&
+      (process.env.BUNKERCODE_PROFILE !== "authoring" ||
+        process.env.NODE_ENV === "production"))
+  )
+    throw new Error("Invalid launcher mode.");
   if (!["authoring", "public"].includes(process.env.BUNKERCODE_PROFILE))
     throw new Error(
       "BUNKERCODE_PROFILE must explicitly be authoring or public.",
@@ -63,7 +72,7 @@ async function start() {
   if (process.env.DIRECT_URL !== undefined) databaseUrl("DIRECT_URL");
   await Promise.all(
     [
-      "dist/main.js",
+      development ? "src/main.ts" : "dist/main.js",
       "prisma/schema.prisma",
       "prisma/migrations/migration_lock.toml",
       "prisma.config.ts",
@@ -71,6 +80,9 @@ async function start() {
   );
   const require = createRequire(join(backend, "package.json"));
   const prisma = require.resolve("prisma/build/index.js");
+  const serverArgs = development
+    ? [require.resolve("tsx/cli"), "watch", "src/main.ts"]
+    : [join(backend, "dist/main.js")];
   phase = "database connectivity";
   const { Client } = require("pg");
   // Require a provisioned database; do not let migrate deploy create a mistyped database.
@@ -88,27 +100,27 @@ async function start() {
   if (stopping) return stopping === "SIGINT" ? 130 : 143;
   phase = "migration process";
   process.stdout.write(
-    "Deploy: applying versioned Prisma migrations before HTTP startup.\n",
+    `${label}: applying versioned Prisma migrations before HTTP startup.\n`,
   );
   const migration = await run([prisma, "migrate", "deploy"], true);
   if (stopping) return stopping === "SIGINT" ? 130 : 143;
   if (migration.code !== 0) {
     const code = migration.output.match(/\bP\d{4}\b/)?.[0];
     process.stderr.write(
-      `Deploy: migration failed${code ? ` (${code})` : ""}; HTTP server was not started. Check database connectivity, TLS, migration history and permissions; see docs/deployment.md. Raw CLI output is withheld to protect credentials.\n`,
+      `${label}: migration failed${code ? ` (${code})` : ""}; HTTP server was not started. Check database connectivity, TLS, migration history and permissions; see docs/deployment.md. Raw CLI output is withheld to protect credentials.\n`,
     );
     return migration.code || 1;
   }
-  process.stdout.write("Deploy: migrations ready; starting backend.\n");
+  process.stdout.write(`${label}: migrations ready; starting backend.\n`);
   phase = "backend process";
-  const server = await run([join(backend, "dist/main.js")], false);
+  const server = await run(serverArgs, false);
   return server.code ?? ((server.signal ?? stopping) === "SIGINT" ? 130 : 143);
 }
 try {
   process.exitCode = await start();
 } catch {
   process.stderr.write(
-    `Deploy: ${phase} failed. HTTP server was not started. Check DATABASE_URL, optional DIRECT_URL, BUNKERCODE_PROFILE and the deployment artifact; see docs/deployment.md. Values and raw errors are withheld.\n`,
+    `${label}: ${phase} failed. HTTP server was not started. Check DATABASE_URL, optional DIRECT_URL, BUNKERCODE_PROFILE and the ${development ? "local configuration" : "deployment artifact"}; see docs/deployment.md. Values and raw errors are withheld.\n`,
   );
   process.exitCode = stopping === "SIGINT" ? 130 : stopping ? 143 : 1;
 } finally {

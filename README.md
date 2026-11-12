@@ -22,7 +22,7 @@ Já existem catálogo, leitura, prática, Studio de autoria, identidade e progre
 
 O frontend usa React/Vite e CodeMirror; o backend é um monólito NestJS com PostgreSQL/Prisma. Lições e ordem dos cursos ficam em Markdown/JSON versionados. Contas e progresso ficam no banco; rascunhos locais não são substituídos por essa persistência.
 
-Para iniciar, siga [instalação e configuração local](docs/authentication.md). São necessários Node.js 24.11+ na linha 24 ou 26+, PNPM 11 e PostgreSQL. Depois de configurar o ambiente, `pnpm dev` inicia o site em `http://127.0.0.1:5173` e a API em `127.0.0.1:3001`. O perfil de autoria é local e não deve ser exposto à internet.
+Para iniciar, siga [instalação e configuração local](docs/authentication.md). São necessários Node.js 24.11+ na linha 24 ou 26+, PNPM 11 e PostgreSQL. Depois de configurar o ambiente, `pnpm dev` aplica as migrations versionadas pendentes no banco existente e inicia o site em `http://127.0.0.1:5173` e a API em `127.0.0.1:3001`. O perfil de autoria é local e não deve ser exposto à internet.
 
 O conteúdo pode ser escrito no editor de sua preferência ou no Studio com uma conta ADMIN. Salvar no Studio altera o arquivo; o commit continua manual. Comece pelo [guia de autoria](docs/authoring.md) e pelos [blocos editoriais](docs/visual-authoring.md).
 

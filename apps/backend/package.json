@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm build && BUNKERCODE_PROFILE=authoring tsx watch --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local src/main.ts",
+    "dev": "pnpm build && BUNKERCODE_PROFILE=authoring node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local ../../scripts/deploy-backend.mjs --dev",
     "build": "prisma generate && tsc -p tsconfig.json && node ../../scripts/copy-sql-runner.mjs",
     "start": "node ../../scripts/deploy-backend.mjs",
     "test": "pnpm build && BUNKERCODE_PROFILE=authoring tsx --test --test-concurrency=1 test/*.test.ts",

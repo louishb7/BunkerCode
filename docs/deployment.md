@@ -2,7 +2,9 @@
 
 O deploy usa as migrations SQL versionadas de `apps/backend/prisma/migrations`. `pnpm start` e `pnpm start:public`, na raiz, passam pelo launcher `scripts/deploy-backend.mjs`: ele verifica o banco configurado, executa **`prisma migrate deploy`** e só inicia o backend após sucesso. Uma falha encerra com código não zero, sem abrir HTTP. Reiniciar reaplica somente migrations pendentes, sem duplicar as já registradas.
 
-O fluxo local `pnpm dev`, `start:authoring` e a entrada de baixo nível `node apps/backend/dist/main.js` continuam sem aplicar migrations. Use os comandos de deploy acima na hospedagem; apontar o provedor diretamente para `dist/main.js` contorna deliberadamente o launcher e não executa essa etapa.
+O fluxo local `pnpm dev` também usa esse launcher, no modo `--dev`: o script do backend carrega `.env` e `.env.local` com a precedência documentada, aplica as migrations pendentes e só então inicia `tsx watch`. O modo exige perfil `authoring` fora de `NODE_ENV=production`; não é uma entrada de hospedagem. Reinicie `pnpm dev` depois de adicionar uma migration: a aplicação automática ocorre a cada início, não a cada edição.
+
+`start:authoring` e a entrada de baixo nível `node apps/backend/dist/main.js` continuam sem aplicar migrations. Use os comandos de deploy acima na hospedagem; apontar o provedor diretamente para `dist/main.js` contorna deliberadamente o launcher e não executa essa etapa.
 
 ## Build, release e inicialização
 
@@ -36,7 +38,7 @@ Esse job usa `DIRECT_URL` quando configurada. O start continua fazendo a verific
 
 ## Segurança e concorrência
 
-O launcher verifica uma conexão real com o banco já provisionado antes de chamar a CLI, evitando criação implícita de um banco por erro no nome. Não provisiona serviço, usuário ou volume, não lê `.env` e não gera/rotaciona secrets. URLs, credenciais, SQL e saída bruta da CLI não entram nos logs do launcher. Falhas de migration mostram somente código Prisma quando disponível e orientação operacional. Para diagnosticar em um terminal privado do ambiente correto, use `prisma migrate status` e os logs de operação com acesso restrito.
+O launcher verifica uma conexão real com o banco já provisionado antes de chamar a CLI, evitando criação implícita de um banco por erro no nome. Não provisiona serviço, usuário ou volume, não carrega arquivos `.env` por conta própria e não gera/rotaciona secrets. Apenas o comando local `dev` carrega esses arquivos antes de invocá-lo; deploy continua usando exclusivamente o ambiente do operador. URLs, credenciais, SQL e saída bruta da CLI não entram nos logs do launcher. Falhas de migration mostram somente código Prisma quando disponível e orientação operacional. Para diagnosticar em um terminal privado do ambiente correto, use `prisma migrate status` e os logs de operação com acesso restrito.
 
 Prisma usa advisory locking ao aplicar migrations. Duas inicializações simultâneas são seguras para o histórico, mas o timeout desse lock é de 10 segundos: uma migração longa pode fazer outra réplica falhar e exigir retry pelo supervisor. Não desative o lock. Um release job único reduz essa competição. O launcher encaminha SIGINT/SIGTERM para o processo ativo e não abre o backend após cancelamento da etapa de migration.
 
@@ -46,7 +48,7 @@ Não se executa `migrate dev`, `db push`, reset, seed, down migration nem corre�
 
 Essa estrutura automatiza a etapa de migrations para PostgreSQL local ou hospedado, sem escolher ou configurar um provedor de nuvem. A URL real, TLS/CA, permissões, backups, job de release, snapshot e proxy continuam sendo configuração do ambiente de hospedagem. O backend preserva seu bind em loopback; a publicação externa depende da topologia de proxy já documentada. O runner JavaScript público continua desabilitado. A avaliação SQL é uma capacidade separada e opcional: exige imagem isolada, habilitação explícita e acervo privado fora do snapshot/host estático, conforme [configuração e recuperação SQL](sql-practice.md). O launcher de migrations não provisiona Docker nem habilita essa avaliação.
 
-Os testes de startup cobrem duas inicializações concorrentes com migrations já aplicadas, falha real da CLI sem abertura HTTP, ausência de URL e proteção dos logs. O pacote de evidências da sprint complementa com bancos descartáveis vazios, upgrade com usuário/sessão existentes, repetição idempotente e histórico de migration falha. Nenhum teste deve usar `bunkercode_dev` como fixture.
+Os testes de startup cobrem os modos de desenvolvimento e deploy: duas inicializações concorrentes com migrations já aplicadas, falha real da CLI sem abertura HTTP, encerramento sem deixar a API ativa e proteção dos logs. Também verificam ausência de URL no deploy e recusa do watcher em perfil público/produção antes de migrar. O pacote de evidências da sprint complementa com bancos descartáveis vazios, upgrade com usuário/sessão existentes, repetição idempotente e histórico de migration falha. Nenhum teste deve usar `bunkercode_dev` como fixture.
 
 Referências oficiais: [migrate deploy e advisory locking](https://www.prisma.io/docs/orm/v7/prisma-migrate/workflows/development-and-production), [conexão direta e pooler](https://www.prisma.io/docs/postgres/database/connecting-to-your-database). O primeiro descreve também os limites: deploy aplica arquivos versionados, não detecta todo drift e não gera o client.
 
