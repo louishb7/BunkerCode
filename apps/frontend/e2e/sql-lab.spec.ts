@@ -37,9 +37,7 @@ test("SQL laboratory executes, verifies, recovers and resets without application
   await expect(page.getByText("2 linhas exibidas.")).toBeVisible();
   await expect(page.locator("tbody tr").first()).toContainText("Carla Souza");
   await verify.click();
-  await expect(status).toContainText(
-    "Entre na sua conta para verificar no servidor",
-  );
+  await expect(status).toContainText("Verificação anônima indisponível");
   await write(
     "SELECT c.name, count(*)::int AS purchases FROM customers c JOIN orders o ON c.id = o.customer_id GROUP BY c.id, c.name ORDER BY c.id;",
   );
@@ -407,8 +405,37 @@ authenticatedTest(
     await expect(status).toContainText("1 linha afetada");
     await verify.click();
     await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await editor.fill("DELETE FROM customers");
+    await expect(status).toContainText("Texto alterado e ainda não executado");
+    await expect(status).not.toContainText("Resposta correta!");
+    await page.screenshot({
+      path: test.info().outputPath("sql-mutation-unexecuted-edit.png"),
+      fullPage: true,
+    });
+
+    // Hold the second real check, preserving the original repeated-check coverage
+    // while testing an edit during verification without another Docker evaluation.
+    let arrived!: () => void, release!: () => void;
+    const ready = new Promise<void>((r) => (arrived = r));
+    const hold = new Promise<void>((r) => (release = r));
+    await page.route("**/api/sql/check", async (route) => {
+      const response = await route.fetch();
+      arrived();
+      await hold;
+      await route.fulfill({ response });
+    });
     await verify.click();
+    await ready;
+    await editor.fill("UPDATE customers SET city = 'Unexecuted'");
+    release();
     await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText(
+      "somente o estado dos comandos executados",
+    );
+    await expect(status).toContainText(
+      "O texto do editor mudou e ainda não foi executado",
+    );
+    await page.unroute("**/api/sql/check");
     await page.getByRole("button", { name: "Ver registros" }).click();
     const records = page.getByRole("region", {
       name: "Registros de customers",
@@ -416,7 +443,7 @@ authenticatedTest(
     await expect(
       records.locator("tbody tr").filter({ hasText: "Bruno Alves" }),
     ).toContainText("Recife");
-    await expect(status).toContainText("Resposta correta!", { timeout: 45000 });
+    await expect(status).toContainText("Resposta correta!");
     await editor.fill("UPDATE customers SET city = 'Recife'");
     await execute.click();
     await verify.click();
@@ -439,6 +466,86 @@ authenticatedTest(
     await expect(editor).toHaveText("SELECT * FROM customers;");
     await page.getByRole("button", { name: "Executar consulta" }).click();
     await expect(status).toHaveText("Consulta concluída.", { timeout: 65000 });
+  },
+);
+
+authenticatedTest(
+  "mutation cancellation ignores late checks and restores deterministic table previews",
+  async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto("/sql");
+    await page
+      .getByLabel("Atividade demonstrativa")
+      .selectOption("store-update-city");
+    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+    const status = page.locator(".sql-workspace [role=status]");
+    const execute = page.getByRole("button", { name: "Executar comando" });
+    const verify = page.getByRole("button", { name: "Verificar estado" });
+    await editor.fill("UPDATE customers SET city = 'Recife' WHERE id = 2");
+    await execute.click();
+    await expect(status).toContainText("Comando concluído", { timeout: 65000 });
+    let arrived!: () => void, release!: () => void, delivered!: () => void;
+    const ready = new Promise<void>((r) => (arrived = r));
+    const hold = new Promise<void>((r) => (release = r));
+    const done = new Promise<void>((r) => (delivered = r));
+    await page.route("**/api/sql/check", async (route) => {
+      const response = await route.fetch();
+      arrived();
+      await hold;
+      try {
+        await route.fulfill({ response });
+      } catch (error) {
+        if (!route.request().failure()) throw error;
+      } finally {
+        delivered();
+      }
+    });
+    await verify.click();
+    await ready;
+    await page.getByRole("button", { name: "Cancelar e descartar" }).click();
+    release();
+    await done;
+    await page.unroute("**/api/sql/check");
+    await expect(status).toContainText(
+      "Consulta cancelada e ambiente descartado",
+    );
+    await expect(status).not.toContainText("Resposta correta!");
+    await verify.click();
+    await expect(status).toContainText("Envie de 1 a 20 comandos SQL");
+    await page.getByRole("button", { name: "Ver registros" }).click();
+    await expect(
+      page
+        .getByRole("region", { name: "Registros de customers" })
+        .locator("tbody tr")
+        .filter({ hasText: "Bruno Alves" }),
+    ).toContainText("Olinda", { timeout: 65000 });
+    await editor.fill("DELETE FROM orders");
+    await execute.click();
+    await expect(status).toContainText("Comando concluído");
+    await page.getByLabel("Tabela", { exact: true }).selectOption("orders");
+    await page.getByRole("button", { name: "Ver registros" }).click();
+    await expect(
+      page.getByText("Esta tabela não contém registros."),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Registros de orders" })
+        .getByRole("columnheader"),
+    ).toHaveText(["id", "customer_id", "total", "note"]);
+    await expect(
+      page.getByText("Nenhuma linha corresponde à consulta."),
+    ).toHaveCount(0);
+    await page.screenshot({
+      path: test.info().outputPath("sql-empty-table-preview.png"),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Reiniciar banco" }).click();
+    await page.getByRole("button", { name: "Ver registros" }).click();
+    await expect(
+      page
+        .getByRole("region", { name: "Registros de orders" })
+        .locator("tbody tr"),
+    ).toHaveCount(4);
   },
 );
 
@@ -540,6 +647,13 @@ authenticatedTest(
     await expect(
       page.getByText("Lição concluída", { exact: true }),
     ).toBeVisible();
+    await editor.fill("SELECT 1");
+    await expect(
+      page.getByText("Lição concluída", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Carregar solução aprovada" }),
+    ).toBeVisible();
     await page.reload();
     await page
       .getByRole("button", { name: "Carregar solução aprovada" })
@@ -603,7 +717,7 @@ authenticatedTest(
 
 authenticatedTest(
   "Studio creates dataset and exercise, tests and publishes reference, attaches and opens the real lesson",
-  async ({ page }) => {
+  async ({ page, request }) => {
     authenticatedTest.setTimeout(220000);
     const suffix = Date.now().toString(36),
       exerciseId = "browser-authored-" + suffix,
@@ -708,6 +822,12 @@ authenticatedTest(
       ),
     ) as { status: string };
     expect(physical.status).toBe("published");
+    const lab = await request.get("/api/content/sql/exercises");
+    expect(lab.ok()).toBe(true);
+    expect(await lab.text()).not.toContain(exerciseId);
+    const references = await request.get("/api/content/sql/references");
+    expect(references.ok()).toBe(true);
+    expect(await references.text()).toContain(exerciseId);
     await page.screenshot({
       path: test.info().outputPath("sql-studio-published-dark.png"),
       fullPage: true,

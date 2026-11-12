@@ -3,14 +3,20 @@ import type { SqlResult } from "./exercise";
 export function SqlTable({
   result,
   label,
+  context = "query",
 }: {
   result: SqlResult;
   label: string;
+  context?: "query" | "table";
 }) {
   return (
     <>
       {result.fields.length > 0 && result.rows.length === 0 && (
-        <p>Nenhuma linha corresponde à consulta.</p>
+        <p>
+          {context === "table"
+            ? "Esta tabela não contém registros."
+            : "Nenhuma linha corresponde à consulta."}
+        </p>
       )}
       {result.fields.length > 0 && (
         <div

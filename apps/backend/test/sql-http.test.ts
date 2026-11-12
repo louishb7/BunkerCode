@@ -8,11 +8,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createApplication } from "../src/application";
 import { PrismaService } from "../src/auth/prisma.service";
+import { SqlService } from "../src/sql/sql.service";
 const origin = "http://127.0.0.1:5173";
 test(
   "SQL HTTP keeps private authoring, identity, version and resource boundaries server-side",
   { timeout: 90000 },
-  async () => {
+  async (t) => {
     const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-http-"));
     cpSync(resolve("../../content/sql"), join(root, "sql"), {
       recursive: true,
@@ -77,6 +78,38 @@ test(
     try {
       const student = await register(),
         admin = await register();
+      const service = app.get(SqlService);
+      const valid = {
+        exerciseId: "store-select-columns",
+        version: 1,
+        steps: ["SELECT id,name FROM customers"],
+        courseId: "demo",
+        lessonSlug: "first",
+      };
+      await assert.rejects(service.submit(student.user.id, undefined, valid), {
+        status: 401,
+      });
+      await assert.rejects(
+        service.submit(student.user.id, "Bearer " + admin.accessToken, valid),
+        { status: 401 },
+      );
+      for (const path of ["/sql/check", "/sql/submit"])
+        for (const extra of [
+          {},
+          { "X-Forwarded-For": "192.0.2.1", Authorization: "Bearer forged" },
+        ])
+          assert.equal(
+            (
+              await send(
+                path,
+                undefined,
+                { ...valid, passed: true, userId: admin.user.id },
+                "POST",
+                extra,
+              )
+            ).status,
+            401,
+          );
       await db.user.update({
         where: { id: admin.user.id },
         data: { role: "ADMIN" },
@@ -200,6 +233,20 @@ test(
       const catalog = (await (
         await send("/content/sql/authoring", admin.accessToken, {}, "GET")
       ).json()) as { published: Record<string, unknown>[] };
+      assert.equal(
+        (await send("/content/sql/references", undefined, {}, "GET")).status,
+        401,
+      );
+      assert.equal(
+        (await send("/content/sql/references", student.accessToken, {}, "GET"))
+          .status,
+        403,
+      );
+      assert.equal(
+        (await send("/content/sql/references", admin.accessToken, {}, "GET"))
+          .status,
+        200,
+      );
       const original = catalog.published.find(
         (d) => d.id === "store-select-columns",
       )!;
@@ -239,10 +286,88 @@ test(
         409,
       );
       assert.ok(draft.revision);
+      const previousRunner = process.env.BUNKERCODE_SQL_RUNNER_ENABLED;
+      process.env.BUNKERCODE_SQL_RUNNER_ENABLED = "0";
+      try {
+        for (const path of ["/sql/check", "/sql/submit"]) {
+          const unavailable = await send(path, admin.accessToken, valid);
+          assert.equal(unavailable.status, 503);
+          const feedback = await unavailable.text();
+          assert.ok(!feedback.includes('"passed"'));
+          assert.ok(!feedback.includes("SELECT id,name"));
+        }
+      } finally {
+        if (previousRunner === undefined)
+          delete process.env.BUNKERCODE_SQL_RUNNER_ENABLED;
+        else process.env.BUNKERCODE_SQL_RUNNER_ENABLED = previousRunner;
+      }
+      assert.equal(
+        (
+          await send("/sql/check", admin.accessToken, {
+            exerciseId: definition.id,
+            version: 1,
+            steps: ["SELECT 1"],
+          })
+        ).status,
+        404,
+      );
+      service.content.publish(definition.id, draft.revision);
+      const listed = await (
+        await send("/content/sql/exercises", undefined, {}, "GET")
+      ).text();
+      assert.ok(!listed.includes(definition.id));
+      assert.equal(
+        (
+          await send(
+            `/content/sql/exercises/${definition.id}/1`,
+            undefined,
+            {},
+            "GET",
+          )
+        ).status,
+        200,
+      );
+      writeFileSync(
+        join(root, "courses/demo/lessons/first/lesson.md"),
+        `# First\n\`\`\`bunker-sql\n${JSON.stringify({ kind: "sql", exerciseId: definition.id, version: 1 })}\n\`\`\``,
+      );
+      assert.doesNotThrow(() =>
+        service.binding("demo", "first", definition.id, 1),
+      );
+      assert.equal(
+        (
+          await send("/sql/check", admin.accessToken, {}, "POST", {
+            "Content-Type": "text/plain",
+          })
+        ).status,
+        415,
+      );
+      assert.equal(
+        (
+          await send("/sql/check", admin.accessToken, {
+            steps: ["x".repeat(115000)],
+          })
+        ).status,
+        413,
+      );
       assert.equal(
         await db.lessonCompletion.count({ where: { userId: { in: ids } } }),
         0,
       );
+      // Fill only the service's bounded map, without touching Docker or identities.
+      for (let i = 0; i < 1022; i++)
+        await assert.rejects(service.check("capacity-" + i, {}), {
+          status: 400,
+        });
+      await assert.rejects(service.check("overflow", {}), { status: 429 });
+      await assert.rejects(service.check(admin.user.id, {}), { status: 400 });
+      const now = Date.now();
+      const clock = t.mock.method(Date, "now", () => now + 60001);
+      try {
+        await assert.rejects(service.check("overflow", {}), { status: 400 });
+      } finally {
+        clock.mock.restore();
+      }
     } finally {
       await db.user.deleteMany({ where: { id: { in: ids } } });
       await app.close();

@@ -463,7 +463,7 @@ anonymousTest(
 );
 
 anonymousTest(
-  "public SQL practice executes anonymously and explains authenticated verification",
+  "public SQL practice executes anonymously and explains blocked anonymous verification",
   async ({ page }) => {
     anonymousTest.setTimeout(90000);
     const sqlRequests: string[] = [];
@@ -486,7 +486,7 @@ anonymousTest(
     await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(2);
     await page.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Entre na sua conta para verificar no servidor",
+      "Verificação anônima indisponível",
       { timeout: 65000 },
     );
     await page.getByRole("button", { name: "Ver registros" }).click();
@@ -510,10 +510,16 @@ anonymousTest(
     await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(4, {
       timeout: 65000,
     });
-    await page.getByRole("button", { name: "Submit · concluir lição" }).click();
+    await expect(
+      page.getByRole("button", { name: "Submit · concluir lição" }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Verificar resposta" }).click();
     await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Entre na sua conta",
+      "Verificação anônima indisponível",
     );
+    await expect(
+      page.getByText("Lição concluída", { exact: true }),
+    ).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

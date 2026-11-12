@@ -27,6 +27,7 @@ import {
   publicSqlExercise,
   sqlId,
   sqlVersion,
+  sqlObject,
   type SqlDefinition,
   type SqlDataset,
   type PublicSqlExercise,
@@ -127,21 +128,25 @@ export class SqlContent {
     }
     return result;
   }
+  laboratory() {
+    if (!existsSync(join(this.root, "laboratory.json"))) return [];
+    const selection = sqlObject(this.read(["laboratory.json"]), ["exercises"]);
+    if (!Array.isArray(selection.exercises) || selection.exercises.length > 32)
+      throw new BadRequestException("Seleção do laboratório SQL inválida.");
+    const ids = new Set<string>();
+    return selection.exercises.map((value: unknown) => {
+      const entry = sqlObject(value, ["id", "version"]);
+      const id = sqlId(entry.id),
+        version = sqlVersion(entry.version);
+      if (ids.has(id))
+        throw new BadRequestException("Atividade SQL duplicada na vitrine.");
+      ids.add(id);
+      this.public(id, version);
+      return { id, version };
+    });
+  }
   list() {
-    if (!existsSync(this.root)) return [];
-    return this.versions()
-      .map((r) => this.public(r.id, r.version))
-      .filter(
-        (r, _, all) =>
-          !all.some((other) => other.id === r.id && other.version > r.version),
-      )
-      .sort((a, b) =>
-        a.id === "store-customers-recife"
-          ? -1
-          : b.id === "store-customers-recife"
-            ? 1
-            : a.id.localeCompare(b.id),
-      );
+    return this.laboratory().map(({ id, version }) => this.public(id, version));
   }
   datasets() {
     if (!existsSync(join(this.root, "datasets"))) return [];
@@ -285,6 +290,11 @@ export function sqlPublicationFiles(contentRoot: string): Map<string, string> {
   const store = new SqlContent(join(contentRoot, "sql"));
   const files = new Map<string, string>();
   if (!existsSync(store.root)) return files;
+  if (existsSync(join(store.root, "laboratory.json")))
+    files.set(
+      "sql/laboratory.json",
+      JSON.stringify({ exercises: store.laboratory() }, null, 2) + "\n",
+    );
   for (const { id, version } of store.versions())
     files.set(
       `sql/public/${id}/${version}.json`,

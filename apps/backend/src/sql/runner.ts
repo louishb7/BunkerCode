@@ -97,6 +97,7 @@ export async function evaluateSql(
   steps: string[],
   signal?: AbortSignal,
 ): Promise<boolean> {
+  if (signal?.aborted) throw new HttpException("Avaliação cancelada.", 409);
   if (active.size >= SQL_RUN_LIMITS.concurrent)
     throw new HttpException(
       "Runner SQL ocupado. Aguarde e tente novamente.",
@@ -118,9 +119,11 @@ export async function evaluateSql(
     let failure: unknown;
     let passed: boolean | undefined;
     let created = false;
+    let creationAttempted = false;
     try {
       const image = await sqlRunnerStatus();
       if (cancelled) throw new HttpException("Avaliação cancelada.", 409);
+      creationAttempted = true;
       await exec(
         "docker",
         [
@@ -178,7 +181,13 @@ export async function evaluateSql(
           killing ??= exec("docker", ["kill", name], {
             timeout: 4000,
             maxBuffer: 2048,
-          }).catch(() => process.kill("SIGKILL"));
+          })
+            .catch(() => undefined)
+            .finally(() => {
+              // Bound the CLI connection too, even if the daemon acknowledges kill
+              // without closing the attached stream. Cleanup still confirms removal.
+              process.kill("SIGKILL");
+            });
         };
         terminate = () => stop("cancelled");
         const timer = setTimeout(
@@ -234,10 +243,11 @@ export async function evaluateSql(
     }
     try {
       // Attempt cleanup even if docker create timed out after daemon creation.
-      await exec("docker", ["rm", "--force", name], {
-        timeout: 5000,
-        maxBuffer: 2048,
-      });
+      if (creationAttempted)
+        await exec("docker", ["rm", "--force", name], {
+          timeout: 5000,
+          maxBuffer: 2048,
+        });
     } catch (error) {
       if (
         created ||
@@ -253,6 +263,8 @@ export async function evaluateSql(
     signal?.removeEventListener("abort", cancel);
     active.delete(id);
     if (failure) throw failure;
+    if (cancelled)
+      throw new HttpException("Avaliação cancelada. Ambiente descartado.", 409);
     if (passed === undefined)
       throw new HttpException("Runner SQL sem confirmação.", 503);
     return passed;

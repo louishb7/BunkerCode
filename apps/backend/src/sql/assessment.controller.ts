@@ -21,7 +21,10 @@ export class SqlAssessmentController {
   ) {
     return this.evaluate(request, response, body, false);
   }
-  @Post("submit") @Header("Cache-Control", "no-store") submit(
+  @RequireIdentity()
+  @Post("submit")
+  @Header("Cache-Control", "no-store")
+  submit(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
     @Body() body: unknown,
@@ -40,12 +43,14 @@ export class SqlAssessmentController {
     };
     response.on("close", cancel);
     try {
-      return await this.sql.check(
-        request.identity.id,
-        body,
-        abort.signal,
-        submit ? request.headers.authorization : undefined,
-      );
+      return await (submit
+        ? this.sql.submit(
+            request.identity.id,
+            request.headers.authorization,
+            body,
+            abort.signal,
+          )
+        : this.sql.check(request.identity.id, body, abort.signal));
     } finally {
       response.off("close", cancel);
     }

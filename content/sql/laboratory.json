@@ -1,0 +1,28 @@
+{
+  "exercises": [
+    {
+      "id": "store-customers-recife",
+      "version": 1
+    },
+    {
+      "id": "store-customer-orders",
+      "version": 1
+    },
+    {
+      "id": "store-filter-sort",
+      "version": 1
+    },
+    {
+      "id": "store-order-summary",
+      "version": 1
+    },
+    {
+      "id": "store-select-columns",
+      "version": 1
+    },
+    {
+      "id": "store-update-city",
+      "version": 1
+    }
+  ]
+}

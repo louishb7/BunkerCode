@@ -225,7 +225,7 @@ function InteractionSession({
       setResult(value);
       setMessage(
         exercise.mode === "mutation"
-          ? `Comando concluído. ${value.affectedRows ?? 0} ${value.affectedRows === 1 ? "linha afetada" : "linhas afetadas"}. ${steps.current.length} ${steps.current.length === 1 ? "passo" : "passos"} na solução desta sessão.`
+          ? `Comando concluído. ${value.affectedRows ?? 0} ${value.affectedRows === 1 ? "linha afetada" : "linhas afetadas"}. ${steps.current.length} ${steps.current.length === 1 ? "passo" : "passos"} na solução desta sessão.${submittedRevision !== revision.current ? " O texto do editor mudou durante a execução e ainda não foi executado." : ""}`
           : "Consulta concluída.",
       );
     } catch (error: unknown) {
@@ -267,7 +267,7 @@ function InteractionSession({
     if (running.current) return;
     if (!user) {
       setMessage(
-        "Entre na sua conta para verificar no servidor. Executar e explorar continuam disponíveis sem login.",
+        "Verificação anônima indisponível nesta instalação. Executar e explorar continuam disponíveis sem login.",
       );
       return;
     }
@@ -331,6 +331,11 @@ function InteractionSession({
         typeof value.passed !== "boolean"
       )
         throw new Error("Verificação sem confirmação.");
+      const editorChanged = edited !== revision.current;
+      const mutationNote =
+        exercise.mode === "mutation"
+          ? ` A avaliação considera somente o estado dos comandos executados.${editorChanged ? " O texto do editor mudou e ainda não foi executado." : ""}`
+          : "";
       if (submit && value.passed) {
         if (!("completed" in value) || value.completed !== true)
           throw new Error(
@@ -341,7 +346,8 @@ function InteractionSession({
         setMessage(
           exercise.mode === "query" && edited !== revision.current
             ? "A consulta enviada foi aprovada e a conclusão registrada. O texto do editor mudou depois do envio."
-            : "Resposta verificada. Conclusão da lição registrada.",
+            : "Resposta verificada. Conclusão da lição registrada." +
+                mutationNote,
         );
       } else if (exercise.mode === "query" && edited !== revision.current)
         setMessage(
@@ -349,11 +355,12 @@ function InteractionSession({
         );
       else
         setMessage(
-          value.passed
+          (value.passed
             ? "Resposta correta! Verificada no servidor. Nenhuma conclusão foi registrada por esta verificação."
             : exercise.mode === "mutation"
               ? "O estado ainda não corresponde ao esperado. Confira todas as linhas e tabelas."
-              : "Ainda não corresponde ao resultado esperado. Confira as colunas e as linhas.",
+              : "Ainda não corresponde ao resultado esperado. Confira as colunas e as linhas.") +
+            mutationNote,
         );
     } catch (error) {
       if (epoch === generation.current)
@@ -502,7 +509,11 @@ function InteractionSession({
                 {previewMessage}
               </p>
               {preview && (
-                <SqlTable result={preview} label={`Registros de ${table}`} />
+                <SqlTable
+                  result={preview}
+                  label={`Registros de ${table}`}
+                  context="table"
+                />
               )}
             </div>
           </details>
@@ -518,11 +529,14 @@ function InteractionSession({
             <p className="sql-local-feedback">
               {previewOnly ? (
                 "Prévia local do rascunho. Teste a referência e publique pela barra de autoria; esta prévia não registra conclusão."
+              ) : !user ? (
+                "Executar e explorar estão disponíveis sem login. A verificação anônima está indisponível nesta instalação."
               ) : (
                 <>
                   Executar usa o banco local. Verificar consulta o servidor sem
                   registrar conclusão.
                   {lesson &&
+                    user &&
                     " Submit avalia novamente e registra a conclusão quando aprovado."}
                 </>
               )}
@@ -553,7 +567,10 @@ function InteractionSession({
                     setMessage(
                       "Consulta alterada. Execute ou verifique novamente.",
                     );
-                  }
+                  } else
+                    setMessage(
+                      "Texto alterado e ainda não executado. O banco mantém os comandos já executados; verificar considera esse estado, sem aprovar o novo texto.",
+                    );
                 }}
                 formatRequest={0}
                 onFormatState={() => undefined}
@@ -592,7 +609,7 @@ function InteractionSession({
                     : "Reproduzir solução aprovada"}
                 </button>
               )}
-              {lesson && (
+              {lesson && user && (
                 <button
                   type="button"
                   disabled={busy}

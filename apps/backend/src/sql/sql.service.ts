@@ -14,6 +14,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { AuthService } from "../auth/auth.service";
 import { LearningService } from "../learning/learning.service";
@@ -40,11 +41,14 @@ export class SqlService {
   private rate(userId: string) {
     const now = Date.now();
     for (const [id, events] of this.recent)
-      if (events.at(-1)! < now - 60000) this.recent.delete(id);
+      if (events.at(-1)! <= now - 60000) this.recent.delete(id);
     const events = (this.recent.get(userId) ?? []).filter(
       (at) => at > now - 60000,
     );
-    if (events.length >= 6 || this.recent.size >= 1024)
+    if (
+      events.length >= 6 ||
+      (!this.recent.has(userId) && this.recent.size >= 1024)
+    )
       throw new HttpException(
         "Muitas verificações SQL. Aguarde um minuto.",
         429,
@@ -77,11 +81,25 @@ export class SqlService {
       );
     return { definition, dataset };
   }
-  async check(
+  async check(userId: string, body: unknown, signal?: AbortSignal) {
+    return this.evaluate(userId, body, signal);
+  }
+  async submit(
+    userId: string,
+    authorization: string | undefined,
+    body: unknown,
+    signal?: AbortSignal,
+  ) {
+    const identity = await this.auth.authenticate(authorization);
+    if (identity.id !== userId)
+      throw new UnauthorizedException("Sessão não corresponde à conta.");
+    return this.evaluate(userId, body, signal, { authorization });
+  }
+  private async evaluate(
     userId: string,
     body: unknown,
     signal?: AbortSignal,
-    authorization?: string,
+    submission?: { authorization: string | undefined },
   ) {
     this.rate(userId);
     const input = sqlInput(() => {
@@ -108,7 +126,7 @@ export class SqlService {
       ) > 65536
     )
       throw new BadRequestException("Representação da solução excede 64 KiB.");
-    if (authorization && (!input.courseId || !input.lessonSlug))
+    if (submission && (!input.courseId || !input.lessonSlug))
       throw new BadRequestException("Submit exige curso e lição publicados.");
     if (input.courseId && input.lessonSlug)
       this.binding(
@@ -125,7 +143,7 @@ export class SqlService {
       input.steps,
       signal,
     );
-    if (!passed || !authorization) return { passed };
+    if (!passed || !submission) return { passed };
     const courseId = input.courseId!,
       lessonSlug = input.lessonSlug!;
     const saved = await this.learning.recordSqlApproval(
@@ -136,7 +154,7 @@ export class SqlService {
       revision,
       input.steps,
       async () => {
-        const identity = await this.auth.authenticate(authorization);
+        const identity = await this.auth.authenticate(submission.authorization);
         if (identity.id !== userId || signal?.aborted)
           throw new ConflictException(
             "Sessão ou avaliação mudou. Nenhuma conclusão foi confirmada.",

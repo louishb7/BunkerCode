@@ -38,6 +38,10 @@ test("canonical SQL has six immutable definitions, reusable typed dataset and st
     assert.ok(!("reference" in entry));
   }
   for (const [path, text] of sqlPublicationFiles(resolve("../../content"))) {
+    if (path === "sql/laboratory.json") {
+      assert.deepEqual(JSON.parse(text).exercises, canonical.laboratory());
+      continue;
+    }
     assert.match(path, /^sql\/public\//);
     assert.ok(!text.includes('"assessment"'));
     parsePublicSqlExercise(JSON.parse(text));
@@ -69,11 +73,22 @@ test("SQL authoring saves bytes, rejects stale drafts, publishes without overwri
   };
   const saved = store.saveDraft(definition, null);
   assert.equal(store.draft(definition.id).revision, saved.revision);
+  assert.throws(() => store.public(definition.id, 1));
   assert.throws(() =>
     store.saveDraft({ ...definition, title: "Lost edit" }, "wrong"),
   );
   store.publish(definition.id, saved.revision);
   assert.equal(store.public(definition.id, 1).title, definition.title);
+  assert.deepEqual(store.list(), []);
+  assert.ok(store.versions().some((entry) => entry.id === definition.id));
+  writeFileSync(
+    join(store.root, "laboratory.json"),
+    JSON.stringify({ exercises: [{ id: definition.id, version: 1 }] }),
+  );
+  assert.deepEqual(
+    store.list().map((entry) => entry.id),
+    [definition.id],
+  );
   assert.throws(() => store.publish(definition.id, saved.revision));
   const second = store.saveDraft(
     { ...definition, version: 2, title: "New title" },
@@ -82,6 +97,7 @@ test("SQL authoring saves bytes, rejects stale drafts, publishes without overwri
   assert.equal(store.public(definition.id, 1).title, definition.title);
   store.publish(definition.id, second.revision);
   assert.equal(store.public(definition.id, 2).title, "New title");
+  assert.equal(store.list()[0]!.version, 1);
   assert.throws(() => store.definition(definition.id, 3));
   assert.throws(() => store.public("../outside", 1));
   const outside = join(root, "outside");
@@ -94,11 +110,47 @@ test("SQL authoring saves bytes, rejects stale drafts, publishes without overwri
   writeFileSync(file, bytes); // external editing is a documented Git review responsibility.
 });
 
+test("SQL laboratory selection fails closed for duplicate, unknown and draft references", () => {
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-curation-"));
+  cpSync(canonical.root, root, { recursive: true });
+  const store = new SqlContent(root);
+  store.saveDraft(
+    {
+      ...canonical.definition("store-select-columns", 1),
+      id: "draft-only",
+      status: "draft",
+    },
+    null,
+  );
+  for (const exercises of [
+    [
+      { id: "store-select-columns", version: 1 },
+      { id: "store-select-columns", version: 1 },
+    ],
+    [{ id: "store-select-columns", version: 99 }],
+    [{ id: "draft-only", version: 1 }],
+    [{ id: "../outside", version: 1 }],
+  ]) {
+    writeFileSync(join(root, "laboratory.json"), JSON.stringify({ exercises }));
+    assert.throws(() => store.list());
+  }
+});
+
 test("Studio and publication resolve SQL references and refuse mixed JavaScript sidecars without leaking private files", () => {
   const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-publication-")),
     source = join(root, "content"),
     courses = join(source, "courses");
   cpSync(canonical.root, join(source, "sql"), { recursive: true });
+  const sql = new SqlContent(join(source, "sql"));
+  const draft = sql.saveDraft(
+    {
+      ...canonical.definition("store-select-columns", 1),
+      id: "lesson-only",
+      status: "draft",
+    },
+    null,
+  );
+  sql.publish("lesson-only", draft.revision);
   const directory = join(courses, "demo/lessons/first");
   mkdirSync(directory, { recursive: true });
   writeFileSync(
@@ -114,7 +166,7 @@ test("Studio and publication resolve SQL references and refuse mixed JavaScript 
     initial = "# First\n";
   writeFileSync(file, initial);
   const markdown =
-    '# First\n```bunker-sql\n{"kind":"sql","exerciseId":"store-select-columns","version":1}\n```';
+    '# First\n```bunker-sql\n{"kind":"sql","exerciseId":"lesson-only","version":1}\n```';
   const saved = saveLesson(
     "demo",
     "first",
@@ -127,7 +179,7 @@ test("Studio and publication resolve SQL references and refuse mixed JavaScript 
       "demo",
       "first",
       {
-        markdown: markdown.replace("store-select-columns", "missing"),
+        markdown: markdown.replace("lesson-only", "missing"),
         version: saved.version,
       },
       courses,
@@ -136,7 +188,13 @@ test("Studio and publication resolve SQL references and refuse mixed JavaScript 
   const snapshot = join(root, "snapshot");
   preparePublication(source, { courses: ["demo"] }, snapshot);
   validatePublication(snapshot);
-  assert.deepEqual(readdirSync(join(snapshot, "sql")), ["public"]);
+  assert.deepEqual(readdirSync(join(snapshot, "sql")), [
+    "laboratory.json",
+    "public",
+  ]);
+  const published = new SqlContent(join(snapshot, "sql"));
+  assert.equal(published.public("lesson-only", 1).id, "lesson-only");
+  assert.ok(!published.list().some((entry) => entry.id === "lesson-only"));
   assert.ok(
     !readFileSync(
       join(snapshot, "sql/public/store-select-columns/1.json"),

@@ -71,3 +71,9 @@ Sequência recomendada após perda do ambiente:
 5. Execute os builds e valide leitura, autenticação e uma recuperação de solução. Para publicação, reconstrua o snapshot autorizado e configure novamente proxy/origens. Um ensaio de restauração é o que demonstra a utilidade do backup.
 
 Defina frequência, retenção, criptografia e cópia fora da máquina conforme a perda de trabalho aceitável. O repositório não automatiza backups nem garante recuperação pontual. `.bunkercode`, `.bunkerlab` e `.backendlab` permanecem ignorados e preservados; seus bancos aposentados não devem ser abertos ou migrados durante manutenção corrente. Dados pessoais, dumps e segredos não entram em ZIPs de evidências.
+
+## Runner SQL após a Stabilization 01
+
+Execução local em Worker não exige Docker. Check e Submit no servidor exigem sessão e `BUNKERCODE_SQL_RUNNER_ENABLED=1`, imagem compatível e acervo privado separado. A verificação anônima está bloqueada: o ambiente revisado tem daemon rootful controlado pelo usuário do backend via grupo Docker. UID sem privilégios dentro do container não reduz a autoridade do controlador. Não conceda esse acesso ao serviço público como configuração implícita.
+
+Antes de produção ou abertura anônima, verificar identidade dedicada do serviço, fronteira de acesso ao runtime, cgroups efetivamente delegados, integridade da imagem, limites de entrada/tempo/conexões no proxy, capacidade, recuperação e cotas por instalação. A cota de seis avaliações/conta/minuto e o máximo de um container são locais ao processo; réplicas multiplicam a capacidade. O projeto não implementa proteção distribuída nem cotas anônimas. `BUNKERCODE_TRUSTED_PROXIES` aceita somente IPs/CIDRs explícitos; não confiar em `X-Forwarded-For` arbitrário. NAT exige política proporcional de orçamento por cliente. Detalhes e pendências da próxima etapa estão em [prática SQL](sql-practice.md). Nenhuma alteração do daemon, deploy ou declaração de prontidão foi realizada nesta etapa.

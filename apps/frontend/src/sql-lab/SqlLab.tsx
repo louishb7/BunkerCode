@@ -37,8 +37,8 @@ export default function SqlLab() {
       <header>
         <h1>Laboratório SQL</h1>
         <p>
-          Vitrine temporária das atividades SQL disponíveis nas lições. Explore
-          os dados fictícios para experimentar consultas e alterações.
+          Vitrine temporária de atividades SQL selecionadas. Explore os dados
+          fictícios para experimentar consultas e alterações.
         </p>
       </header>
       <label className="sql-exercise-selector">
@@ -62,7 +62,7 @@ export default function SqlLab() {
           {error
             ? "Recarregue para tentar novamente."
             : loaded
-              ? "Nenhuma atividade SQL publicada."
+              ? "Nenhuma atividade SQL selecionada para o laboratório."
               : "Carregando catálogo SQL…"}
         </p>
       )}
