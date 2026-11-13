@@ -2,7 +2,7 @@
 
 Você já consegue escolher colunas. Agora a equipe da loja precisa encontrar certos clientes e organizar os registros. Vamos acrescentar condições e ordenação às consultas.
 
-O dataset é o mesmo da lição anterior, carregado do início. Abra **Dados disponíveis** para investigar `customers`. Ainda não vamos relacionar tabelas nem alterar registros.
+O dataset contém os mesmos registros da lição anterior, carregados em outra ordem. Abra **Dados disponíveis** para investigar `customers`. Ainda não vamos relacionar tabelas nem alterar registros.
 
 ## WHERE escolhe linhas
 
@@ -38,7 +38,7 @@ Para combinar os conceitos, coloque `WHERE` depois da tabela e `ORDER BY` depois
 Filtre os clientes de uma cidade, organize todos os registros por nome e, por fim, combine um filtro com ordem decrescente. Na última tarefa, as pessoas certas na ordem errada ainda não atendem ao pedido.
 
 ```bunker-sql
-{"kind":"sql-task-sequence","tasks":[{"taskId":"filter-customers-by-city","exerciseId":"store-customers-recife","version":2},{"taskId":"sort-customer-records","exerciseId":"store-sort-customers","version":1},{"taskId":"combine-filter-and-sort","exerciseId":"store-filter-sort","version":2}]}
+{"kind":"sql-task-sequence","tasks":[{"taskId":"filter-customers-by-city","exerciseId":"store-customers-recife","version":3},{"taskId":"sort-customer-records","exerciseId":"store-sort-customers","version":2},{"taskId":"combine-filter-and-sort","exerciseId":"store-filter-sort","version":3}]}
 ```
 
 **Executar consulta** verifica a tarefa ativa neste navegador. Não é preciso entrar na conta nem esperar uma avaliação remota. Acertar mantém a tarefa concluída nesta sessão e prepara a próxima; esses acertos não registram conclusão verificada da lição. Ao terminar, volte ao curso para revisar seu percurso.

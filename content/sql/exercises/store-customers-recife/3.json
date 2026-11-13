@@ -1,0 +1,45 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "5c7eed8db815282718b6f00b3e1c66d5fb606f15b4a9b205eeb4b9e5a99a34f4",
+      "exercise": {
+        "id": "store-customers-recife",
+        "version": 3
+      },
+      "dataset": {
+        "id": "store",
+        "version": 2
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": ["id", "name", "city"],
+        "types": [23, 25, 25],
+        "rows": [
+          "[[\"number\",\"1\"],[\"string\",\"Ana Lima\"],[\"string\",\"Recife\"]]",
+          "[[\"number\",\"3\"],[\"string\",\"Carla Souza\"],[\"string\",\"Recife\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-customers-recife",
+  "version": 3,
+  "status": "published",
+  "title": "Clientes de Recife",
+  "objective": "Filtrar registros por uma característica e conferir quais linhas atendem à condição.",
+  "instructions": "Retorne todas as colunas dos clientes de Recife. A ordem das linhas não importa; mantenha as colunas id, name e city, nessa ordem.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 2
+  },
+  "assessment": {
+    "reference": ["SELECT * FROM customers WHERE city = 'Recife'"],
+    "orderMatters": false
+  }
+}

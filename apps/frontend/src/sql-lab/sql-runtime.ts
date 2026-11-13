@@ -14,6 +14,32 @@ export interface SqlWorker {
   onmessageerror: ((event: MessageEvent) => void) | null;
 }
 
+export function sqlErrorFeedback(code?: string): string {
+  const prefix = `Erro SQL${code ? ` (${code})` : ""}: `;
+  switch (code) {
+    case "42601":
+      return (
+        prefix +
+        "Confira a sintaxe da consulta, incluindo palavras, aspas e pontuação, e tente novamente."
+      );
+    case "42703":
+      return (
+        prefix +
+        "Uma coluna não foi encontrada. Confira os nomes em Dados disponíveis e tente novamente."
+      );
+    case "42P01":
+      return (
+        prefix +
+        "Uma tabela não foi encontrada. Confira os nomes em Dados disponíveis e tente novamente."
+      );
+    default:
+      return (
+        prefix +
+        "Não foi possível executar o comando. Confira a consulta e os dados disponíveis e tente novamente."
+      );
+  }
+}
+
 export class SqlRuntimeError extends Error {
   constructor(
     message: string,

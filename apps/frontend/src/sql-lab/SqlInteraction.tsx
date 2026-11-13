@@ -10,7 +10,7 @@ import {
   type SqlResult,
   type SqlLessonTask,
 } from "./exercise";
-import { SqlRuntime, SqlRuntimeError } from "./sql-runtime";
+import { SqlRuntime, SqlRuntimeError, sqlErrorFeedback } from "./sql-runtime";
 import { SqlTable } from "./SqlTable";
 import { useSqlTasks } from "./useSqlTasks";
 import { SqlTaskProgress, type SqlContinuation } from "./SqlTaskProgress";
@@ -318,9 +318,7 @@ function InteractionSession({
       }
       if (error instanceof SqlRuntimeError)
         setMessage(
-          error.discarded
-            ? error.message
-            : `Erro SQL${error.code ? ` (${error.code})` : ""}: ${error.message}`,
+          error.discarded ? error.message : sqlErrorFeedback(error.code),
         );
       else
         setMessage(

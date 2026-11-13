@@ -726,3 +726,113 @@ test("canonical JSON cell keys use locale-independent ordering across browser an
     ],
   ]);
 });
+
+test("published sorting task checks actual rows, column shape and order", async () => {
+  const { parseSqlDataset, parseSqlDefinition, publicSqlExercise } =
+    await import("@bunkercode/content/sql");
+  const { matchesFormative } =
+    await import("@bunkercode/content/sql-comparison");
+  const { createPracticeEngine } =
+    await import("@bunkercode/content/sql-engine");
+  const { readFileSync } = await import("node:fs");
+  const read = (path: string) =>
+    JSON.parse(
+      readFileSync(
+        new URL(`../../../content/sql/${path}`, import.meta.url),
+        "utf8",
+      ),
+    );
+  const dataset = parseSqlDataset(read("datasets/store/2.json"));
+  for (const [path, cases] of [
+    [
+      "exercises/store-sort-customers/2.json",
+      [
+        ["SELECT * FROM customers", false],
+        ["SELECT * FROM customers ORDER BY name ASC", true],
+        ["SELECT id, name, city FROM customers ORDER BY name", true],
+        ["SELECT * FROM customers ORDER BY 2", true],
+        ["SELECT * FROM customers ORDER BY name DESC", false],
+        ["SELECT name, id, city FROM customers ORDER BY name", false],
+      ],
+    ],
+    [
+      "exercises/store-filter-sort/3.json",
+      [
+        [
+          "SELECT name, city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+          true,
+        ],
+        [
+          "SELECT name, city FROM customers WHERE NOT (city = 'Recife') ORDER BY name DESC",
+          true,
+        ],
+        [
+          "SELECT name, city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+          false,
+        ],
+      ],
+    ],
+    [
+      "exercises/store-customers-recife/3.json",
+      [
+        [
+          "SELECT * FROM customers WHERE city = 'Recife' ORDER BY name DESC",
+          true,
+        ],
+        [
+          "SELECT * FROM customers WHERE city = 'Recife' ORDER BY name ASC",
+          true,
+        ],
+      ],
+    ],
+  ] as const) {
+    const definition = parseSqlDefinition(read(path));
+    const engine = await createPracticeEngine(
+      publicSqlExercise(definition, dataset),
+    );
+    try {
+      for (const [sql, expected] of cases)
+        assert.equal(
+          matchesFormative(
+            await engine.execute(sql),
+            definition.formative!.oracle!,
+          ),
+          expected,
+          sql,
+        );
+    } finally {
+      await engine.close();
+    }
+  }
+});
+
+test("SQL diagnostics are actionable without exposing wrapper syntax", async () => {
+  const { createPracticeEngine } =
+    await import("@bunkercode/content/sql-engine");
+  const { sqlErrorFeedback } = await import("../src/sql-lab/sql-runtime");
+  const { storeExercise } = await import("./sql-fixtures");
+  const engine = await createPracticeEngine(storeExercise);
+  try {
+    for (const [sql, code, hint] of [
+      ["SELECT FROM", "42601", /sintaxe/],
+      ["SELECT missing FROM customers", "42703", /coluna/],
+      ["SELECT * FROM missing", "42P01", /tabela/],
+      ["SELECT * FRM customers", "42601", /sintaxe/],
+      ["SELECT 'unterminated", "42601", /sintaxe/],
+    ] as const) {
+      await assert.rejects(engine.execute(sql), (error: unknown) => {
+        assert.equal((error as { code?: string }).code, code);
+        assert.match(sqlErrorFeedback(code), hint);
+        assert.doesNotMatch(sqlErrorFeedback(code), /at or near/i);
+        return true;
+      });
+    }
+    assert.equal(
+      (await engine.execute("SELECT * FROM customers WHERE false")).rows.length,
+      0,
+    );
+    assert.match(sqlErrorFeedback("XX000"), /Confira a consulta/);
+  } finally {
+    await engine.close();
+  }
+});

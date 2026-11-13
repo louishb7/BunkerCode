@@ -189,7 +189,7 @@ Consultas, tarefa ativa e acertos existem apenas na memória do componente; não
 
 Ao concluir todas as tarefas, aparece **Continuar para a próxima lição** ou **Voltar ao curso**. É uma orientação pedagógica: as rotas públicas continuam acessíveis antes disso, sem alterar autorização ou cálculo global de progresso. Nenhuma tentativa envia `/sql/check`, `/sql/submit` ou conclusão de aprendizagem. Contas existentes mantêm conclusões históricas, identificadas no leitor; a sequência atual não ganha aprovação persistente nem recupera uma solução única antiga.
 
-**Limitação:** comparação de resultados verifica dados, colunas, tipos e ordem configurada; não comprova uso de uma palavra SQL. No dataset inicial, a ordem física observada pode coincidir com a alfabética, portanto uma consulta sem `ORDER BY` pode produzir o resultado esperado da tarefa de ordenação. A explicação exige ordenação explícita; não há heurística de texto disfarçada de avaliação. Novos datasets/comportamentos exigem novas versões, sem sobrescrever as publicadas.
+**Limitação:** comparação de resultados verifica dados, colunas, tipos e ordem configurada; não comprova uso de uma palavra SQL. A segunda lição usa uma nova versão do dataset, com os mesmos registros em outra ordem, para que a consulta sem `ORDER BY` reproduzida não corresponda ao resultado esperado no ambiente testado. Isso não garante rejeição universal de consultas sem ordenação: SQL não promete ordem sem `ORDER BY` e outro plano de execução pode coincidir com o resultado esperado. A explicação exige ordenação explícita; não há heurística de texto disfarçada de avaliação. Novos datasets/comportamentos exigem novas versões, sem sobrescrever as publicadas.
 
 ## Próximo passo: avaliação confiável da lição (Sprint 03)
 
