@@ -12,6 +12,7 @@ export function SqlTaskProgress({
   notice,
   onSelect,
   continuation,
+  compact = false,
 }: {
   tasks: readonly SqlLessonTask[];
   activeId: string;
@@ -19,6 +20,7 @@ export function SqlTaskProgress({
   notice: string;
   onSelect: (taskId: string) => void;
   continuation?: SqlContinuation;
+  compact?: boolean;
 }) {
   const allCompleted = completed.size === tasks.length;
   return (
@@ -58,7 +60,7 @@ export function SqlTaskProgress({
           </li>
         ))}
       </ol>
-      {notice && <p className="sql-task-notice">{notice}</p>}
+      {notice && !compact && <p className="sql-task-notice">{notice}</p>}
       <div className="sql-actions">
         {allCompleted && continuation && (
           <Link className="sql-task-continue" to={continuation.to}>
@@ -67,7 +69,7 @@ export function SqlTaskProgress({
           </Link>
         )}
       </div>
-      {allCompleted && (
+      {allCompleted && !compact && (
         <p className="sql-task-finished">
           Todas as tarefas foram concluídas nesta prática local. A conclusão
           verificada desta lição ainda não está disponível.

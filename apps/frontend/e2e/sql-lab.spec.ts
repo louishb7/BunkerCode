@@ -8,7 +8,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { studioView } from "./studio-controls";
 import { expect, test } from "@playwright/test";
-import { setLessonSqlPlacement } from "@bunkercode/content";
+import {
+  setLessonSqlPlacement,
+  parseCourse as parseCourseManifest,
+} from "@bunkercode/content";
 
 test("SQL laboratory executes, verifies, recovers and resets without application SQL requests", async ({
   page,
@@ -302,9 +305,11 @@ authenticatedTest.describe("SQL lesson integration", () => {
       await expect(
         page.getByRole("button", { name: "Marcar como concluída" }),
       ).toHaveCount(0);
-      // mobileView rerenders LessonWorkspace and recreates its configuration object.
+      // Resizing preserves the same SQL session and editor.
       await page.setViewportSize({ width: 375, height: 812 });
-      await page.getByRole("button", { name: "Código", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: "Código", exact: true }),
+      ).toHaveCount(0);
       await expect(editor).toHaveText(sql);
       await expect(page.locator(".sql-workspace [role=status]")).toContainText(
         "Consulta concluída.",
@@ -666,6 +671,7 @@ authenticatedTest(
       const editor = page.getByRole("textbox", { name: "Consulta SQL" });
       const status = page.locator(".sql-workspace [role=status]");
       await expect(editor).toBeVisible();
+      await page.getByText("Opções da prática", { exact: true }).click();
       await editor.fill("SELECT name FROM customers");
       await page
         .getByRole("button", { name: "Submit · concluir lição" })
@@ -678,7 +684,7 @@ authenticatedTest(
       ).toHaveCount(0);
       await editor.fill("SELECT id,name FROM customers ORDER BY id DESC");
       await page.getByRole("button", { name: "Executar consulta" }).click();
-      await expect(status).toContainText("Resposta correta nesta prática!", {
+      await expect(status).toContainText("Consulta correta.", {
         timeout: 45000,
       });
       await expect(
@@ -701,6 +707,7 @@ authenticatedTest(
         page.getByRole("button", { name: "Carregar solução aprovada" }),
       ).toBeVisible();
       await page.reload();
+      await page.getByText("Opções da prática", { exact: true }).click();
       await page
         .getByRole("button", { name: "Carregar solução aprovada" })
         .click();
@@ -717,6 +724,7 @@ authenticatedTest(
       await expect(page.locator(".lesson-heading h1")).toHaveText(
         "Encontrando o que importa",
       );
+      await page.getByText("Opções da prática", { exact: true }).click();
       await editor.fill(
         "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
       );
@@ -780,7 +788,15 @@ authenticatedTest(
     const first =
       "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
     await page.goto(first + "/edit");
-    await page.getByRole("link", { name: "Atividades SQL" }).click();
+    await page
+      .getByText("Biblioteca e vínculos avançados", { exact: true })
+      .click();
+    await page
+      .getByRole("link", {
+        name: "Abrir biblioteca de exercícios e dados",
+        exact: true,
+      })
+      .click();
     await expect(
       page.getByRole("heading", { name: "Atividades SQL" }),
     ).toBeVisible();
@@ -956,6 +972,9 @@ authenticatedTest(
       }),
     );
     await page
+      .getByText("Biblioteca e vínculos avançados", { exact: true })
+      .click();
+    await page
       .getByLabel("Atividade SQL publicada", { exact: true })
       .selectOption(exerciseId + "/1");
     await expect(source).toContainText(exerciseId);
@@ -975,7 +994,7 @@ authenticatedTest(
         .fill("SELECT name FROM items");
       await page.getByRole("button", { name: "Executar consulta" }).click();
       await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-        "Resposta correta nesta prática!",
+        "Consulta correta.",
         { timeout: 45000 },
       );
     } finally {
@@ -1076,7 +1095,7 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
             return;
           }
           if (
-            !/Resposta correta nesta prática|Consulta executada|Erro SQL|Tarefa \d+ concluída|Todas as tarefas foram concluídas/.test(
+            !/Resposta correta nesta prática|Consulta correta|Consulta executada|Ainda não corresponde|Erro SQL|Tarefa \d+ concluída|Todas as tarefas foram concluídas/.test(
               message,
             )
           )
@@ -1121,6 +1140,18 @@ for (const loggedIn of [false, true]) {
         )
           writes.push(request.url());
       });
+      const manifest = parseCourseManifest(
+        JSON.parse(
+          await readFile(
+            join(
+              process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+              "courses/sql-na-pratica/course.json",
+            ),
+            "utf8",
+          ),
+        ),
+        "sql-na-pratica",
+      );
       const lessons = [
         {
           slug: "seu-primeiro-contato-com-um-banco-de-dados",
@@ -1181,15 +1212,14 @@ for (const loggedIn of [false, true]) {
             name: /Verificar resposta|Submit · concluir lição/,
           }),
         ).toHaveCount(0);
-        // Cold first execution is real PGlite, before inspecting the same shared dataset.
+        // Initial sample data and learner queries use the same real PGlite session.
         await editor.fill(lesson.tasks[0]!.correct);
         await execute.click();
         await expect(list).toContainText("1 de 3 concluídas", {
           timeout: 65000,
         });
         await expect(status).toContainText("Tarefa 1 concluída");
-        await page.locator(".sql-schema summary").click();
-        await page.getByRole("button", { name: "Ver registros" }).click();
+        await page.getByRole("button", { name: "Dados", exact: true }).click();
         await expect(
           page.getByRole("region", { name: "Registros de customers" }),
         ).toBeVisible();
@@ -1305,6 +1335,7 @@ for (const loggedIn of [false, true]) {
               ).filter((sample) => sample.type === "ready").length,
           ),
         ).toBe(1);
+        await page.getByText("Opções da prática", { exact: true }).click();
         await page
           .getByRole("button", { name: "Reiniciar banco", exact: true })
           .click();
@@ -1316,7 +1347,7 @@ for (const loggedIn of [false, true]) {
           "Todas as tarefas foram concluídas",
           { timeout: 65000 },
         );
-        await page.locator(".sql-schema summary").click();
+        await page.getByRole("button", { name: "Dados", exact: true }).click();
         await page.locator(".sql-lesson-workspace").evaluate((element) => {
           element.scrollTop = 0;
         });
@@ -1367,15 +1398,24 @@ for (const loggedIn of [false, true]) {
           path: timingFile,
           contentType: "application/json",
         });
+        // The browser fixture publishes these two lessons; ADMIN sees the full authoring manifest.
+        const navigationLessons = loggedIn ? manifest.lessons : lessons;
+        const next =
+          navigationLessons[
+            navigationLessons.findIndex((entry) => entry.slug === lesson.slug) +
+              1
+          ];
         const continueLink = list.getByRole("link", {
-          name:
-            index === 0 ? "Continuar para a próxima lição" : "Voltar ao curso",
+          name: next ? "Continuar para a próxima lição" : "Voltar ao curso",
         });
         await continueLink.click();
         await expect(page).toHaveURL(
-          index === 0
-            ? /encontrando-o-que-importa$/
-            : /\/courses\/sql-na-pratica$/,
+          new URL(
+            next
+              ? `/courses/sql-na-pratica/lessons/${next.slug}`
+              : "/courses/sql-na-pratica",
+            page.url(),
+          ).href,
         );
       }
       expect(writes).toEqual([]);
@@ -1460,6 +1500,7 @@ test("SQL sequence advances three tasks locally, preserves historical success an
     await editor.fill("SELECT 1");
     await expect(status).toContainText("Consulta alterada");
     await expect(list).toContainText("3 de 3 concluídas");
+    await page.getByText("Opções da prática", { exact: true }).click();
     await page
       .getByRole("button", { name: "Limpar consulta", exact: true })
       .click();
@@ -1588,6 +1629,13 @@ test("SQL sequence ignores real late results after task switches, edits, reset a
     const execute = page.getByRole("button", { name: "Executar consulta" });
     const status = page.locator(".sql-workspace [role=status]");
     const list = page.getByRole("region", { name: "Tarefas da lição" });
+    await expect(
+      page.getByRole("region", { name: "Registros de customers", exact: true }),
+    ).toBeVisible({ timeout: 65000 });
+    await expect(execute).toBeEnabled();
+    const initialQueries = await page.evaluate(
+      () => window.__sqlTaskRace.queries,
+    );
     await editor.fill("SELECT id,name FROM customers");
     await holdNext();
     await execute.evaluate((button) => {
@@ -1597,7 +1645,9 @@ test("SQL sequence ignores real late results after task switches, edits, reset a
       button.click();
     });
     await awaitHeld();
-    expect(await page.evaluate(() => window.__sqlTaskRace.queries)).toBe(1);
+    expect(await page.evaluate(() => window.__sqlTaskRace.queries)).toBe(
+      initialQueries + 1,
+    );
     await list.getByRole("button", { name: /Clientes de Recife/ }).click();
     await release();
     await expect(execute).toBeEnabled();
@@ -1628,6 +1678,7 @@ test("SQL sequence ignores real late results after task switches, edits, reset a
     await holdNext();
     await execute.click();
     await awaitHeld();
+    await page.getByText("Opções da prática", { exact: true }).click();
     await page
       .getByRole("button", { name: "Reiniciar banco", exact: true })
       .click();
@@ -1646,7 +1697,7 @@ test("SQL sequence ignores real late results after task switches, edits, reset a
       "Encontrando o que importa",
     );
     await release();
-    await expect(status).toContainText("Os dados iniciais");
+    await expect(status).toContainText("Escreva uma consulta");
     await page
       .getByRole("link", { name: "Lição anterior", exact: true })
       .click();
@@ -1778,7 +1829,7 @@ test("SQL task list preserves reading themes, keyboard controls and narrow viewp
       { width: 812, height: 375 },
     ]) {
       await page.setViewportSize(viewport);
-      await page.getByRole("button", { name: "Código", exact: true }).click();
+      await expect(editor).toBeVisible();
       await expect(list).toBeVisible();
       expect(
         await page.evaluate(
@@ -1800,8 +1851,7 @@ test("SQL task list preserves reading themes, keyboard controls and narrow viewp
       });
     }
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.locator(".sql-schema summary").click();
-    await page.getByRole("button", { name: "Ver registros" }).click();
+    await page.getByRole("button", { name: "Dados", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Registros de customers" }),
     ).toBeVisible();
@@ -1878,6 +1928,9 @@ authenticatedTest(
         "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/edit",
       );
       await studioView(page, "Editar fonte Markdown");
+      await page
+        .getByText("Biblioteca e vínculos avançados", { exact: true })
+        .click();
       const picker = page.getByRole("region", {
         name: "Vincular atividade SQL",
       });
@@ -2034,6 +2087,9 @@ authenticatedTest(
         ],
       });
       await page.reload();
+      await page
+        .getByText("Biblioteca e vínculos avançados", { exact: true })
+        .click();
       await expect(
         picker.getByLabel("ID da tarefa 1", { exact: true }),
       ).toHaveValue("identify-customers");
@@ -2081,6 +2137,501 @@ authenticatedTest(
       expect(await readFile(file, "utf8")).toBe(savedMarkdown);
       await source.fill(savedMarkdown);
       expect(writes).toEqual([]);
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);
+
+authenticatedTest(
+  "Studio prose editing preserves SQL practice through save reload and preview",
+  async ({ page }) => {
+    authenticatedTest.setTimeout(90000);
+    const path =
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
+    const file = join(
+      process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+      "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    try {
+      await page.goto(path + "/edit");
+      const visual = page.getByRole("textbox", {
+        name: "Conteúdo visual da lição",
+      });
+      await expect(visual).toBeVisible();
+      await visual.fill("Uma explicação curta para investigar clientes.");
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toHaveText("Salvo no arquivo.");
+      await page.reload();
+      await expect(visual).toContainText("Uma explicação curta");
+      await studioView(page, "Editar fonte Markdown");
+      const source = page.getByRole("textbox", {
+        name: "Markdown completo",
+        exact: true,
+      });
+      await expect(source).toHaveValue(/bunker-sql/);
+      await source.fill("Explicação em edição.\n```bunker-note\n{");
+      await source.fill("Explicação ainda menor.");
+      await expect(source).toHaveValue(/bunker-sql/);
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.getByRole("status")).toHaveText("Salvo no arquivo.");
+      await studioView(page, "Prévia");
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição" }),
+      ).toContainText("0 de 3 concluídas");
+      await page.goto(path);
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição" }),
+      ).toContainText("0 de 3 concluídas");
+      await page
+        .getByRole("button", { name: "Executar consulta", exact: true })
+        .click();
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição" }),
+      ).toContainText("1 de 3 concluídas", { timeout: 65000 });
+      await page.screenshot({
+        path: authenticatedTest
+          .info()
+          .outputPath("sql-preserved-after-prose-edit.png"),
+        fullPage: true,
+      });
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);
+
+authenticatedTest(
+  "Studio authors durable lesson task drafts and previews without bypassing blocked publication",
+  async ({ page }) => {
+    authenticatedTest.setTimeout(90000);
+    const path = "/courses/sql-na-pratica/lessons/encontrando-o-que-importa";
+    await page.goto(path + "/edit");
+    const section = page.getByRole("region", {
+      name: "Prática SQL da lição",
+      exact: true,
+    });
+    await section
+      .locator("summary")
+      .filter({ hasText: /^Tarefa 1:/ })
+      .click();
+    const firstTitle = section.getByRole("textbox", {
+      name: "Título da tarefa 1",
+      exact: true,
+    });
+    await firstTitle.fill("Filtrar clientes — rascunho editorial");
+    await section
+      .getByRole("button", { name: "Salvar tarefa", exact: true })
+      .first()
+      .click();
+    await expect(section.getByRole("status")).toContainText(
+      "Tarefa salva como rascunho",
+    );
+    await firstTitle.fill("Uma edição que será descartada");
+    page.once("dialog", (dialog) => dialog.accept());
+    await section
+      .getByRole("button", { name: "Descartar edição", exact: true })
+      .first()
+      .click();
+    await expect(firstTitle).toHaveValue(
+      "Filtrar clientes — rascunho editorial",
+    );
+    await section
+      .locator("summary")
+      .filter({ hasText: /^Tarefa 1:/ })
+      .click();
+    await section
+      .getByRole("button", { name: "Adicionar tarefa SQL", exact: true })
+      .click();
+    await section
+      .getByRole("textbox", { name: "Título da tarefa 4", exact: true })
+      .fill("Clientes por nome no Studio");
+    await section
+      .getByRole("textbox", { name: "Instrução da tarefa 4", exact: true })
+      .fill("Mostre os nomes dos clientes em ordem crescente.");
+    await section
+      .getByRole("textbox", { name: "SQL inicial da tarefa 4", exact: true })
+      .fill("SELECT name FROM customers;");
+    await section
+      .getByRole("textbox", {
+        name: "Consulta esperada da tarefa 4",
+        exact: true,
+      })
+      .fill("SELECT name FROM customers ORDER BY name ASC;");
+    await section
+      .getByRole("checkbox", {
+        name: "Ordem das linhas da tarefa 4",
+        exact: true,
+      })
+      .check();
+    const consent = section.getByRole("checkbox", {
+      name: "Publicar resultado esperado da tarefa 4",
+      exact: true,
+    });
+    await expect(consent).not.toBeChecked();
+    await consent.check();
+    await section
+      .getByRole("button", { name: "Salvar tarefa", exact: true })
+      .last()
+      .click();
+    await expect(section.getByRole("status")).toContainText(
+      "Tarefa salva como rascunho",
+    );
+    await page.reload();
+    await section
+      .getByText("Rascunhos salvos desta lição", { exact: true })
+      .click();
+    await section
+      .getByRole("button", {
+        name: "Continuar “Clientes por nome no Studio”",
+        exact: true,
+      })
+      .click();
+    await expect(
+      section.getByRole("textbox", {
+        name: "Consulta esperada da tarefa 4",
+        exact: true,
+      }),
+    ).toHaveValue("SELECT name FROM customers ORDER BY name ASC;");
+    await section
+      .getByRole("button", { name: "Prévia da tarefa", exact: true })
+      .last()
+      .click();
+    const preview = section.getByRole("region", {
+      name: "Prévia da tarefa SQL",
+      exact: true,
+    });
+    await preview
+      .getByRole("button", { name: "Executar consulta", exact: true })
+      .click();
+    await expect(
+      preview.getByRole("cell", { name: "Ana Lima", exact: true }),
+    ).toBeVisible({ timeout: 65000 });
+    await expect(
+      preview.getByRole("button", { name: /Verificar resposta|Submit/ }),
+    ).toHaveCount(0);
+    await section
+      .getByRole("button", { name: "Fechar prévia da tarefa", exact: true })
+      .click();
+    // The disabled runner must reject real publication, preserving the saved draft.
+    await section
+      .getByRole("button", { name: "Publicar tarefa", exact: true })
+      .last()
+      .click();
+    await expect(section.getByRole("alert")).toContainText(
+      /indisponível|desabilitad|runner|isolado/i,
+    );
+    await expect(
+      section.getByRole("textbox", { name: "Título da tarefa 4", exact: true }),
+    ).toHaveValue("Clientes por nome no Studio");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: authenticatedTest
+        .info()
+        .outputPath("studio-task-draft-preserved.png"),
+      fullPage: true,
+    });
+    await page.goto(path);
+    await expect(
+      page.getByRole("region", { name: "Tarefas da lição", exact: true }),
+    ).toContainText("0 de 3 concluídas");
+  },
+);
+
+test("SQL lesson uses one visualization and stacked mobile practice with concise honest feedback", async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  await page.goto(
+    "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados",
+  );
+  const list = page.getByRole("region", {
+    name: "Tarefas da lição",
+    exact: true,
+  });
+  const visualization = page.getByRole("region", {
+    name: "Visualização do banco",
+    exact: true,
+  });
+  const editor = page.getByRole("textbox", {
+    name: "Consulta SQL",
+    exact: true,
+  });
+  const execute = page.getByRole("button", {
+    name: "Executar consulta",
+    exact: true,
+  });
+  const status = page.locator(".sql-feedback");
+  await expect(
+    visualization.getByRole("cell", { name: "Ana Lima", exact: true }),
+  ).toBeVisible({ timeout: 65000 });
+  expect(
+    await list.evaluate((node) => !!node.closest(".study-explanation")),
+  ).toBe(true);
+  await expect(page.locator(".sql-current-task")).toHaveCount(1);
+  await editor.fill("SELECT * FROM customers WHERE false;");
+  await execute.click();
+  await expect(visualization).toContainText("0 linhas");
+  await expect(visualization).toContainText("Nenhuma linha corresponde");
+  await expect(status).toContainText("Ainda não corresponde");
+  await editor.fill("SELECT missing FROM customers;");
+  await execute.click();
+  await expect(status).toContainText("Erro SQL");
+  await editor.fill("SELECT * FROM customers;");
+  await execute.click();
+  await expect(list).toContainText("1 de 3 concluídas");
+  await expect(status).toContainText("Tarefa 1 concluída");
+  await editor.fill("SELECT 1;");
+  await expect(status).toHaveText("Consulta alterada. Execute para atualizar.");
+  await expect(visualization).toContainText("Resultado da tarefa 1");
+  await visualization
+    .getByRole("button", { name: "Dados", exact: true })
+    .click();
+  await expect(
+    visualization.getByRole("region", {
+      name: "Registros de customers",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await visualization
+    .getByRole("button", { name: "Resultado", exact: true })
+    .click();
+  await expect(
+    visualization.getByRole("region", {
+      name: "Resultado da consulta",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(visualization.locator("table")).toHaveCount(1);
+  await page.screenshot({
+    path: info.outputPath("sql-minimal-desktop.png"),
+    fullPage: true,
+  });
+  for (const tone of [0, 3]) {
+    await selectReadingTone(page, tone);
+    await expectRenderedContrast(
+      page.locator(
+        ".sql-feedback, .sql-current-task p, .sql-practice-scope, .sql-task-state",
+      ),
+    );
+  }
+  const readingSettings = page.getByRole("button", {
+    name: "Ajustar lição",
+    exact: true,
+  });
+  if ((await readingSettings.getAttribute("aria-expanded")) === "true")
+    await readingSettings.click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(list).toBeVisible();
+  await expect(editor).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Código", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  const positions = await page.evaluate(() => ({
+    tasks: document
+      .querySelector(".sql-learning-tasks")!
+      .getBoundingClientRect().bottom,
+    data: document.querySelector(".sql-visualization")!.getBoundingClientRect()
+      .top,
+  }));
+  expect(positions.data).toBeGreaterThan(positions.tasks);
+  await list
+    .getByRole("button", { name: /Consultar todos os clientes/ })
+    .click();
+  await expect(editor).toBeInViewport();
+  await editor.fill("SELECT pg_sleep(30);");
+  await execute.click();
+  await page
+    .getByRole("button", { name: "Cancelar e descartar", exact: true })
+    .click();
+  await expect(status).toContainText("Consulta cancelada");
+  await page.getByText("Opções da prática", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Reiniciar banco", exact: true })
+    .click();
+  await expect(list).toContainText("1 de 3 concluídas");
+  await page
+    .getByRole("button", { name: "Recomeçar tarefas", exact: true })
+    .click();
+  await expect(list).toContainText("0 de 3 concluídas");
+  await editor.fill("SELECT * FROM customers;");
+  await execute.click();
+  await expect(list).toContainText("1 de 3 concluídas", { timeout: 65000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: info.outputPath("sql-minimal-mobile.png"),
+    fullPage: true,
+  });
+});
+
+authenticatedTest(
+  "Studio explicitly removes practice without deleting reusable SQL content",
+  async ({ page, request }) => {
+    const path = "/courses/sql-na-pratica/lessons/encontrando-o-que-importa";
+    const file = join(
+      process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+      "courses/sql-na-pratica/lessons/encontrando-o-que-importa/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    try {
+      await page.goto(path + "/edit");
+      await expect(
+        page.getByRole("button", { name: "Remover prática SQL", exact: true }),
+      ).toBeEnabled();
+      page.once("dialog", (dialog) => dialog.accept());
+      await page
+        .getByRole("button", { name: "Remover prática SQL", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.locator(".studio-status")).toHaveText(
+        "Salvo no arquivo.",
+      );
+      await page.reload();
+      await studioView(page, "Editar fonte Markdown");
+      await expect(
+        page.getByRole("textbox", { name: "Markdown completo", exact: true }),
+      ).not.toHaveValue(/bunker-sql/);
+      // A subsequent prose edit must not resurrect the intentionally removed placement.
+      await page
+        .getByRole("textbox", { name: "Markdown completo", exact: true })
+        .fill("Explicação sem prática, por escolha explícita.");
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.locator(".studio-status")).toHaveText(
+        "Salvo no arquivo.",
+      );
+      await page.goto(path);
+      await expect(page.locator(".lesson-heading h1")).toBeVisible();
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("textbox", { name: "Consulta SQL", exact: true }),
+      ).toHaveCount(0);
+      const canonical = await request.get(
+        "/api/content/sql/exercises/store-customers-recife/3",
+      );
+      expect(canonical.ok()).toBe(true);
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);
+
+authenticatedTest(
+  "Studio starts SQL practice in a lesson and retains the selected data when recovering drafts",
+  async ({ page }) => {
+    authenticatedTest.setTimeout(90000);
+    const file = join(
+      process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+      "courses/sql-na-pratica/lessons/encontrando-o-que-importa/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    await writeFile(file, setLessonSqlPlacement(original, null));
+    try {
+      await page.goto(
+        "/courses/sql-na-pratica/lessons/encontrando-o-que-importa/edit",
+      );
+      const section = page.getByRole("region", {
+        name: "Prática SQL da lição",
+        exact: true,
+      });
+      const dataset = section.getByRole("combobox", {
+        name: "Dados da prática",
+        exact: true,
+      });
+      await expect(dataset).toBeEnabled();
+      await dataset.selectOption("store/1");
+      await section
+        .getByRole("button", { name: "Adicionar tarefa SQL", exact: true })
+        .click();
+      const fillTask = async (index: number, title: string) => {
+        await section
+          .getByRole("textbox", {
+            name: `Título da tarefa ${index}`,
+            exact: true,
+          })
+          .fill(title);
+        await section
+          .getByRole("textbox", {
+            name: `Instrução da tarefa ${index}`,
+            exact: true,
+          })
+          .fill("Mostre todos os clientes.");
+        await section
+          .getByRole("textbox", {
+            name: `Consulta esperada da tarefa ${index}`,
+            exact: true,
+          })
+          .fill("SELECT * FROM customers;");
+      };
+      await fillTask(1, "Primeira tarefa de uma prática nova");
+      await section
+        .getByRole("button", { name: "Salvar tarefa", exact: true })
+        .click();
+      await expect(section.getByRole("status")).toContainText(
+        "Tarefa salva como rascunho",
+      );
+      await expect(dataset).toHaveValue("store/1");
+      await page.reload();
+      await section
+        .getByText("Rascunhos salvos desta lição", { exact: true })
+        .click();
+      await section
+        .getByRole("button", {
+          name: "Continuar “Primeira tarefa de uma prática nova”",
+          exact: true,
+        })
+        .click();
+      await expect(dataset).toHaveValue("store/1");
+      await expect(
+        section.getByRole("checkbox", {
+          name: "Publicar resultado esperado da tarefa 1",
+          exact: true,
+        }),
+      ).not.toBeChecked();
+      await section
+        .getByRole("button", { name: "Publicar tarefa", exact: true })
+        .click();
+      await expect(section.getByRole("alert")).toContainText(
+        "autorize explicitamente",
+      );
+      await section
+        .getByRole("button", { name: "Adicionar tarefa SQL", exact: true })
+        .click();
+      await fillTask(2, "Segunda tarefa com os mesmos dados");
+      const saved = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/api/content/sql/authoring/drafts") &&
+          response.request().method() === "PUT",
+      );
+      await section
+        .getByRole("button", { name: "Salvar tarefa", exact: true })
+        .last()
+        .click();
+      const response = await saved;
+      expect(response.ok()).toBe(true);
+      const { sqlObject, parseSqlDefinition } =
+        await import("@bunkercode/content/sql");
+      const body = sqlObject(await response.json());
+      expect(parseSqlDefinition(body.definition).dataset).toEqual({
+        id: "store",
+        version: 1,
+      });
+      await expect(dataset).toHaveValue("store/1");
     } finally {
       await writeFile(file, original);
     }

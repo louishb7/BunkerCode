@@ -584,7 +584,7 @@ test("Studio saves and reorders SQL sequences, rejects unresolved references and
   }
 });
 
-test("canonical second lesson versions resolve as public projections without private assessment", () => {
+test("canonical SQL lesson versions resolve as public projections without private assessment", () => {
   const placement = lessonSqlPlacement(
     readFileSync(
       resolve(
@@ -603,6 +603,29 @@ test("canonical second lesson versions resolve as public projections without pri
       ["store-filter-sort", 3, 2],
     ],
   );
+  const firstPlacement = lessonSqlPlacement(
+    readFileSync(
+      resolve(
+        "../../content/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+      ),
+      "utf8",
+    ),
+  );
+  assert.ok(firstPlacement && firstPlacement.kind === "sql-task-sequence");
+  const firstExercises = canonical.resolvePlacement(firstPlacement);
+  assert.deepEqual(
+    firstExercises.map(({ id, version, dataset }) => [
+      id,
+      version,
+      dataset.version,
+    ]),
+    [
+      ["store-all-customers", 1, 1],
+      ["store-customer-names", 1, 1],
+      ["store-select-columns", 2, 1],
+    ],
+  );
+  exercises.push(...firstExercises);
   const publicFiles = new Map(sqlPublicationFiles(resolve("../../content")));
   for (const exercise of exercises) {
     assert.equal("assessment" in exercise, false);
@@ -613,4 +636,61 @@ test("canonical second lesson versions resolve as public projections without pri
     assert.deepEqual(parsePublicSqlExercise(JSON.parse(text)), exercise);
     assert.doesNotMatch(text, /"assessment"|"reference"/);
   }
+});
+
+test("saving prose cannot silently remove SQL practice; removal requires an explicit request", () => {
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-preservation-"));
+  const courses = join(root, "courses");
+  cpSync(canonical.root, join(root, "sql"), { recursive: true });
+  const folder = join(courses, "demo/lessons/first");
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(
+    join(courses, "demo/course.json"),
+    JSON.stringify({
+      id: "demo",
+      title: "Demo",
+      description: "Fixture",
+      lessons: [{ slug: "first", title: "First" }],
+    }),
+  );
+  const placement = {
+    kind: "sql" as const,
+    exerciseId: "store-all-customers",
+    version: 1,
+  };
+  const original = setLessonSqlPlacement("# Explanation\n", placement);
+  const file = join(folder, "lesson.md");
+  writeFileSync(file, original);
+  assert.throws(
+    () =>
+      saveLesson(
+        "demo",
+        "first",
+        { markdown: "Short prose", version: markdownVersion(original) },
+        courses,
+      ),
+    /Remover prática SQL/,
+  );
+  assert.equal(readFileSync(file, "utf8"), original);
+  const edited = setLessonSqlPlacement("Short prose", placement);
+  const saved = saveLesson(
+    "demo",
+    "first",
+    { markdown: edited, version: markdownVersion(original) },
+    courses,
+  );
+  assert.deepEqual(lessonSqlPlacement(saved.markdown), placement);
+  const removed = setLessonSqlPlacement(saved.markdown, null);
+  assert.equal(lessonSqlPlacement(removed), null);
+  saveLesson(
+    "demo",
+    "first",
+    { markdown: removed, version: saved.version, removeSqlActivity: true },
+    courses,
+  );
+  assert.equal(readFileSync(file, "utf8"), removed);
+  assert.equal(
+    canonical.definition("store-all-customers", 1).status,
+    "published",
+  );
 });

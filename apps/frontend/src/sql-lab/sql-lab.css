@@ -436,3 +436,149 @@
   opacity: 0.55;
   cursor: wait;
 }
+
+/* SQL lessons share the reader palette. One data region precedes the editor. */
+.sql-minimal {
+  gap: 24px;
+  align-content: start;
+}
+.sql-minimal > section {
+  min-width: 0;
+}
+.sql-data-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.sql-data-toolbar > button {
+  padding: 7px 12px;
+}
+.sql-data-toolbar button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.sql-data-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+}
+.sql-data-toolbar select {
+  min-width: 0;
+  max-width: 180px;
+  min-height: 44px;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 6px;
+}
+.sql-minimal .sql-data-caption {
+  color: var(--reading-muted);
+  font-size: 12px;
+  margin: 10px 0 6px;
+}
+.sql-minimal .sql-table-scroll {
+  max-height: 36dvh;
+  overflow: auto;
+}
+.sql-minimal .sql-table-scroll th {
+  position: sticky;
+  top: 0;
+}
+.sql-minimal .sql-feedback {
+  font-size: 14px;
+  margin: 12px 0;
+}
+.sql-secondary-actions {
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+}
+.sql-secondary-actions summary {
+  min-height: 32px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.sql-secondary-actions button {
+  margin: 4px 6px 0 0;
+}
+.sql-learning-tasks {
+  margin-top: 28px;
+}
+.sql-learning-tasks .sql-task-progress {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.sql-learning-tasks .sql-task-summary h2 {
+  font-size: 18px;
+  margin: 0;
+}
+.sql-learning-tasks .sql-task-list button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--reading-text);
+  cursor: pointer;
+}
+.sql-learning-tasks .sql-task-list button[aria-current="step"] {
+  background: var(--color-surface);
+  border-color: var(--color-line);
+}
+.sql-learning-tasks .sql-task-list button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.sql-learning-tasks .sql-task-state,
+.sql-learning-tasks .sql-practice-scope {
+  color: var(--reading-muted);
+  font-size: 12px;
+}
+.sql-current-task {
+  margin-top: 18px;
+}
+.sql-current-task h3 {
+  font-size: 16px;
+}
+.sql-current-task p {
+  font-size: 15px;
+}
+.sql-learning-tasks .sql-practice-scope {
+  margin-top: 18px;
+}
+@media (max-width: 999px) {
+  .learning-shell:has(.sql-learning-layout) {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .sql-learning-layout .sql-study-split {
+    display: flex;
+    flex-direction: column;
+  }
+  .sql-study-split > .study-explanation,
+  .sql-study-split[data-mobile-view] > .study-code {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .sql-study-split .sql-lesson-workspace {
+    height: auto;
+    overflow: visible;
+    padding: 20px 16px 32px;
+    border-top: 1px solid var(--color-line);
+  }
+  .sql-study-split .study-explanation {
+    padding-bottom: 20px;
+  }
+  .sql-minimal .sql-table-scroll {
+    max-height: 320px;
+  }
+  .sql-minimal .sql-editor .cm-scroller {
+    height: 180px;
+  }
+  .sql-query-editor {
+    scroll-margin-top: 16px;
+  }
+}

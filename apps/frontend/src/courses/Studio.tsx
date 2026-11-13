@@ -1,5 +1,10 @@
-import { setLessonSqlPlacement } from "@bunkercode/content";
-import { SqlExercisePicker } from "../sql-lab/SqlExercisePicker";
+import {
+  setLessonSqlPlacement,
+  lessonSqlPlacement,
+  parseSqlPlacement,
+  type SqlLessonPlacement,
+} from "@bunkercode/content";
+import { SqlLessonAuthoring } from "../sql-lab/SqlLessonAuthoring";
 import { localIdentityScope } from "../auth/session";
 import {
   lazy,
@@ -35,6 +40,21 @@ import { NewLessonDialog } from "./NewLessonDialog";
 
 const VisualEditor = lazy(() => import("../studio/VisualEditor"));
 
+function sqlProse(source: string) {
+  try {
+    return setLessonSqlPlacement(source, null);
+  } catch {
+    return source;
+  }
+}
+function sqlPlacement(source: string) {
+  try {
+    return lessonSqlPlacement(source);
+  } catch {
+    return null;
+  }
+}
+
 interface EditorPosition {
   start: number;
   end: number;
@@ -43,6 +63,8 @@ interface EditorPosition {
   left: number;
 }
 interface BufferState extends MarkdownRevision {
+  removeSqlActivity?: true;
+  protectedSql?: SqlLessonPlacement;
   baseMarkdown: string;
 }
 // Synchronous memory also protects SPA navigation when sessionStorage is denied.
@@ -86,6 +108,12 @@ function initialBuffer(key: string, lesson: EditableLesson) {
       markdown: value.markdown,
       baseMarkdown: value.baseMarkdown,
       version: value.version,
+      ...("protectedSql" in value && value.protectedSql
+        ? { protectedSql: parseSqlPlacement(value.protectedSql) }
+        : {}),
+      ...("removeSqlActivity" in value && value.removeSqlActivity === true
+        ? { removeSqlActivity: true as const }
+        : {}),
     };
     if (buffer.markdown !== buffer.baseMarkdown)
       tabBuffers.set(key, { buffer, storageError: "" });
@@ -188,6 +216,18 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
     };
   }, []);
   function changeBuffer(next: BufferState) {
+    next = {
+      ...next,
+      protectedSql:
+        next.markdown === next.baseMarkdown
+          ? (sqlPlacement(next.markdown) ?? undefined)
+          : next.removeSqlActivity
+            ? undefined
+            : (sqlPlacement(next.markdown) ??
+              buffer.protectedSql ??
+              sqlPlacement(next.baseMarkdown) ??
+              undefined),
+    };
     // Complete persistence in the edit handler, before any route can unmount us.
     if (next.markdown === next.baseMarkdown) tabBuffers.delete(storageKey);
     else tabBuffers.set(storageKey, { buffer: next, storageError: "" });
@@ -206,6 +246,29 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       setStorageError(message);
     }
   }
+  function editProse(markdown: string) {
+    const placement =
+      sqlPlacement(buffer.markdown) ??
+      (!buffer.removeSqlActivity
+        ? (buffer.protectedSql ?? sqlPlacement(buffer.baseMarkdown))
+        : null);
+    try {
+      lessonSqlPlacement(markdown);
+    } catch {
+      changeBuffer({ ...buffer, markdown });
+      return;
+    }
+    changeBuffer({
+      ...buffer,
+      removeSqlActivity: lessonSqlPlacement(markdown)
+        ? undefined
+        : buffer.removeSqlActivity,
+      markdown:
+        placement && !lessonSqlPlacement(markdown)
+          ? setLessonSqlPlacement(markdown, placement)
+          : markdown,
+    });
+  }
   async function save() {
     if (pendingSql) return;
     setSaving(true);
@@ -216,6 +279,9 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       const confirmation = await saveMarkdown(id, slug, {
         markdown: buffer.markdown,
         version: buffer.version,
+        ...(buffer.removeSqlActivity
+          ? { removeSqlActivity: true as const }
+          : {}),
       });
       if (!alive.current) return;
       changeBuffer({ ...confirmation, baseMarkdown: confirmation.markdown });
@@ -262,7 +328,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
     );
   }
   const status = pendingSql
-    ? "Tarefas em edição: aplique ou descarte antes de salvar."
+    ? "Tarefas em edição: salve ou descarte as alterações das tarefas."
     : pendingNotes
       ? "Nota em edição: aplique ou cancele antes de salvar."
       : saving
@@ -293,7 +359,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           <select
             aria-label="Lições do curso"
             value={slug}
-            disabled={saving || !course || course.id !== id}
+            disabled={saving || pendingSql || !course || course.id !== id}
             onChange={(event) =>
               navigate(lessonPath(id, event.target.value) + "/edit")
             }
@@ -309,11 +375,10 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
             )}
           </select>
         </div>
-        <Link to="/studio/sql">Atividades SQL</Link>
         <button
           ref={newLessonButton}
           className="studio-new-lesson"
-          disabled={saving}
+          disabled={saving || pendingSql}
           onClick={() => setCreating(true)}
         >
           Nova lição
@@ -363,31 +428,6 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           {saving ? "Salvando…" : "Salvar alterações"}
         </button>
       </header>
-      <SqlExercisePicker
-        disabled={saving || pendingNotes}
-        source={buffer.markdown}
-        onPendingChange={setPendingSql}
-        onSelect={(reference) => {
-          try {
-            changeBuffer({
-              ...buffer,
-              markdown: setLessonSqlPlacement(buffer.markdown, reference),
-            });
-            setNotice(
-              "Referência SQL alterada no rascunho. Confira a prévia e salve explicitamente.",
-            );
-            setError("");
-            return true;
-          } catch (error) {
-            setError(
-              error instanceof Error
-                ? error.message
-                : "Não foi possível inserir a atividade SQL.",
-            );
-            return false;
-          }
-        }}
-      />
       {creating && (
         <NewLessonDialog
           courseId={id}
@@ -460,7 +500,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       >
         <Suspense fallback={<p role="status">Carregando editor visual…</p>}>
           <VisualEditor
-            source={buffer.markdown}
+            source={sqlProse(buffer.markdown)}
             active={view === "visual"}
             disabled={saving}
             onPendingNotesChange={setPendingNotes}
@@ -470,7 +510,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
                 !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
               )
                 markdown = markdown.replaceAll("\n", "\r\n");
-              changeBuffer({ ...buffer, markdown });
+              editProse(markdown);
             }}
           />
         </Suspense>
@@ -491,7 +531,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
               !buffer.baseMarkdown.replaceAll("\r\n", "").includes("\n")
             )
               markdown = markdown.replaceAll("\n", "\r\n");
-            changeBuffer({ ...buffer, markdown });
+            editProse(markdown);
           }}
         />
         <p className="studio-caption">
@@ -499,6 +539,55 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
           KiB em UTF-8.
         </p>
       </section>
+      <SqlLessonAuthoring
+        courseId={id}
+        lessonSlug={slug}
+        disabled={saving || pendingNotes}
+        source={buffer.markdown}
+        onPendingChange={setPendingSql}
+        onSelect={(reference) => {
+          try {
+            changeBuffer({
+              ...buffer,
+              markdown: setLessonSqlPlacement(buffer.markdown, reference),
+              removeSqlActivity: reference ? undefined : true,
+            });
+            setNotice(
+              "Prática atualizada no rascunho. Confira a prévia e salve a lição.",
+            );
+            setError("");
+            return true;
+          } catch (error) {
+            setError(
+              error instanceof Error
+                ? error.message
+                : "Não foi possível inserir a atividade SQL.",
+            );
+            return false;
+          }
+        }}
+      />
+      {sqlPlacement(buffer.markdown) && (
+        <button
+          type="button"
+          disabled={saving || pendingSql}
+          onClick={() => {
+            if (
+              !window.confirm(
+                "Remover a prática desta lição? Os exercícios publicados serão preservados.",
+              )
+            )
+              return;
+            changeBuffer({
+              ...buffer,
+              markdown: setLessonSqlPlacement(buffer.markdown, null),
+              removeSqlActivity: true,
+            });
+          }}
+        >
+          Remover prática SQL
+        </button>
+      )}
       {view === "preview" && (
         <section className="studio-preview" aria-label="Prévia da lição">
           <h2 className="studio-preview-title reading-title">{lesson.title}</h2>

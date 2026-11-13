@@ -500,7 +500,9 @@ anonymousTest(
       .first()
       .click();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Código", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Código", exact: true }),
+    ).toHaveCount(0);
     const editor = page.getByRole("textbox", { name: "Consulta SQL" });
     const status = page.locator(".sql-workspace [role=status]");
     const tasks = page.getByRole("region", { name: "Tarefas da lição" });
@@ -538,7 +540,9 @@ anonymousTest(
     await expect(page.locator(".lesson-heading h1")).toHaveText(
       "Encontrando o que importa",
     );
-    await page.getByRole("button", { name: "Código", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Código", exact: true }),
+    ).toHaveCount(0);
     const answers = [
       "SELECT * FROM customers WHERE city = 'Recife'",
       "SELECT id,name,city FROM customers ORDER BY name ASC",
@@ -577,6 +581,7 @@ test("published legacy SQL fixture keeps private authoring absent and records on
   await page
     .getByRole("textbox", { name: "Consulta SQL" })
     .fill("SELECT id,name FROM customers");
+  await page.getByText("Opções da prática", { exact: true }).click();
   await page.getByRole("button", { name: "Submit · concluir lição" }).click();
   await expect(page.locator(".sql-workspace [role=status]")).toContainText(
     "Conclusão da lição registrada",
@@ -586,6 +591,7 @@ test("published legacy SQL fixture keeps private authoring absent and records on
     page.getByText("Lição concluída", { exact: true }),
   ).toBeVisible();
   await page.reload();
+  await page.getByText("Opções da prática", { exact: true }).click();
   await page.getByRole("button", { name: "Carregar solução aprovada" }).click();
   await expect(page.getByRole("textbox", { name: "Consulta SQL" })).toHaveText(
     "SELECT id,name FROM customers",

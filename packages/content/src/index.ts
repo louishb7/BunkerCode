@@ -265,10 +265,14 @@ export function lessonSqlPlacement(source: string): SqlLessonPlacement | null {
 /** Replace only a recognized top-level SQL fence, preserving surrounding Markdown. */
 export function setLessonSqlPlacement(
   source: string,
-  value: SqlLessonPlacement,
+  value: SqlLessonPlacement | null,
 ): string {
-  const reference = parseSqlPlacement(value);
+  const reference = value === null ? null : parseSqlPlacement(value);
   const { exercise, sqlRange } = scanEditorial(source);
+  if (!reference)
+    return sqlRange
+      ? source.slice(0, sqlRange.start) + source.slice(sqlRange.end)
+      : source;
   if (exercise)
     throw new Error("Uma lição não pode misturar atividades SQL e JavaScript.");
   const newline =

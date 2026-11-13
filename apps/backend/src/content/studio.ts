@@ -31,14 +31,19 @@ import {
 } from "./markdown-file";
 
 const logger = new Logger("Studio");
-function input(value: unknown): MarkdownRevision {
+function input(
+  value: unknown,
+): MarkdownRevision & { removeSqlActivity?: true } {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new BadRequestException(
       "Envie markdown e version em um objeto JSON.",
     );
   const body = value as Record<string, unknown>;
   if (
-    Object.keys(body).some((key) => !["markdown", "version"].includes(key)) ||
+    Object.keys(body).some(
+      (key) => !["markdown", "version", "removeSqlActivity"].includes(key),
+    ) ||
+    (body.removeSqlActivity !== undefined && body.removeSqlActivity !== true) ||
     typeof body.markdown !== "string" ||
     typeof body.version !== "string" ||
     !/^[a-f0-9]{64}$/.test(body.version)
@@ -62,7 +67,11 @@ function input(value: unknown): MarkdownRevision {
       error instanceof Error ? error.message : "Bloco editorial inválido.",
     );
   }
-  return { markdown: body.markdown, version: body.version };
+  return {
+    markdown: body.markdown,
+    version: body.version,
+    ...(body.removeSqlActivity === true ? { removeSqlActivity: true } : {}),
+  };
 }
 function conflict(): never {
   throw new ConflictException(
@@ -119,6 +128,18 @@ export function saveLesson(
   try {
     const original = readMarkdownFile(location.path);
     if (original.version !== requested.version) conflict();
+    if (
+      lessonSqlPlacement(original.markdown) &&
+      !reference &&
+      !requested.removeSqlActivity
+    )
+      throw new BadRequestException(
+        "A prática SQL foi removida do texto. Use Remover prática SQL no Studio para confirmar essa alteração.",
+      );
+    if (reference && requested.removeSqlActivity)
+      throw new BadRequestException(
+        "A remoção de prática SQL não pode conter outra atividade.",
+      );
     const mode = lstatSync(location.path).mode & 0o777;
     if (!(mode & 0o222)) throw new Error("Lesson file is read-only");
     descriptor = openSync(

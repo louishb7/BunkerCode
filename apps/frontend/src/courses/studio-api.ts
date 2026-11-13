@@ -76,7 +76,7 @@ export async function readEditableLesson(id: string, slug: string) {
 export async function saveMarkdown(
   id: string,
   slug: string,
-  value: MarkdownRevision,
+  value: MarkdownRevision & { removeSqlActivity?: true },
 ) {
   const saved = revision(
     await responseValue(

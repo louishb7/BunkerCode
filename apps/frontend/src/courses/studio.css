@@ -1042,3 +1042,93 @@
     padding-left: 20px;
   }
 }
+
+/* Lesson-first SQL authoring shares the Studio's typography and controls. */
+.studio-sql-authoring {
+  margin: 16px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+}
+.studio-sql-authoring h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.studio-sql-authoring header p {
+  margin: 6px 0 16px;
+  color: var(--color-subtle);
+}
+.studio-sql-task-editor {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 18px;
+}
+.studio-sql-task-editor > li {
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+  min-width: 0;
+}
+.studio-sql-task-editor h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+.studio-sql-task-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.studio-sql-authoring label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  min-width: 0;
+}
+.studio-sql-authoring :is(input:not([type="checkbox"]), textarea, select) {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+}
+.studio-sql-authoring textarea {
+  font-family: var(--font-mono, monospace);
+  resize: vertical;
+}
+.studio-sql-authoring .studio-sql-order {
+  display: flex;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.studio-sql-task-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+}
+.studio-sql-authoring button {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.studio-sql-authoring > details {
+  margin-top: 16px;
+}
+.studio-sql-authoring summary {
+  min-height: 44px;
+  cursor: pointer;
+  align-content: center;
+}
+@media (max-width: 700px) {
+  .studio-sql-authoring {
+    padding: 14px;
+  }
+  .studio-sql-task-editor fieldset {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

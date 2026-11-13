@@ -2,7 +2,8 @@ import { useAuth } from "../auth/Auth";
 import { apiFetch, localIdentityScope } from "../auth/session";
 import { learningRequest, learningLessonPath } from "../learning/api";
 import { SQL_LIMITS, parseSqlSteps } from "@bunkercode/content/sql";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CodeEditor } from "../practice/CodeEditor";
 import {
   sqlSessionKey,
@@ -24,6 +25,7 @@ export function SqlInteraction({
   lesson,
   tasks,
   continuation,
+  taskTarget,
 }: {
   exercise: SqlExercise;
   lessonAppearance?: boolean;
@@ -31,6 +33,7 @@ export function SqlInteraction({
   lesson?: { courseId: string; lessonSlug: string; onCompleted: () => void };
   tasks?: readonly SqlLessonTask[];
   continuation?: SqlContinuation;
+  taskTarget?: HTMLElement | null;
 }) {
   return (
     <InteractionSession
@@ -51,6 +54,7 @@ export function SqlInteraction({
       lesson={lesson}
       tasks={tasks}
       continuation={continuation}
+      taskTarget={taskTarget}
     />
   );
 }
@@ -62,6 +66,7 @@ function InteractionSession({
   lesson,
   tasks: configuredTasks,
   continuation,
+  taskTarget,
 }: {
   exercise: SqlExercise;
   lessonAppearance: boolean;
@@ -69,6 +74,7 @@ function InteractionSession({
   lesson?: { courseId: string; lessonSlug: string; onCompleted: () => void };
   tasks?: readonly SqlLessonTask[];
   continuation?: SqlContinuation;
+  taskTarget?: HTMLElement | null;
 }) {
   const { user } = useAuth();
   const steps = useRef<string[]>([]);
@@ -84,6 +90,7 @@ function InteractionSession({
   const [sql, setSql] = useState(exercise.starterSql);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SqlResult | null>(null);
+  const [visualization, setVisualization] = useState<"data" | "result">("data");
   const [executed, setExecuted] = useState<{
     sql: string;
     taskId: string;
@@ -270,6 +277,7 @@ function InteractionSession({
         return;
       }
       setResult(value);
+      setVisualization("result");
       setExecuted({ sql, taskId: submittedTask });
       if (tasks && value.correct === true) {
         const next = progress.complete(submittedTask);
@@ -487,7 +495,7 @@ function InteractionSession({
       }
     }
   };
-  const explore = async () => {
+  const explore = useCallback(async () => {
     if (running.current || !runtime.current) return;
     running.current = true;
     const currentGeneration = ++generation.current;
@@ -497,6 +505,7 @@ function InteractionSession({
       const value = await runtime.current.preview(table);
       if (currentGeneration !== generation.current) return;
       setPreview(value);
+      setVisualization("data");
       setPreviewMessage(
         value.truncated
           ? "Primeiros 10 registros; há mais linhas."
@@ -521,7 +530,11 @@ function InteractionSession({
         setBusy(false);
       }
     }
-  };
+  }, [table]);
+  useEffect(() => {
+    // Only the known sample-table read is automatic; learner SQL requires Run.
+    if (lessonAppearance) void explore();
+  }, [lessonAppearance, explore]);
   const selectTask = (taskId: string) => {
     if (taskId === progress.active.current) return;
     revision.current++;
@@ -540,6 +553,237 @@ function InteractionSession({
       "Sequência recomeçada: acertos e consultas desta sessão foram apagados; os dados iniciais serão recriados ao executar.",
     );
   };
+  if (lessonAppearance) {
+    const showingResult = visualization === "result" && !!result;
+    const feedback = busy
+      ? "Executando…"
+      : message.startsWith("Tarefa ") && message.includes("concluída")
+        ? message.split(" ativa;")[0] + " ativa. Execute a nova consulta."
+        : message.startsWith("Todas as tarefas")
+          ? "Todas as tarefas foram concluídas nesta prática."
+          : message.startsWith("Consulta alterada")
+            ? "Consulta alterada. Execute para atualizar."
+            : message.startsWith("Tarefa selecionada")
+              ? "Tarefa selecionada."
+              : message.startsWith("Os dados iniciais")
+                ? "Escreva uma consulta e execute."
+                : message.startsWith("Resposta correta")
+                  ? "Consulta correta."
+                  : message.startsWith("Consulta executada. Ainda")
+                    ? "Ainda não corresponde à tarefa. Confira colunas, linhas e ordem."
+                    : message;
+    const select = (taskId: string) => {
+      selectTask(taskId);
+      if (window.matchMedia("(max-width: 999px)").matches)
+        document.getElementById(titleId)?.scrollIntoView({ block: "start" });
+    };
+    const panel = (
+      <div className="sql-learning-tasks">
+        {tasks && (
+          <SqlTaskProgress
+            tasks={tasks}
+            activeId={progress.active.current}
+            completed={progress.completed}
+            notice=""
+            onSelect={select}
+            continuation={continuation}
+            compact
+          />
+        )}
+        <div className="sql-current-task">
+          <h3>{exercise.title}</h3>
+          <p>{exercise.instructions}</p>
+        </div>
+        <p className="sql-practice-scope">
+          Prática desta sessão; os acertos não registram conclusão na conta.
+        </p>
+      </div>
+    );
+    return (
+      <div className="sql-interaction sql-lesson sql-minimal sql-workspace">
+        {taskTarget && createPortal(panel, taskTarget)}
+        <section
+          className="sql-visualization"
+          aria-label="Visualização do banco"
+          aria-busy={busy}
+        >
+          <div className="sql-data-toolbar">
+            <button
+              type="button"
+              aria-pressed={!showingResult}
+              disabled={busy}
+              onClick={() => {
+                setVisualization("data");
+                void explore();
+              }}
+            >
+              Dados
+            </button>
+            <button
+              type="button"
+              aria-pressed={showingResult}
+              disabled={busy || !result}
+              onClick={() => setVisualization("result")}
+            >
+              Resultado
+            </button>
+            {!showingResult && (
+              <label>
+                Tabela
+                <select
+                  aria-label="Tabela"
+                  value={table}
+                  disabled={busy}
+                  onChange={(event) => setTable(event.target.value)}
+                >
+                  {exercise.schema.map((entry) => (
+                    <option key={entry.name}>{entry.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          {showingResult ? (
+            <>
+              <p className="sql-data-caption sql-executed-task">
+                {executed && tasks
+                  ? `Resultado da tarefa ${tasks.findIndex((task) => task.taskId === executed.taskId) + 1}`
+                  : "Resultado da consulta"}{" "}
+                · {result.rows.length} linhas
+                {result.truncated
+                  ? ` (limite de ${exercise.limits.maxRows})`
+                  : ""}
+              </p>
+              {result.fields.length ? (
+                <SqlTable result={result} label="Resultado da consulta" />
+              ) : (
+                <p>{result.affectedRows ?? 0} linhas alteradas.</p>
+              )}
+            </>
+          ) : preview ? (
+            <>
+              <p className="sql-data-caption">
+                {table} · {preview.rows.length} registros
+                {preview.truncated ? " (primeiros 10)" : ""}
+              </p>
+              <SqlTable
+                result={preview}
+                label={`Registros de ${table}`}
+                context="table"
+              />
+            </>
+          ) : (
+            <p>{busy ? "Carregando dados…" : previewMessage}</p>
+          )}
+        </section>
+        <section className="sql-query-editor" aria-labelledby={titleId}>
+          <h2 id={titleId}>Sua consulta</h2>
+          <p id={helpId} className="sr-only">
+            Use Tab para indentar; Esc e Tab movem o foco para fora do editor.
+          </p>
+          <div className="sql-editor">
+            <CodeEditor
+              code={sql}
+              language="sql"
+              label="Consulta SQL"
+              variant="example"
+              lessonAppearance
+              keyboardHelpId={helpId}
+              onChange={(value) => {
+                if (value === sql) return;
+                revision.current++;
+                setSql(value);
+                progress.remember(value);
+                setMessage("Consulta alterada. Execute para atualizar.");
+              }}
+              formatRequest={0}
+              onFormatState={() => undefined}
+            />
+          </div>
+          <div className="sql-actions">
+            <button
+              type="button"
+              className="sql-primary"
+              aria-disabled={busy}
+              onClick={() => void run()}
+            >
+              {exercise.mode === "mutation"
+                ? "Executar comando"
+                : "Executar consulta"}
+            </button>
+            {busy && (
+              <button type="button" onClick={() => discard(true)}>
+                Cancelar e descartar
+              </button>
+            )}
+          </div>
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="sql-feedback"
+          >
+            {feedback}
+          </p>
+          {recoveryError && <p role="alert">{recoveryError}</p>}
+          <details className="sql-secondary-actions">
+            <summary>Opções da prática</summary>
+            <button
+              type="button"
+              onClick={() => {
+                revision.current++;
+                setSql("");
+                progress.remember("");
+                setResult(null);
+                setMessage(
+                  "Consulta limpa; os acertos anteriores foram preservados.",
+                );
+              }}
+            >
+              Limpar consulta
+            </button>
+            <button type="button" onClick={() => discard(false)}>
+              Reiniciar banco
+            </button>
+            {tasks && (
+              <button type="button" onClick={restartTasks}>
+                Recomeçar tarefas
+              </button>
+            )}
+            {!previewOnly && !localAssessment && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void assess(false)}
+              >
+                {exercise.mode === "mutation"
+                  ? "Verificar estado"
+                  : "Verificar resposta"}
+              </button>
+            )}
+            {lesson && user && !tasks && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void assess(true)}
+              >
+                Submit · concluir lição
+              </button>
+            )}
+            {approved && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void restore()}
+              >
+                Carregar solução aprovada
+              </button>
+            )}
+          </details>
+        </section>
+      </div>
+    );
+  }
   return (
     <div className={`sql-interaction ${lessonAppearance ? "sql-lesson" : ""}`}>
       <p className="sql-notice">

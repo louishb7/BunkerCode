@@ -105,6 +105,9 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
   }
 
   const [mobileView, setMobileView] = useState<"reading" | "code">("reading");
+  const [sqlTaskTarget, setSqlTaskTarget] = useState<HTMLDivElement | null>(
+    null,
+  );
   const { data: practice, error: practiceError } = useContent(
     "/" +
       encodeURIComponent(id) +
@@ -191,13 +194,13 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     [exercise],
   );
   return (
-    <LessonAppearance practice={interactive}>
+    <LessonAppearance practice={interactive} stacked={hasSql}>
       <LessonNavigation lesson={lesson} />
       <Page
         title={`${lesson.title} · ${lesson.course.title}`}
         className={`lesson-reader ${interactive ? "practice-workspace" : ""}`}
       >
-        {interactive && (
+        {interactive && !hasSql && (
           <div
             className="mobile-workspace-switch"
             role="group"
@@ -221,6 +224,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
         <StudySplit
           key={interactive ? "practice" : "reading"}
           practice={interactive}
+          stacked={hasSql}
           mobileView={mobileView}
           left={
             <ReadingArticle
@@ -261,11 +265,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                       sqlError ? (
                         <p role="alert">{sqlError}</p>
                       ) : sqlExercise ? (
-                        <aside className="editorial-note">
-                          {sqlSequence
-                            ? "Resolva as tarefas em ordem na área de código. Cada execução recebe feedback neste navegador; os acertos são formativos."
-                            : `Pratique “${sqlExercise.title}” na área de código. Executar usa o banco local; Submit faz uma avaliação independente.`}
-                        </aside>
+                        <></>
                       ) : hasSql ? (
                         <p role="status">Carregando atividade SQL…</p>
                       ) : undefined
@@ -278,6 +278,9 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                   </p>
                 )}
               </div>
+              {sqlExercise && (
+                <div className="sql-lesson-tasks" ref={setSqlTaskTarget} />
+              )}
               {!placedExercise && exercisePrompt}
               {user && learningError && (
                 <p role="status">
@@ -287,7 +290,15 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                   </button>
                 </p>
               )}
-              {user && published && (
+              {user && published && hasSql && completed && (
+                <p className="text-sm text-subtle" role="status">
+                  {sqlSequence
+                    ? "Conclusão histórica registrada · a sequência atual é formativa"
+                    : "Lição concluída"}
+                </p>
+              )}
+              {user && hasSql && syncError && <p role="alert">{syncError}</p>}
+              {user && published && !hasSql && (
                 <div className="lesson-progress">
                   {completed ? (
                     <p role="status">
@@ -362,6 +373,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                         : undefined
                     }
                     lessonAppearance
+                    taskTarget={sqlTaskTarget}
                     lesson={
                       sqlSequence || (user?.role === "ADMIN" && !published)
                         ? undefined

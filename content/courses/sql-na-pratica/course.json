@@ -3,14 +3,6 @@
   "title": "SQL na Prática: Do Zero aos Bancos de Dados",
   "description": "Comece do zero investigando dados fictícios de uma loja. Aprenda a ler tabelas, selecionar informações, filtrar registros e ordenar resultados com SQL. Duas lições iniciais combinam explicações curtas, exploração e desafios práticos, como base para estudar bancos de dados e desenvolvimento backend.",
   "shortDescription": "Aprenda SQL do zero: explore tabelas, selecione dados e escreva suas primeiras consultas.",
-  "modules": [
-    {
-      "id": "primeiros-passos-com-dados",
-      "title": "Primeiros passos com dados",
-      "number": 1,
-      "description": "Reconheça tabelas e transforme perguntas em consultas com SELECT, WHERE e ORDER BY."
-    }
-  ],
   "lessons": [
     {
       "slug": "seu-primeiro-contato-com-um-banco-de-dados",
@@ -21,6 +13,19 @@
       "slug": "encontrando-o-que-importa",
       "title": "Encontrando o que importa",
       "moduleId": "primeiros-passos-com-dados"
+    },
+    {
+      "slug": "teste",
+      "title": "Teste",
+      "moduleId": "primeiros-passos-com-dados"
+    }
+  ],
+  "modules": [
+    {
+      "id": "primeiros-passos-com-dados",
+      "title": "Primeiros passos com dados",
+      "description": "Reconheça tabelas e transforme perguntas em consultas com SELECT, WHERE e ORDER BY.",
+      "number": 1
     }
   ]
 }

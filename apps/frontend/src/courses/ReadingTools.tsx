@@ -23,14 +23,16 @@ function preference(key: string, fallback: number, min: number, max: number) {
 export function LessonAppearance({
   children,
   practice,
+  stacked = false,
 }: {
   children: ReactNode;
   practice: boolean;
+  stacked?: boolean;
 }) {
   const { effectiveTone } = useAppearance();
   return (
     <div
-      className={`reader-layout lesson-theme reading-tone-${effectiveTone} ${practice ? "practice-layout" : ""}`}
+      className={`reader-layout lesson-theme reading-tone-${effectiveTone} ${practice ? "practice-layout" : ""} ${stacked ? "sql-learning-layout" : ""}`}
     >
       {children}
     </div>
@@ -85,11 +87,13 @@ export function StudySplit({
   right,
   practice = false,
   mobileView = "reading",
+  stacked = false,
 }: {
   left: ReactNode;
   right?: ReactNode;
   practice?: boolean;
   mobileView?: "reading" | "code";
+  stacked?: boolean;
 }) {
   const key = "bunkercode:practice-width";
   const initial = 55;
@@ -132,7 +136,7 @@ export function StudySplit({
     <div
       ref={container}
       data-mobile-view={mobileView}
-      className={`study-split ${practice ? "programming-split" : "reading-split"} ${right ? "" : "without-sidebar"}`}
+      className={`study-split ${practice ? "programming-split" : "reading-split"} ${right ? "" : "without-sidebar"} ${stacked ? "sql-study-split" : ""}`}
       style={
         {
           "--article-weight": `${effective}fr`,
