@@ -583,3 +583,34 @@ test("Studio saves and reorders SQL sequences, rejects unresolved references and
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("canonical second lesson versions resolve as public projections without private assessment", () => {
+  const placement = lessonSqlPlacement(
+    readFileSync(
+      resolve(
+        "../../content/courses/sql-na-pratica/lessons/encontrando-o-que-importa/lesson.md",
+      ),
+      "utf8",
+    ),
+  );
+  assert.ok(placement && placement.kind === "sql-task-sequence");
+  const exercises = canonical.resolvePlacement(placement);
+  assert.deepEqual(
+    exercises.map(({ id, version, dataset }) => [id, version, dataset.version]),
+    [
+      ["store-customers-recife", 3, 2],
+      ["store-sort-customers", 2, 2],
+      ["store-filter-sort", 3, 2],
+    ],
+  );
+  const publicFiles = new Map(sqlPublicationFiles(resolve("../../content")));
+  for (const exercise of exercises) {
+    assert.equal("assessment" in exercise, false);
+    const text = publicFiles.get(
+      `sql/public/${exercise.id}/${exercise.version}.json`,
+    );
+    assert.ok(text);
+    assert.deepEqual(parsePublicSqlExercise(JSON.parse(text)), exercise);
+    assert.doesNotMatch(text, /"assessment"|"reference"/);
+  }
+});

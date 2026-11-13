@@ -1195,6 +1195,19 @@ for (const loggedIn of [false, true]) {
         ).toBeVisible();
         for (const [position, task] of lesson.tasks.entries()) {
           await rows.nth(position).click();
+          if (lesson.slug === "encontrando-o-que-importa" && position === 1) {
+            await editor.fill("SELECT * FROM customers");
+            await execute.click();
+            await expect(status).toContainText("Ainda não corresponde");
+            await expect(rows.nth(position)).toHaveAttribute(
+              "aria-current",
+              "step",
+            );
+            await editor.fill("SELECT FROM");
+            await execute.click();
+            await expect(status).toContainText("Confira a sintaxe");
+            await expect(status).not.toContainText("at or near");
+          }
           await editor.fill(task.wrong);
           await execute.click();
           await expect(status).toContainText("Ainda não corresponde");

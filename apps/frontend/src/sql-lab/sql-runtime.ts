@@ -33,10 +33,7 @@ export function sqlErrorFeedback(code?: string): string {
         "Uma tabela não foi encontrada. Confira os nomes em Dados disponíveis e tente novamente."
       );
     default:
-      return (
-        prefix +
-        "Não foi possível executar o comando. Confira a consulta e os dados disponíveis e tente novamente."
-      );
+      return `Não foi possível concluir a execução${code ? ` (${code})` : ""}. Tente novamente e, se o problema persistir, reinicie o banco.`;
   }
 }
 
@@ -48,6 +45,10 @@ export class SqlRuntimeError extends Error {
   ) {
     super(message);
   }
+}
+
+export function sqlRuntimeFeedback(error: SqlRuntimeError): string {
+  return error.code ? sqlErrorFeedback(error.code) : error.message;
 }
 
 export class SqlRuntime {
@@ -181,7 +182,9 @@ export class SqlRuntime {
       );
       if (response.type === "error")
         throw new SqlRuntimeError(
-          response.error.message,
+          response.error.code
+            ? response.error.message
+            : "Não foi possível concluir a execução. Tente novamente e, se o problema persistir, reinicie o banco.",
           false,
           response.error.code,
         );

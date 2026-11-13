@@ -10,7 +10,7 @@ import {
   type SqlResult,
   type SqlLessonTask,
 } from "./exercise";
-import { SqlRuntime, SqlRuntimeError, sqlErrorFeedback } from "./sql-runtime";
+import { SqlRuntime, SqlRuntimeError, sqlRuntimeFeedback } from "./sql-runtime";
 import { SqlTable } from "./SqlTable";
 import { useSqlTasks } from "./useSqlTasks";
 import { SqlTaskProgress, type SqlContinuation } from "./SqlTaskProgress";
@@ -317,9 +317,7 @@ function InteractionSession({
         setPreviewMessage(error.message);
       }
       if (error instanceof SqlRuntimeError)
-        setMessage(
-          error.discarded ? error.message : sqlErrorFeedback(error.code),
-        );
+        setMessage(sqlRuntimeFeedback(error));
       else
         setMessage(
           "Não foi possível executar a consulta. Reinicie o banco e tente novamente.",

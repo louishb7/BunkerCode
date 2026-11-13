@@ -831,8 +831,57 @@ test("SQL diagnostics are actionable without exposing wrapper syntax", async () 
       (await engine.execute("SELECT * FROM customers WHERE false")).rows.length,
       0,
     );
-    assert.match(sqlErrorFeedback("XX000"), /Confira a consulta/);
+    assert.match(sqlErrorFeedback("XX000"), /reinicie o banco/);
+    assert.doesNotMatch(sqlErrorFeedback("XX000"), /Erro SQL/);
   } finally {
     await engine.close();
   }
+});
+
+test("runtime feedback distinguishes concurrent and worker errors from SQL diagnostics", async () => {
+  const { sqlRuntimeFeedback } = await import("../src/sql-lab/sql-runtime");
+  const worker = new FakeWorker();
+  const runtime = new SqlRuntime(storeExercise, () => worker);
+  const pending = runtime.execute("SELECT FROM");
+  await assert.rejects(runtime.execute("SELECT 2"), (error: unknown) => {
+    assert.ok(error instanceof SqlRuntimeError);
+    assert.equal(
+      sqlRuntimeFeedback(error),
+      "Já existe uma consulta em execução.",
+    );
+    return true;
+  });
+  worker.ready();
+  await tick();
+  worker.reply({
+    type: "error",
+    id: worker.requests.at(-1)!.id,
+    error: { code: "42601", message: 'syntax error at or near ")"' },
+  });
+  await assert.rejects(pending, (error: unknown) => {
+    assert.ok(error instanceof SqlRuntimeError);
+    assert.match(sqlRuntimeFeedback(error), /sintaxe/);
+    assert.doesNotMatch(sqlRuntimeFeedback(error), /at or near/);
+    assert.match(error.message, /at or near/);
+    return true;
+  });
+  const broken = runtime.execute("SELECT 1");
+  worker.reply({
+    type: "error",
+    id: worker.requests.at(-1)!.id,
+    error: { message: "internal worker failure" },
+  });
+  await assert.rejects(broken, (error: unknown) => {
+    assert.ok(error instanceof SqlRuntimeError);
+    assert.match(sqlRuntimeFeedback(error), /reinicie o banco/);
+    assert.doesNotMatch(
+      sqlRuntimeFeedback(error),
+      /Erro SQL|Confira a consulta/,
+    );
+    return true;
+  });
+  const recovered = runtime.execute("SELECT 1");
+  worker.result();
+  assert.deepEqual((await recovered).rows, [[1]]);
+  runtime.dispose();
 });
