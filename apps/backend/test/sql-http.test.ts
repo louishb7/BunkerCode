@@ -9,6 +9,15 @@ import { join, resolve } from "node:path";
 import { createApplication } from "../src/application";
 import { PrismaService } from "../src/auth/prisma.service";
 import { SqlService } from "../src/sql/sql.service";
+import { setLessonSqlPlacement } from "@bunkercode/content";
+const taskSequence = {
+  kind: "sql-task-sequence" as const,
+  tasks: [
+    { taskId: "columns", exerciseId: "store-select-columns", version: 2 },
+    { taskId: "customers", exerciseId: "store-customers-recife", version: 2 },
+    { taskId: "filtered-order", exerciseId: "store-filter-sort", version: 2 },
+  ],
+};
 const origin = "http://127.0.0.1:5173";
 test(
   "SQL HTTP keeps private authoring, identity, version and resource boundaries server-side",
@@ -333,6 +342,84 @@ test(
       assert.doesNotThrow(() =>
         service.binding("demo", "first", definition.id, 1),
       );
+      const singleSource = setLessonSqlPlacement("# First\n", {
+        kind: "sql",
+        exerciseId: definition.id,
+        version: 1,
+      });
+      const sequenceUser = await register();
+      writeFileSync(
+        join(root, "courses/demo/lessons/first/lesson.md"),
+        setLessonSqlPlacement(singleSource, taskSequence),
+      );
+      const partial = { ...valid, version: 2 };
+      for (const [payload, expected] of [
+        [partial, 409],
+        [
+          {
+            ...partial,
+            exerciseId: "store-customers-recife",
+            steps: ["SELECT * FROM customers WHERE city = 'Recife'"],
+          },
+          409,
+        ],
+        [{ ...partial, passed: true }, 400],
+        [{ ...partial, tasks: [{ taskId: "columns", passed: true }] }, 400],
+        [
+          {
+            ...partial,
+            steps: [
+              "SELECT id,name FROM customers",
+              "SELECT * FROM customers WHERE city = 'Recife'",
+            ],
+          },
+          409,
+        ],
+      ] as const)
+        assert.equal(
+          (await send("/sql/submit", sequenceUser.accessToken, payload)).status,
+          expected,
+        );
+      assert.equal(
+        (
+          await send(
+            "/learning/courses/demo/lessons/first/complete",
+            sequenceUser.accessToken,
+          )
+        ).status,
+        409,
+      );
+      assert.deepEqual(
+        await (
+          await send(
+            "/learning/courses/demo/lessons/first/solution",
+            sequenceUser.accessToken,
+            {},
+            "GET",
+          )
+        ).json(),
+        { solution: null },
+      );
+      assert.equal(
+        await db.lessonCompletion.count({
+          where: { userId: sequenceUser.user.id },
+        }),
+        0,
+      );
+      assert.equal(
+        await db.approvedSolution.count({
+          where: { userId: sequenceUser.user.id },
+        }),
+        0,
+      );
+      assert.equal(
+        (await db.sqlRunnerSlot.findUniqueOrThrow({ where: { id: 1 } })).owner,
+        null,
+      );
+      writeFileSync(
+        join(root, "courses/demo/lessons/first/lesson.md"),
+        singleSource,
+      );
       assert.equal(
         (
           await send("/sql/check", admin.accessToken, {}, "POST", {
@@ -515,6 +602,35 @@ test(
         ).json(),
         { solution: null },
       );
+      writeFileSync(markdown, setLessonSqlPlacement("# First\n", taskSequence));
+      assert.equal(
+        (await send("/sql/submit", token, { ...body, version: 2 })).status,
+        409,
+      );
+      assert.deepEqual(
+        await (
+          await send(
+            "/learning/courses/demo/lessons/first/solution",
+            token,
+            {},
+            "GET",
+          )
+        ).json(),
+        { solution: null },
+      );
+      assert.equal(
+        await db.lessonCompletion.count({ where: { userId: a.user.id } }),
+        1,
+        "Historical completion must be preserved without approving the current sequence",
+      );
+      writeFileSync(
+        markdown,
+        setLessonSqlPlacement("# First\n", {
+          kind: "sql",
+          exerciseId: "store-select-columns",
+          version: 1,
+        }),
+      );
       assert.equal(
         (await send("/sql/submit", b.accessToken, { ...body, version: 2 }))
           .status,
@@ -534,7 +650,7 @@ test(
 
 test(
   "SQL progress rejects stale content and revoked sessions after evaluation and rolls back a persistence failure",
-  { skip: process.env.BUNKERCODE_SQL_RUNNER_ENABLED !== "1", timeout: 150000 },
+  { skip: process.env.BUNKERCODE_SQL_RUNNER_ENABLED !== "1", timeout: 180000 },
   async () => {
     const root = mkdtempSync(join(tmpdir(), "bunkercode-sql-failure-"));
     cpSync(resolve("../../content/sql"), join(root, "sql"), {
@@ -618,6 +734,28 @@ test(
       await started();
       writeFileSync(markdown, source.replace('"version":1', '"version":2'));
       assert.equal((await stale).status, 409);
+      writeFileSync(markdown, source);
+      const sequenceAccount = await account();
+      const changedToSequence = send(
+        "/sql/submit",
+        sequenceAccount.accessToken,
+        body,
+      );
+      await started();
+      writeFileSync(markdown, setLessonSqlPlacement(source, taskSequence));
+      assert.equal((await changedToSequence).status, 409);
+      assert.equal(
+        await db.lessonCompletion.count({
+          where: { userId: sequenceAccount.user.id },
+        }),
+        0,
+      );
+      assert.equal(
+        await db.approvedSolution.count({
+          where: { userId: sequenceAccount.user.id },
+        }),
+        0,
+      );
       writeFileSync(markdown, source);
       const b = await account();
       const revoked = send("/sql/submit", b.accessToken, body);

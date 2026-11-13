@@ -4,9 +4,16 @@ import { learningRequest, learningLessonPath } from "../learning/api";
 import { SQL_LIMITS, parseSqlSteps } from "@bunkercode/content/sql";
 import { useEffect, useId, useRef, useState } from "react";
 import { CodeEditor } from "../practice/CodeEditor";
-import { sqlSessionKey, type SqlExercise, type SqlResult } from "./exercise";
+import {
+  sqlSessionKey,
+  type SqlExercise,
+  type SqlResult,
+  type SqlLessonTask,
+} from "./exercise";
 import { SqlRuntime, SqlRuntimeError } from "./sql-runtime";
 import { SqlTable } from "./SqlTable";
+import { useSqlTasks } from "./useSqlTasks";
+import { SqlTaskProgress, type SqlContinuation } from "./SqlTaskProgress";
 import "./sql-lab.css";
 
 // Public formative feedback never authorizes persistent completion.
@@ -15,19 +22,35 @@ export function SqlInteraction({
   lessonAppearance = false,
   previewOnly = false,
   lesson,
+  tasks,
+  continuation,
 }: {
   exercise: SqlExercise;
   lessonAppearance?: boolean;
   previewOnly?: boolean;
   lesson?: { courseId: string; lessonSlug: string; onCompleted: () => void };
+  tasks?: readonly SqlLessonTask[];
+  continuation?: SqlContinuation;
 }) {
   return (
     <InteractionSession
-      key={sqlSessionKey(exercise)}
+      key={
+        tasks
+          ? JSON.stringify(
+              tasks.map((task) => [
+                task.taskId,
+                task.exercise.id,
+                task.exercise.version,
+              ]),
+            )
+          : sqlSessionKey(exercise)
+      }
       exercise={exercise}
       lessonAppearance={lessonAppearance}
       previewOnly={previewOnly}
       lesson={lesson}
+      tasks={tasks}
+      continuation={continuation}
     />
   );
 }
@@ -37,21 +60,34 @@ function InteractionSession({
   lessonAppearance,
   previewOnly,
   lesson,
+  tasks: configuredTasks,
+  continuation,
 }: {
   exercise: SqlExercise;
   lessonAppearance: boolean;
   previewOnly: boolean;
   lesson?: { courseId: string; lessonSlug: string; onCompleted: () => void };
+  tasks?: readonly SqlLessonTask[];
+  continuation?: SqlContinuation;
 }) {
   const { user } = useAuth();
   const steps = useRef<string[]>([]);
   const request = useRef<AbortController | null>(null);
   // Snapshot once per explicit identity/version, independent of parent references.
-  const [exercise] = useState(() => configuration);
+  const [initial] = useState(() => ({
+    exercise: configuration,
+    tasks: configuredTasks,
+  }));
+  const progress = useSqlTasks(initial.exercise, initial.tasks);
+  const { exercise, tasks } = progress;
   const localAssessment = exercise.mode === "query" && !!exercise.formative;
   const [sql, setSql] = useState(exercise.starterSql);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SqlResult | null>(null);
+  const [executed, setExecuted] = useState<{
+    sql: string;
+    taskId: string;
+  } | null>(null);
   const [message, setMessage] = useState(
     "Os dados iniciais serão carregados ao executar uma consulta.",
   );
@@ -72,9 +108,9 @@ function InteractionSession({
   const resultsId = useId();
 
   useEffect(() => {
-    const current = new SqlRuntime(exercise);
+    const current = new SqlRuntime(initial.exercise);
     runtime.current = current;
-    setSql(exercise.starterSql);
+    setSql(initial.exercise.starterSql);
     setResult(null);
     setBusy(false);
     setMessage("Os dados iniciais serão carregados ao executar uma consulta.");
@@ -85,7 +121,7 @@ function InteractionSession({
       request.current?.abort();
       runtime.current = null;
     };
-  }, [exercise]);
+  }, [initial]);
 
   useEffect(() => {
     const reset = () => {
@@ -96,7 +132,8 @@ function InteractionSession({
       running.current = false;
       setBusy(false);
       setApproved(null);
-      setSql(exercise.starterSql);
+      setSql(progress.restart());
+      setExecuted(null);
       setResult(null);
       setPreview(null);
       setMessage(
@@ -106,11 +143,11 @@ function InteractionSession({
     window.addEventListener("bunkercode-identity-change", reset);
     return () =>
       window.removeEventListener("bunkercode-identity-change", reset);
-  }, [exercise]);
+  }, [initial]);
   useEffect(() => {
     setApproved(null);
     setRecoveryError("");
-    if (!user || !lesson) return;
+    if (!user || !lesson || tasks) return;
     const abort = new AbortController();
     const owner = user.id;
     void learningRequest(
@@ -154,6 +191,7 @@ function InteractionSession({
     lesson?.lessonSlug,
     exercise.id,
     exercise.version,
+    tasks,
   ]);
   const discard = (cancel: boolean) => {
     generation.current++;
@@ -170,10 +208,14 @@ function InteractionSession({
     setMessage(
       cancel
         ? "Consulta cancelada e ambiente descartado. Os dados iniciais serão recriados na próxima execução."
-        : "Banco descartado. Os dados iniciais serão recriados na próxima execução.",
+        : "Banco descartado. Os dados iniciais serão recriados na próxima execução." +
+            (tasks
+              ? " As consultas e os acertos formativos foram preservados."
+              : ""),
     );
   };
   const run = async () => {
+    if (running.current || !runtime.current) return;
     if (
       exercise.mode === "mutation" &&
       steps.current.length >= SQL_LIMITS.steps
@@ -193,9 +235,9 @@ function InteractionSession({
       );
       return;
     }
-    if (running.current || !runtime.current) return;
     running.current = true;
     const currentGeneration = ++generation.current;
+    const submittedTask = progress.active.current;
     const submittedRevision = revision.current;
     setBusy(true);
     setResult(null);
@@ -205,7 +247,7 @@ function InteractionSession({
         : "Executando consulta…",
     );
     try {
-      const value = await runtime.current.execute(sql);
+      const value = await runtime.current.execute(sql, exercise.formative);
       if (
         exercise.mode === "mutation" &&
         currentGeneration === generation.current
@@ -216,7 +258,11 @@ function InteractionSession({
           "Comando aplicado. Abra os registros para ver o estado atual.",
         );
       }
-      if (currentGeneration !== generation.current) return;
+      if (
+        currentGeneration !== generation.current ||
+        submittedTask !== progress.active.current
+      )
+        return;
       if (exercise.mode === "query" && submittedRevision !== revision.current) {
         setMessage(
           "A consulta mudou durante a execução. Execute novamente para ver o resultado atual.",
@@ -224,6 +270,21 @@ function InteractionSession({
         return;
       }
       setResult(value);
+      setExecuted({ sql, taskId: submittedTask });
+      if (tasks && value.correct === true) {
+        const next = progress.complete(submittedTask);
+        if (next) {
+          revision.current++;
+          setSql(progress.select(next.taskId, sql));
+          setMessage(
+            `Tarefa ${progress.index + 1} concluída. Tarefa ${tasks.findIndex((task) => task.taskId === next.taskId) + 1} ativa; o texto atual ainda não foi executado. O resultado abaixo pertence à tarefa concluída.`,
+          );
+        } else
+          setMessage(
+            "Todas as tarefas foram concluídas nesta prática local. Nenhuma conclusão foi registrada na conta.",
+          );
+        return;
+      }
       setMessage(
         exercise.mode === "mutation"
           ? `Comando concluído. ${value.affectedRows ?? 0} ${value.affectedRows === 1 ? "linha afetada" : "linhas afetadas"}. ${steps.current.length} ${steps.current.length === 1 ? "passo" : "passos"} na solução desta sessão.${submittedRevision !== revision.current ? " O texto do editor mudou durante a execução e ainda não foi executado." : ""}`
@@ -234,7 +295,11 @@ function InteractionSession({
               : "Consulta concluída.",
       );
     } catch (error: unknown) {
-      if (currentGeneration !== generation.current) return;
+      if (
+        currentGeneration !== generation.current ||
+        submittedTask !== progress.active.current
+      )
+        return;
       if (
         exercise.mode === "query" &&
         submittedRevision !== revision.current &&
@@ -269,6 +334,7 @@ function InteractionSession({
     }
   };
   const assess = async (submit: boolean) => {
+    if (tasks) return;
     if (running.current) return;
     if (!user) {
       setMessage(
@@ -460,14 +526,38 @@ function InteractionSession({
       }
     }
   };
+  const selectTask = (taskId: string) => {
+    if (taskId === progress.active.current) return;
+    revision.current++;
+    setSql(progress.select(taskId, sql));
+    setResult(null);
+    setMessage(
+      "Tarefa selecionada. O texto atual ainda não foi executado; os acertos anteriores permanecem nesta sessão.",
+    );
+  };
+  const restartTasks = () => {
+    discard(false);
+    revision.current++;
+    setSql(progress.restart());
+    setExecuted(null);
+    setMessage(
+      "Sequência recomeçada: acertos e consultas desta sessão foram apagados; os dados iniciais serão recriados ao executar.",
+    );
+  };
   return (
     <div className={`sql-interaction ${lessonAppearance ? "sql-lesson" : ""}`}>
       <p className="sql-notice">
-        O banco existe apenas nesta sessão de prática. Cancelar ou reiniciar
-        descarta o ambiente.{" "}
-        {exercise.mode === "mutation"
-          ? "Use um único SELECT, INSERT, UPDATE ou DELETE por execução. Alterações se acumulam nesta sessão descartável. Verificar e Submit reproduzem, em outro banco, os comandos executados com sucesso desde o último reinício (até 20 passos e 16 KiB). O texto ainda não executado não é enviado."
-          : "Use uma única consulta SELECT por vez; múltiplos comandos e comandos como EXPLAIN não são aceitos."}
+        {tasks ? (
+          "Os acertos são locais e valem nesta sessão; não registram conclusão na conta."
+        ) : (
+          <>
+            O banco existe apenas nesta sessão de prática. Cancelar ou reiniciar
+            descarta o ambiente.{" "}
+            {exercise.mode === "mutation"
+              ? "Use um único SELECT, INSERT, UPDATE ou DELETE por execução. Alterações se acumulam nesta sessão descartável. Verificar e Submit reproduzem, em outro banco, os comandos executados com sucesso desde o último reinício (até 20 passos e 16 KiB). O texto ainda não executado não é enviado."
+              : "Use uma única consulta SELECT por vez; múltiplos comandos e comandos como EXPLAIN não são aceitos."}
+          </>
+        )}
       </p>
       <div className="sql-layout">
         <aside className="sql-schema" aria-label="Tabelas disponíveis">
@@ -523,17 +613,39 @@ function InteractionSession({
               )}
             </div>
           </details>
-          <button type="button" onClick={() => discard(false)}>
-            Reiniciar banco
-          </button>
+          {!tasks && (
+            <button type="button" onClick={() => discard(false)}>
+              Reiniciar banco
+            </button>
+          )}
         </aside>
         <div className="sql-workspace">
+          {tasks && (
+            <SqlTaskProgress
+              tasks={tasks}
+              activeId={progress.active.current}
+              completed={progress.completed}
+              notice={progress.notice}
+              onSelect={selectTask}
+              continuation={continuation}
+            />
+          )}
           <section className="sql-challenge">
+            {tasks && (
+              <p className="sql-local-feedback">
+                Tarefa {progress.index + 1} de {tasks.length}
+                {progress.completed.has(progress.active.current)
+                  ? " · já concluída nesta sessão"
+                  : ""}
+              </p>
+            )}
             <h2>{exercise.title}</h2>
             <p className="sql-local-feedback">Objetivo: {exercise.objective}</p>
             <p>{exercise.instructions}</p>
             <p className="sql-local-feedback">
-              {previewOnly ? (
+              {tasks ? (
+                "Executar compara automaticamente a tarefa ativa neste navegador. A conclusão verificada desta lição ainda não está disponível."
+              ) : previewOnly ? (
                 "Prévia local do rascunho. Teste a referência e publique pela barra de autoria; esta prévia não registra conclusão."
               ) : localAssessment ? (
                 <>
@@ -574,8 +686,10 @@ function InteractionSession({
                 siteAppearance={!lessonAppearance}
                 keyboardHelpId={helpId}
                 onChange={(value) => {
+                  if (value === sql) return;
                   revision.current++;
                   setSql(value);
+                  progress.remember(value);
                   if (exercise.mode === "query") {
                     setResult(null);
                     setMessage(
@@ -596,7 +710,8 @@ function InteractionSession({
               <button
                 type="button"
                 className="sql-primary"
-                disabled={busy}
+                disabled={!tasks && busy}
+                aria-disabled={tasks ? busy : undefined}
                 onClick={() => void run()}
               >
                 {exercise.mode === "mutation"
@@ -625,7 +740,7 @@ function InteractionSession({
                     : "Reproduzir solução aprovada"}
                 </button>
               )}
-              {lesson && user && (
+              {lesson && user && !tasks && (
                 <button
                   type="button"
                   disabled={busy}
@@ -639,15 +754,67 @@ function InteractionSession({
                   Cancelar e descartar
                 </button>
               )}
+              {tasks && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    revision.current++;
+                    setSql("");
+                    progress.remember("");
+                    setResult(null);
+                    setMessage(
+                      "Consulta limpa. O banco e os acertos anteriores foram preservados; o texto atual ainda não foi executado.",
+                    );
+                  }}
+                >
+                  Limpar consulta
+                </button>
+              )}
+              {tasks && (
+                <>
+                  <button type="button" onClick={() => discard(false)}>
+                    Reiniciar banco
+                  </button>
+                  <button type="button" onClick={restartTasks}>
+                    Recomeçar tarefas
+                  </button>
+                </>
+              )}
             </div>
+            {tasks && (
+              <p className="sql-local-feedback">
+                Reiniciar o banco mantém consultas e acertos. Recomeçar tarefas
+                apaga ambos. Reabrir a lição inicia uma nova sequência.
+              </p>
+            )}
           </section>
           <section aria-labelledby={resultsId} aria-busy={busy}>
             <h2 id={resultsId}>Resultado</h2>
-            <p role="status" aria-live="polite">
+            <p role="status" aria-live="polite" aria-atomic="true">
               {message}
             </p>
             {result && (
               <>
+                {tasks && executed && (
+                  <div className="sql-executed-task">
+                    <p>
+                      Resultado da tarefa{" "}
+                      {tasks.findIndex(
+                        (task) => task.taskId === executed.taskId,
+                      ) + 1}
+                      :{" "}
+                      {
+                        tasks.find((task) => task.taskId === executed.taskId)
+                          ?.exercise.title
+                      }
+                      .
+                    </p>
+                    <details>
+                      <summary>SQL desta execução</summary>
+                      <pre>{executed.sql}</pre>
+                    </details>
+                  </div>
+                )}
                 {result.fields.length > 0 && (
                   <p>
                     {result.rows.length}{" "}

@@ -980,3 +980,65 @@
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
+
+.studio-sql-sequence {
+  margin-top: 14px;
+}
+.studio-sql-sequence ol {
+  padding-left: 24px;
+}
+.studio-sql-sequence li {
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.studio-sql-task-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px;
+}
+.studio-sql-task-fields label {
+  min-width: 0;
+}
+.studio-sql-picker input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.studio-sql-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.studio-sql-picker button {
+  min-height: 44px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.studio-sql-picker :is(button, input):focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+.studio-sql-picker button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+@media (max-width: 700px) {
+  .studio-sql-task-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-sql-sequence ol {
+    padding-left: 20px;
+  }
+}

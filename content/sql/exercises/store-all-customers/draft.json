@@ -1,0 +1,24 @@
+{
+  "formative": {
+    "kind": "public-result"
+  },
+  "format": 1,
+  "id": "store-all-customers",
+  "version": 1,
+  "status": "draft",
+  "title": "Consultar todos os clientes",
+  "objective": "Reconhecer linhas e colunas ao consultar uma tabela inteira.",
+  "instructions": "Retorne todas as colunas de todos os clientes de customers: id, name e city, nessa ordem. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT id, name, city FROM customers"
+    ],
+    "orderMatters": false
+  }
+}

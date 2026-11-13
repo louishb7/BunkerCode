@@ -341,3 +341,98 @@
   flex: 1 1 240px;
   max-width: 100%;
 }
+
+.sql-task-progress {
+  padding: 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+.sql-task-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sql-task-summary h2 {
+  margin: 0;
+}
+.sql-task-summary > span,
+.sql-task-state {
+  font-size: 12px;
+  color: var(--color-subtle);
+}
+.sql-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: grid;
+  gap: 6px;
+}
+.sql-task-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(55px, max-content);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.sql-task-list button[aria-current="step"] {
+  border-color: var(--color-text);
+  font-weight: 600;
+}
+.sql-task-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+}
+.sql-task-state {
+  max-width: 10ch;
+  text-align: right;
+}
+.sql-task-notice {
+  border-left: 3px solid var(--color-text);
+  padding-left: 10px;
+  font-size: 14px;
+}
+.sql-task-finished {
+  font-size: 14px;
+}
+.sql-task-continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid var(--color-text);
+  border-radius: 5px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.sql-task-continue:focus-visible,
+.sql-executed-task summary:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+.sql-executed-task {
+  font-size: 14px;
+}
+.sql-executed-task summary {
+  min-height: 32px;
+  cursor: pointer;
+}
+.sql-executed-task pre {
+  max-width: 100%;
+  overflow: auto;
+}
+.sql-interaction button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: wait;
+}

@@ -1,0 +1,57 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "08f4ea3398a4a9827344113310e69f3c7693e3e02808938e93928dabd774589d",
+      "exercise": {
+        "id": "store-sort-customers",
+        "version": 1
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": true,
+      "expected": {
+        "fields": [
+          "id",
+          "name",
+          "city"
+        ],
+        "types": [
+          23,
+          25,
+          25
+        ],
+        "rows": [
+          "[[\"number\",\"1\"],[\"string\",\"Ana Lima\"],[\"string\",\"Recife\"]]",
+          "[[\"number\",\"2\"],[\"string\",\"Bruno Alves\"],[\"string\",\"Olinda\"]]",
+          "[[\"number\",\"3\"],[\"string\",\"Carla Souza\"],[\"string\",\"Recife\"]]",
+          "[[\"number\",\"4\"],[\"string\",\"Daniel Costa\"],[\"string\",\"Natal\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-sort-customers",
+  "version": 1,
+  "status": "published",
+  "title": "Ordenar clientes pelo nome",
+  "objective": "Apresentar os registros em ordem crescente de nome.",
+  "instructions": "Retorne id, name e city de todos os clientes, nessa ordem de colunas. Organize as linhas pelo nome em ordem crescente, de A a Z.",
+  "starterSql": "SELECT name FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT id, name, city FROM customers ORDER BY name ASC"
+    ],
+    "orderMatters": true
+  }
+}

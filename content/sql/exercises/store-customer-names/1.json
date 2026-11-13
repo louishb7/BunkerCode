@@ -1,0 +1,53 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "b3d0e7d90c47a9a73411977cd0374cb738e90676989ad01013f17ef9ce89af83",
+      "exercise": {
+        "id": "store-customer-names",
+        "version": 1
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": [
+          "name"
+        ],
+        "types": [
+          25
+        ],
+        "rows": [
+          "[[\"string\",\"Ana Lima\"]]",
+          "[[\"string\",\"Bruno Alves\"]]",
+          "[[\"string\",\"Carla Souza\"]]",
+          "[[\"string\",\"Daniel Costa\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-customer-names",
+  "version": 1,
+  "status": "published",
+  "title": "Selecionar os nomes dos clientes",
+  "objective": "Escolher uma coluna sem descartar registros.",
+  "instructions": "Retorne apenas a coluna name de todos os clientes. Preserve o nome da coluna e não deixe clientes de fora. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT name FROM customers"
+    ],
+    "orderMatters": false
+  }
+}

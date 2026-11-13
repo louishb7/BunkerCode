@@ -1,5 +1,8 @@
-import { parseSqlPlacement } from "@bunkercode/content";
-import { useSqlExercise } from "./api";
+import {
+  parseSqlPlacement,
+  type SqlLessonPlacement,
+} from "@bunkercode/content";
+import { useSqlActivity } from "./api";
 import { SqlInteraction } from "./SqlInteraction";
 
 // Shared Markdown preview path used by Studio; no routing or completion callbacks.
@@ -16,14 +19,10 @@ export default function SqlLessonActivity({ source }: { source: string }) {
   }
 }
 
-function Activity({
-  reference,
-}: {
-  reference: { exerciseId: string; version: number };
-}) {
-  const { data, error } = useSqlExercise(reference);
+function Activity({ reference }: { reference: SqlLessonPlacement }) {
+  const { data, error } = useSqlActivity(reference);
   return data ? (
-    <SqlInteraction exercise={data} />
+    <SqlInteraction exercise={data.exercise} tasks={data.tasks} />
   ) : (
     <p role={error ? "alert" : "status"}>
       {error || "Carregando atividade SQL…"}

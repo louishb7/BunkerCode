@@ -1,4 +1,4 @@
-import { checkPublicShell } from "../e2e/reading-theme-checks";
+import { checkPublicShell, selectSiteTheme } from "../e2e/reading-theme-checks";
 import { test as anonymousTest } from "@playwright/test";
 import { expectHomeWithoutActivity } from "../e2e/home-state";
 import { expect, test } from "../e2e/auth-fixture";
@@ -501,19 +501,24 @@ anonymousTest(
       .click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: "Código", exact: true }).click();
-    await page
-      .getByRole("textbox", { name: "Consulta SQL" })
-      .fill("SELECT id,name FROM customers");
-    await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(4, {
-      timeout: 65000,
-    });
+    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+    const status = page.locator(".sql-workspace [role=status]");
+    const tasks = page.getByRole("region", { name: "Tarefas da lição" });
+    for (const [index, sql] of [
+      "SELECT * FROM customers",
+      "SELECT name FROM customers",
+      "SELECT id,name FROM customers",
+    ].entries()) {
+      await editor.fill(sql);
+      await page.getByRole("button", { name: "Executar consulta" }).click();
+      await expect(tasks).toContainText(`${index + 1} de 3 concluídas`, {
+        timeout: 65000,
+      });
+    }
+    await expect(status).toContainText("Todas as tarefas foram concluídas");
     await expect(
       page.getByRole("button", { name: "Submit · concluir lição" }),
     ).toHaveCount(0);
-    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Resposta correta nesta prática!",
-    );
     await expect(
       page.getByText("Lição concluída", { exact: true }),
     ).toHaveCount(0);
@@ -522,42 +527,39 @@ anonymousTest(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.locator(".sql-workspace [role=status]").scrollIntoViewIfNeeded();
+    await status.scrollIntoViewIfNeeded();
     await page.screenshot({
       path: anonymousTest.info().outputPath("sql-public-mobile-lesson.png"),
       fullPage: true,
     });
-    await page
-      .getByRole("link", { name: "Próxima lição", exact: true })
+    await tasks
+      .getByRole("link", { name: "Continuar para a próxima lição" })
       .click();
     await expect(page.locator(".lesson-heading h1")).toHaveText(
       "Encontrando o que importa",
     );
     await page.getByRole("button", { name: "Código", exact: true }).click();
-    await page
-      .getByRole("textbox", { name: "Consulta SQL" })
-      .fill(
-        "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
-      );
-    await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Ainda não corresponde",
-      { timeout: 65000 },
-    );
-    await page
-      .getByRole("textbox", { name: "Consulta SQL" })
-      .fill(
-        "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
-      );
-    await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Resposta correta nesta prática!",
-    );
+    const answers = [
+      "SELECT * FROM customers WHERE city = 'Recife'",
+      "SELECT id,name,city FROM customers ORDER BY name ASC",
+      "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+    ];
+    for (const [index, sql] of answers.entries()) {
+      await editor.fill(index === 2 ? sql.replace("DESC", "ASC") : "SELECT 1");
+      await page.getByRole("button", { name: "Executar consulta" }).click();
+      await expect(status).toContainText("Ainda não corresponde", {
+        timeout: 65000,
+      });
+      await editor.fill(sql);
+      await page.getByRole("button", { name: "Executar consulta" }).click();
+      await expect(tasks).toContainText(`${index + 1} de 3 concluídas`);
+    }
+    await expect(status).toContainText("Todas as tarefas foram concluídas");
     expect(sqlRequests).toEqual([]);
   },
 );
 
-test("published SQL course keeps private authoring absent and records only trusted account completion", async ({
+test("published legacy SQL fixture keeps private authoring absent and records only trusted account completion", async ({
   page,
   request,
 }) => {
@@ -570,9 +572,7 @@ test("published SQL course keeps private authoring absent and records only trust
   const text = await response.text();
   expect(text).not.toContain("assessment");
   expect(text).not.toContain("expectedQuery");
-  await page.goto(
-    "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados",
-  );
+  await page.goto("/courses/postgresql/lessons/queries");
   await expect(page.locator('a[href$="/edit"]')).toHaveCount(0);
   await page
     .getByRole("textbox", { name: "Consulta SQL" })
@@ -590,4 +590,102 @@ test("published SQL course keeps private authoring absent and records only trust
   await expect(page.getByRole("textbox", { name: "Consulta SQL" })).toHaveText(
     "SELECT id,name FROM customers",
   );
+});
+
+test("published SQL sequence rejects partial or forged completion and keeps account practice local", async ({
+  page,
+  request,
+  context,
+}) => {
+  test.setTimeout(90000);
+  const path =
+    "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
+  const writes: string[] = [];
+  page.on("request", (entry) => {
+    if (
+      entry.method() === "POST" &&
+      /\/api\/(sql\/(check|submit)|learning\/.*\/(complete|submit))/.test(
+        entry.url(),
+      )
+    )
+      writes.push(entry.url());
+  });
+  await page.goto(path);
+  await expect(page.locator('a[href$="/edit"]')).toHaveCount(0);
+  const list = page.getByRole("region", { name: "Tarefas da lição" });
+  const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+  for (const [index, sql] of [
+    "SELECT * FROM customers",
+    "SELECT name FROM customers",
+    "SELECT id,name FROM customers",
+  ].entries()) {
+    await editor.fill(sql);
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(list).toContainText(`${index + 1} de 3 concluídas`, {
+      timeout: 65000,
+    });
+  }
+  await expect(
+    page.getByRole("button", { name: "Submit · concluir lição" }),
+  ).toHaveCount(0);
+  expect(writes).toEqual([]);
+  const partial = {
+    exerciseId: "store-all-customers",
+    version: 1,
+    steps: ["SELECT * FROM customers"],
+    courseId: "sql-na-pratica",
+    lessonSlug: "seu-primeiro-contato-com-um-banco-de-dados",
+  };
+  expect(
+    (
+      await request.post("/api/sql/submit", {
+        data: partial,
+        headers: { Origin: "http://127.0.0.1:5186" },
+      })
+    ).status(),
+  ).toBe(409);
+  expect(
+    (
+      await request.post("/api/sql/submit", {
+        data: { ...partial, passed: true },
+        headers: { Origin: "http://127.0.0.1:5186" },
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    (
+      await request.post(
+        "/api/learning/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/complete",
+        { data: {}, headers: { Origin: "http://127.0.0.1:5186" } },
+      )
+    ).status(),
+  ).toBe(409);
+  expect(
+    await (
+      await request.get(
+        "/api/learning/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/solution",
+      )
+    ).json(),
+  ).toEqual({ solution: null });
+  await expect(page.getByText("Lição concluída", { exact: true })).toHaveCount(
+    0,
+  );
+  await selectSiteTheme(page, "light");
+  await page.locator(".sql-lesson-workspace").evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.screenshot({
+    path: test.info().outputPath("sql-sequence-account-light.png"),
+    fullPage: true,
+  });
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.getByRole("button", { name: "Sair", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "Entrar", exact: true }),
+  ).toBeVisible();
+  await expect(list).toContainText("0 de 3 concluídas");
+  await other.close();
+  await page.reload();
+  await expect(list).toContainText("0 de 3 concluídas");
 });

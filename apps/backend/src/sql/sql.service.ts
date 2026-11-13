@@ -230,6 +230,7 @@ export class SqlService {
       this.reader.lesson(courseId, lessonSlug).markdown,
     );
     if (!ref) return null;
+    if (ref.kind === "sql-task-sequence") return { solution: null };
     const revision = sqlRevision(this.assessment(ref.exerciseId, ref.version));
     return {
       solution: await this.learning.approvedSql(
@@ -245,6 +246,10 @@ export class SqlService {
   binding(courseId: string, lessonSlug: string, id: string, version: number) {
     const lesson = this.reader.lesson(courseId, lessonSlug);
     const ref = lessonSqlPlacement(lesson.markdown);
+    if (ref?.kind === "sql-task-sequence")
+      throw new ConflictException(
+        "Esta lição tem várias tarefas. Submit individual não registra sua conclusão; a prática formativa permanece disponível.",
+      );
     if (!ref || ref.exerciseId !== id || ref.version !== version)
       throw new ConflictException(
         "Atividade ou versão não corresponde à lição publicada.",

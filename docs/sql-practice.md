@@ -8,9 +8,9 @@ As ações têm significados diferentes:
 
 - **Executar** usa PGlite no Worker. Para consultas com contrato formativo público, também compara automaticamente o resultado, sem HTTP de avaliação, conta ou Docker por tentativa. Mostra acerto, resultado incorreto ou erro SQL; não salva progresso.
 - **Verificar resposta/estado** permanece explícito para versões sem contrato local, incluindo mutações. Exige sessão, avalia em container independente e retorna feedback sem concluir a lição. Consultas com contrato local não mostram esse botão.
-- **Submit · concluir lição** exige sessão, vínculo com a lição publicada e nova avaliação. Somente aprovação confirmada permite gravar `ApprovedSolution` e `LessonCompletion`, na mesma transação do serviço de aprendizagem existente.
+- **Submit · concluir lição**, nas lições com atividade única, exige sessão, vínculo com a lição publicada e nova avaliação. Somente aprovação confirmada permite gravar `ApprovedSolution` e `LessonCompletion`, na mesma transação do serviço de aprendizagem existente.
 
-O servidor recusa campos adicionais como `passed`, identidade de usuário e resultado esperado. Busca referência e dataset por ID/versão, confere o vínculo com a lição e reconstrói o estado sem confiar no Worker. A conclusão editorial por leitura é recusada para lições SQL. Falhas de rede, runner ou persistência não são apresentadas como conclusão confirmada. **BLOQUEADO — avaliação remota anônima:** Check/Submit continuam exigindo identidade e as garantias operacionais de implantação. Isso não impede feedback formativo anônimo: executar uma consulta elegível compara o resultado inteiramente no navegador. O acerto local não cria conclusão de conta, não libera conteúdo e nunca substitui o Submit independente.
+O servidor recusa campos adicionais como `passed`, identidade de usuário e resultado esperado. Busca referência e dataset por ID/versão, confere o vínculo com a lição e reconstrói o estado sem confiar no Worker. A conclusão editorial por leitura é recusada para lições SQL. Falhas de rede, runner ou persistência não são apresentadas como conclusão confirmada. **BLOQUEADO — avaliação remota anônima:** Check/Submit continuam exigindo identidade e as garantias operacionais de implantação. Isso não impede feedback formativo anônimo: executar uma consulta elegível compara o resultado inteiramente no navegador. O acerto local não cria conclusão de conta, não libera conteúdo e nunca substitui avaliação independente. Nas sequências de tarefas, a conclusão verificada ainda está indisponível: não há Check/Submit no painel e o backend recusa Submit individual, inclusive se a lição virar sequência durante uma avaliação em andamento.
 
 `/sql` continua como vitrine temporária das seis demonstrações migradas. O curso **SQL na Prática: Do Zero aos Bancos de Dados** usa o catálogo, módulos, leitor e Studio normais; não depende dessa rota. As duas lições são exemplos iniciais para revisão e desenvolvimento da autoria do criador, sem lhe atribuir relatos pessoais inventados. O Módulo 00 JavaScript não foi modificado.
 
@@ -25,7 +25,7 @@ sql/exercises/<id>/draft.json
 sql/laboratory.json
 ```
 
-Uma definição tem `format: 1`, `id`, `version`, `status`, `title`, `objective`, `instructions`, `starterSql`, `mode`, `dataset: {id, version}` e `assessment: {reference: string[], orderMatters: boolean}`. `reference` é privada: uma consulta ou uma sequência ordenada de comandos de alteração. As seis versões 1 foram preservadas; as cinco consultas possuem agora versões 2 com oráculo público gerado, e a mutação permanece na versão 1. As duas lições canônicas e a curadoria fixam as novas versões. Não existe catálogo TypeScript paralelo. Trocar o vínculo para v2 não apaga conclusões históricas nem migra soluções aprovadas de v1: a recuperação consulta somente a revisão atual, e um novo Submit é avaliado novamente.
+Uma definição tem `format: 1`, `id`, `version`, `status`, `title`, `objective`, `instructions`, `starterSql`, `mode`, `dataset: {id, version}` e `assessment: {reference: string[], orderMatters: boolean}`. `reference` é privada: uma consulta ou uma sequência ordenada de comandos de alteração. As seis versões 1 foram preservadas; as cinco consultas possuem agora versões 2 com oráculo público gerado, e a mutação permanece na versão 1. As duas lições canônicas agora compõem seis tarefas: três novas consultas v1 (`store-all-customers`, `store-customer-names`, `store-sort-customers`) e três consultas existentes v2. A curadoria permanece com as seis referências anteriores. Não existe catálogo TypeScript paralelo. Trocar o vínculo para v2 não apaga conclusões históricas nem migra soluções aprovadas de v1: a recuperação consulta somente a revisão atual, e um novo Submit é avaliado novamente.
 
 Dataset é estrutura, não script arbitrário: título, tabelas, colunas e linhas. Cada coluna declara nome, tipo (`integer`, `text`, `numeric(8,2)` ou `boolean`), nulabilidade, chave primária e referência opcional `{table, column}`. Linhas são arrays na ordem das colunas. O validador verifica nomes, tipos, duplicação de chave, referências, valores nulos e limites. A preparação SQL é gerada com identificadores e literais escapados. Dados são fictícios e públicos; nunca inclua dados pessoais, segredos ou credenciais.
 
@@ -33,14 +33,14 @@ Limites do formato: até oito tabelas, dezesseis colunas e cem linhas iniciais p
 
 Essas garantias coordenam os escritores da aplicação, não impedem um editor externo ou administrador do filesystem de alterar arquivos. Revise o diff antes do commit e preserve as versões antigas. Um lock deixado por interrupção exige inspeção do processo e dos arquivos; não tem expiração ou limpeza automática.
 
-## Studio: criar a terceira atividade e lição
+## Studio: publicar e reutilizar atividades
 
 1. Entre como ADMIN na interface local autorizada. Abra uma lição em **Editar lição** e siga **Atividades SQL**, ou abra `/studio/sql`.
 2. Em **Datasets reutilizáveis**, reutilize `store` v1 ou configure outro JSON estruturado e clique **Salvar dataset**. Uma nova revisão usa o próximo número, sem editar versões publicadas.
 3. Clique **Novo exercício**, escolha ID estável, título, objetivo, instruções públicas, modo, dataset e SQL inicial. Escreva a referência privada; alterações podem ter vários passos. Marque exigência de ordem somente quando fizer parte do desafio. Em consultas, marque **Publicar resultado esperado como material didático** somente quando suas linhas puderem ser públicas e inspecionáveis.
 4. Use **Prévia do exercício** para experimentar a projeção pública. Ela não publica nem grava conclusão. **Salvar rascunho** grava explicitamente; digitar não envia alterações ao backend.
 5. **Testar referência** usa o runner isolado. Com adesão formativa, gera o resultado duas vezes e abre uma prévia com feedback automático. Antes desse teste a prévia apenas executa SQL. **Publicar versão** gera/testa novamente e só depois grava a versão imutável com seu oráculo, rechecando a revisão. Runner indisponível, referência instável/truncada ou resultado excessivo impede publicação. Não edite linhas esperadas manualmente.
-6. Crie a próxima lição com o diálogo já existente e use **Atividade SQL publicada** para selecionar título, ID e versão. O seletor insere ou substitui somente o bloco SQL reconhecido no rascunho, preservando o restante do Markdown. A referência apresentada na autoria também pode ser copiada; escreva a explicação ao redor do bloco abaixo. Salvar Markdown resolve o vínculo e recusa referências ausentes.
+6. Abra a lição no Studio e use **Atividade SQL publicada** para selecionar título, ID e versão. Para várias tarefas, clique **Criar sequência de tarefas**, selecione versões com feedback local e configure IDs estáveis. Use **Subir**, **Descer** e **Remover** para organizar, depois **Aplicar tarefas ao rascunho**. Aplique ou descarte essas mudanças antes de alternar a prévia ou salvar. Vazio, IDs duplicados, exercício/versão repetidos e datasets incompatíveis são recusados. O seletor insere ou substitui somente o bloco SQL reconhecido no rascunho, preservando o restante do Markdown. A referência apresentada na autoria também pode ser copiada; escreva a explicação ao redor do bloco abaixo. Salvar Markdown resolve o vínculo e recusa referências ausentes.
 7. Revise a prévia, salve fisicamente, abra o leitor, confira `git diff` e faça o commit manualmente. Se a nova lição deva ser pública, revise a seleção em `config/publication.json` e gere novo snapshot. Reinicie o backend após mudar a seleção.
 
 ````markdown
@@ -49,7 +49,7 @@ Essas garantias coordenam os escritores da aplicação, não impedem um editor e
 ```
 ````
 
-Não é preciso editar React ou Nest para acrescentar a terceira atividade. O manifesto do curso continua controlando identidade, ordem, módulos e lições. Cada lição admite uma referência SQL de topo; misturar prática JavaScript na mesma lição é recusado. Markdown comum permanece texto inerte, e a prévia não executa fences automaticamente. O rascunho SQL só existe no editor até o salvamento explícito; antes de sair, salve ou copie suas alterações.
+Não é preciso editar React ou Nest para acrescentar a terceira atividade. O manifesto do curso continua controlando identidade, ordem, módulos e lições. Cada lição admite um bloco SQL de topo, com atividade única ou sequência; misturar prática JavaScript na mesma lição é recusado. Markdown comum permanece texto inerte, e a prévia não executa fences automaticamente. O rascunho SQL só existe no editor até o salvamento explícito; antes de sair, salve ou copie suas alterações.
 
 ## Projeção pública e distribuição privada
 
@@ -145,22 +145,57 @@ Antes de Check anônimo, comprovar conjuntamente: identidade/daemon sem autorida
 
 HTTP permanece: 401 sem sessão, 403 para autorização/origem, 400 para payload inválido, 404 para versão ausente/não publicada, 409 para vínculo/revisão/cancelamento, 413 para corpo excessivo, 415 para tipo incorreto, 422 para erro SQL/limite, 429 com Retry-After para cota/capacidade e 503 para runner/admissão indisponível ou suspenso. Timeout usa 408. `{passed:false}` é feedback de correção; falha operacional nunca é aprovação. Não há transação distribuída entre conexão HTTP e PostgreSQL.
 
-**INCERTO:** capacidade pública, segurança do host de destino e comportamento sob carga externa. **DESCARTADO:** avaliar no banco principal, referência/oráculo privado no frontend, Redis sem necessidade, serviço RPC genérico, pooling de bancos de aluno ou mudanças no currículo/UI. Não houve deploy.
+**INCERTO:** capacidade pública, segurança do host de destino e comportamento sob carga externa. **DESCARTADO:** avaliar no banco principal, referência/oráculo privado no frontend, Redis sem necessidade, serviço RPC genérico, pooling de bancos de aluno ou redesenho geral do currículo/UI. Não houve deploy.
 
 
 ## Resultado esperado público e ciclo de prática
 
 A definição adere com `formative: {kind: "public-result"}`. Rascunhos não aceitam `oracle`. Teste/publicação geram o oráculo no runner e a versão publicada o conserva junto da fonte privada. `formative.oracle` contém formato 1, IDs/versões, `sourceDigest`, `orderMatters` e `expected` (campos, tipos OID e linhas canônicas). A projeção expõe esse objeto como `formative`, sem referência. O digest verifica atualização da fonte; não oculta respostas nem comprova aprendizagem. Limites: cem linhas, 64 colunas, 64 KiB; resultados truncados reprovam e referências truncadas impedem publicação. Duas execuções iguais detectam algumas fontes de instabilidade, sem provar determinismo absoluto.
 
-O comparador mantém nomes e ordem de colunas, tipos PostgreSQL, duplicatas, NULL, valores numéricos/textuais, datas e valores não finitos. Preserva ordem de linhas quando exigida; nos outros casos compara multiconjuntos. Aceita consultas equivalentes pelo resultado, sem inspecionar o texto como oráculo. Linhas vazias podem estar corretas quando forem o resultado esperado. Erro SQL permite correção e nova execução. O modo consulta usa permissões de leitura e não compartilha o banco de mutação. Editar remove o feedback anterior; trocar ID/versão, cancelar, reiniciar ou desmontar descarta a sessão. IDs de request, geração e revisão do editor impedem que respostas antigas aprovem texto novo. Tema/rerenders conservam uma mesma sessão publicada.
+O comparador mantém nomes e ordem de colunas, tipos PostgreSQL, duplicatas, NULL, valores numéricos/textuais, datas e valores não finitos. Preserva ordem de linhas quando exigida; nos outros casos compara multiconjuntos. Aceita consultas equivalentes pelo resultado, sem inspecionar o texto como oráculo. Linhas vazias podem estar corretas quando forem o resultado esperado. Erro SQL permite correção e nova execução. O modo consulta usa permissões de leitura e não compartilha o banco de mutação. Editar remove o feedback anterior; trocar ID/versão, cancelar, reiniciar ou desmontar descarta a sessão de banco. IDs de request, geração e revisão do editor impedem que respostas antigas aprovem texto novo. Tema/rerenders conservam uma mesma sessão publicada.
 
-O feedback local é sempre formativo e pode ser adulterado por quem controla o navegador. Nenhum evento local dispara Check, Submit ou gravação de progresso. **Submit · concluir lição** permanece uma ação distinta que reavalia o SQL no servidor e só então confirma a conclusão persistente. Sem contrato público, o exercício conserva a execução local e a avaliação remota explícita. INSERT/UPDATE/DELETE continuam nesse segundo caminho.
+O feedback local é sempre formativo e pode ser adulterado por quem controla o navegador. Nenhum evento local dispara Check, Submit ou gravação de progresso. Em atividades únicas, **Submit · concluir lição** permanece uma ação distinta que reavalia o SQL no servidor e só então confirma a conclusão persistente. Sequências não oferecem esse envio individual. Sem contrato público, o exercício conserva a execução local e a avaliação remota explícita. INSERT/UPDATE/DELETE continuam nesse segundo caminho.
 
-## Preparação limitada para tarefas múltiplas
+## Sequências de tarefas no leitor e no Studio
 
-**PENDENTE, não implementado:** uma lição poderá referenciar uma lista editorial de tarefas, cada qual com ID estável e referência a exercício/versão. A identidade da tarefa deve ser distinta da identidade da atividade reutilizada. O estado ativo poderá selecionar essa referência; o contrato formativo atual já pertence à atividade, sem depender da lição ou de sua posição. Acertos formativos devem registrar apenas tentativas locais por tarefa/versão e revisão do texto, separados de conclusão da conta.
+**IMPLEMENTADO — Evolution 05 / Sprint 02:** um único bloco `bunker-sql` declara de 1 a 12 tarefas ordenadas. Cada `taskId` é um slug estável, distinto da posição; mantenha-o ao reordenar. Cada tarefa referencia ID e versão exata de um exercício publicado. Objetivo, instruções, SQL inicial e resultado esperado vêm dessa definição; não copie datasets, referências privadas ou oráculos para o Markdown.
 
-A opção inicial recomendada para consultas é reset por atividade, preservando isolamento; compartilhar sessões entre tarefas, especialmente mutações, exige decisão e testes próprios. Studio poderá ampliar seu seletor existente, mantendo validação de referências e revisão otimista. Um eventual Submit em lote deverá reconstruir e avaliar cada referência no servidor, autenticar/revalidar vínculos e só então usar a transação de progresso; nenhum array de acertos do navegador autorizará conclusão. Não há arrays, navegação automática ou novos modelos de progresso neste sprint.
+````markdown
+```bunker-sql
+{
+  "kind": "sql-task-sequence",
+  "tasks": [
+    {"taskId":"inspect-all-customers","exerciseId":"store-all-customers","version":1},
+    {"taskId":"select-customer-names","exerciseId":"store-customer-names","version":1},
+    {"taskId":"select-customer-identifiers","exerciseId":"store-select-columns","version":2}
+  ]
+}
+```
+````
+
+Leitor, prévia, salvamento e publicação resolvem as versões. Sequências exigem consultas com resultado formativo público e o mesmo dataset/versão, preparação, schema e limites. Versão ausente, rascunho, modo de alteração ou configuração incompatível falham com erro explícito. O formato anterior `kind: "sql"` permanece compatível, inclusive com Submit independente.
+
+Uma sessão PGlite somente leitura atende todas as tarefas compatíveis. Trocar tarefa não recria o banco. **Executar consulta** compara automaticamente apenas a tarefa ativa; erro SQL e resultado incorreto permitem nova tentativa. O acerto conserva uma marca histórica local e ativa a próxima tarefa incompleta, mantendo aviso e resultado identificados com a tarefa anterior. Se o aluno escolheu tarefas fora da ordem, a busca continua nas seguintes e volta às anteriores pendentes. É possível revisitar qualquer tarefa e alterar sua consulta; isso não remove acertos anteriores nem representa aprovação do texto novo. O resultado identifica qual SQL foi executado.
+
+| Ação | Banco local | Consultas por tarefa | Acertos locais |
+| --- | --- | --- | --- |
+| Trocar tarefa | Reutiliza | Conserva | Conserva |
+| Limpar consulta | Conserva | Limpa somente a ativa | Conserva |
+| Reiniciar banco / cancelar | Descarta; recria sob demanda | Conserva | Conserva |
+| Recomeçar sequência | Descarta | Volta aos inícios publicados | Limpa |
+| Reabrir, mudar referências/versões/ordem ou conta | Nova sessão | Volta aos inícios publicados | Limpa |
+
+Consultas, tarefa ativa e acertos existem apenas na memória do componente; não usam IndexedDB nem novas tabelas. Geração, revisão do editor, identidade da tarefa e IDs de requests impedem que uma resposta tardia aprove outra tarefa ou texto editado. Falha/perda do Worker permite nova inicialização por ação explícita. A lista tem texto de estado, marca visual, teclado e indicação acessível de tarefa ativa; o feedback não move o foco.
+
+Ao concluir todas as tarefas, aparece **Continuar para a próxima lição** ou **Voltar ao curso**. É uma orientação pedagógica: as rotas públicas continuam acessíveis antes disso, sem alterar autorização ou cálculo global de progresso. Nenhuma tentativa envia `/sql/check`, `/sql/submit` ou conclusão de aprendizagem. Contas existentes mantêm conclusões históricas, identificadas no leitor; a sequência atual não ganha aprovação persistente nem recupera uma solução única antiga.
+
+**Limitação:** comparação de resultados verifica dados, colunas, tipos e ordem configurada; não comprova uso de uma palavra SQL. No dataset inicial, a ordem física observada pode coincidir com a alfabética, portanto uma consulta sem `ORDER BY` pode produzir o resultado esperado da tarefa de ordenação. A explicação exige ordenação explícita; não há heurística de texto disfarçada de avaliação. Novos datasets/comportamentos exigem novas versões, sem sobrescrever as publicadas.
+
+## Próximo passo: avaliação confiável da lição (Sprint 03)
+
+**PENDENTE, sem implementação ou migrations:** definir um envio autenticado com soluções `{taskId, exerciseId, version, sql}` para todas as tarefas. O servidor deverá resolver a sequência publicada, conferir conjunto/ordem/versões, revisão da lição e das definições e recusar campos de aprovação do cliente. SELECTs independentes e somente leitura podem compartilhar uma preparação dentro de uma avaliação isolada, com comparações próprias; limites, cancelamento, admissão e cleanup precisam continuar demonstráveis. Evitar várias inicializações é uma decisão a testar, não um pool autorizado.
+
+Somente todas as tarefas aprovadas deverão autorizar uma transação atômica nos modelos existentes. Revalidar sessão e conteúdo imediatamente antes da persistência; definir revisão/idempotência e resposta a retries sem presumir sucesso após desconexão. Prática anônima permanece local e separada. Mutações exigem contrato distinto de estado inicial, ordem, histórico e reset; a sessão compartilhada de SELECT desta sprint não autoriza mutações em lote.
 
 ## Medição de desempenho
 
@@ -169,6 +204,24 @@ Baseline de 2026-11-12 neste host, Chromium headless e build de produção: prim
 O teste funcional captura tempos por `performance.now`, inicialização PGlite, carga do dataset, preparação de permissões, execução, comparação, cópia estruturada e commit de feedback. Diagnósticos do Worker são opt-in da infraestrutura de teste, sem logging permanente ou serviço de telemetria. Duração de download de WASM/data se sobrepõe à inicialização, não deve ser somada como etapa independente. O relatório da entrega registra amostras finais, mediana/p95 e limites: cache novo de navegador não significa cache frio do sistema operacional; hardware lento e download de WASM continuam influindo. A meta de 500 ms vale após inicialização para consultas pequenas e não é promessa para todos os dispositivos.
 
 
-A coleta final preservada contou 88 tentativas com o banco pronto: clique → commit DOM teve mediana de **15,2 ms**, p95 **17,3 ms** e máximo **17,6 ms**; até o próximo frame, mediana **31,5 ms**, p95 **37,3 ms** e máximo **60,7 ms**. A consulta no Worker teve mediana **0,9 ms** e p95 **2,2 ms**; comparação p95 **0,1 ms**, com amostras em zero por resolução do relógio, não custo nulo. Oito inicializações Worker → ready ficaram entre **2.677 e 3.076 ms** (mediana **2.792 ms**). PGlite teve mediana **2.710 ms**; dataset **15,05 ms** e preparação total **21 ms**, incluindo dataset e permissões. Quatro execuções após reset tiveram mediana de **2.756,5 ms** até o feedback.
+A coleta final preservada da Sprint 01 contou 88 tentativas com o banco pronto: clique → commit DOM teve mediana de **15,2 ms**, p95 **17,3 ms** e máximo **17,6 ms**; até o próximo frame, mediana **31,5 ms**, p95 **37,3 ms** e máximo **60,7 ms**. A consulta no Worker teve mediana **0,9 ms** e p95 **2,2 ms**; comparação p95 **0,1 ms**, com amostras em zero por resolução do relógio, não custo nulo. Na Sprint 01, oito inicializações Worker → ready ficaram entre **2.677 e 3.076 ms** (mediana **2.792 ms**). PGlite teve mediana **2.710 ms**; dataset **15,05 ms** e preparação total **21 ms**, incluindo dataset e permissões. Quatro execuções após reset tiveram mediana de **2.756,5 ms** até o feedback.
 
 Esses números são desta máquina e desta amostra. O benchmark separa reset/ready pela sequência de operações, não por descartar medições lentas. A comparação anterior de 60–75 ms incluía automação, enquanto a coleta final começa no clique do DOM; não representa um fator de aceleração entre métodos iguais. `ResourceTiming` de alguns scripts Worker retornou durações negativas nesta coleta; os dados brutos foram preservados e não usados como latência de download válida. A causa não foi comprovada. Tempos de fetch WASM/data e Worker → ready foram registrados separadamente; downloads se sobrepõem à inicialização. Cópia estruturada é aproximação de serialização, e o próximo animation frame não é uma medição física de pintura. A meta de 500 ms após inicialização foi atingida nesta amostra; cold start permanece visível.
+
+
+### Evolution 05 / Sprint 02 — tarefas progressivas
+
+Chromium headless neste host, build de produção de autoria, um worker de testes, duas lições canônicas, visitante e conta. São quatro capturas únicas; cópias de anexos do Playwright não entram duas vezes. p95 usa a posição de ordem mais próxima acima de 95% da amostra. Oito eventos reais de inicialização (quatro aberturas e quatro resets) separam cold start das tentativas com banco pronto; a espera deliberada de `pg_sleep` para testar resposta obsoleta fica fora dos diagnósticos de consultas pequenas.
+
+| Medida | Amostras | Mediana | p95 |
+| --- | ---: | ---: | ---: |
+| Worker criado → pronto | 8 | 2.840,45 ms | 3.008,8 ms |
+| Primeira execução → próximo frame | 4 | 2.867,1 ms | 3.017,3 ms |
+| Feedback com banco pronto → commit DOM | 158 | 14,3 ms | 17,1 ms |
+| Feedback com banco pronto → próximo frame | 158 | 31,65 ms | 49,7 ms |
+| Consulta no Worker | 154 | 0,9 ms | 2,1 ms |
+| Comparação formativa | 154 | 0 ms | 0,1 ms |
+| Troca manual de tarefa → próximo frame | 60 | 9,4 ms | 11,3 ms |
+| Acerto e avanço automático → próximo frame, sem cold start | 16 | 35,25 ms | 44,9 ms |
+
+A mediana de feedback permaneceu próxima dos 31,5 ms históricos; p95 cresceu nessa amostra, com máximo de 66,1 ms após inicialização, sem regressão para centenas de milissegundos. Os testes confirmaram uma única inicialização entre tarefas compatíveis e uma segunda somente após reset. Quatro execuções após reset tiveram mediana de 2.847,8 ms até o próximo frame. Comparação em zero significa resolução insuficiente do relógio. `requestAnimationFrame` aproxima a atualização visual, sem medir pintura física. Não são garantias para outros dispositivos, rede, navegador ou carga; cold start continua perceptível.

@@ -1,0 +1,57 @@
+{
+  "formative": {
+    "kind": "public-result",
+    "oracle": {
+      "format": 1,
+      "kind": "public-result",
+      "sourceDigest": "2bb07d12c07fcf5b52217be62b7026b101c8eb782dcd1d1f8c1790b0066e1242",
+      "exercise": {
+        "id": "store-all-customers",
+        "version": 1
+      },
+      "dataset": {
+        "id": "store",
+        "version": 1
+      },
+      "orderMatters": false,
+      "expected": {
+        "fields": [
+          "id",
+          "name",
+          "city"
+        ],
+        "types": [
+          23,
+          25,
+          25
+        ],
+        "rows": [
+          "[[\"number\",\"1\"],[\"string\",\"Ana Lima\"],[\"string\",\"Recife\"]]",
+          "[[\"number\",\"2\"],[\"string\",\"Bruno Alves\"],[\"string\",\"Olinda\"]]",
+          "[[\"number\",\"3\"],[\"string\",\"Carla Souza\"],[\"string\",\"Recife\"]]",
+          "[[\"number\",\"4\"],[\"string\",\"Daniel Costa\"],[\"string\",\"Natal\"]]"
+        ],
+        "truncated": false
+      }
+    }
+  },
+  "format": 1,
+  "id": "store-all-customers",
+  "version": 1,
+  "status": "published",
+  "title": "Consultar todos os clientes",
+  "objective": "Reconhecer linhas e colunas ao consultar uma tabela inteira.",
+  "instructions": "Retorne todas as colunas de todos os clientes de customers: id, name e city, nessa ordem. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT id, name, city FROM customers"
+    ],
+    "orderMatters": false
+  }
+}

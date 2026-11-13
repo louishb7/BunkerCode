@@ -1,54 +1,50 @@
 # Encontrando o que importa
 
-A lista completa ajuda a conhecer a loja. Agora a equipe quer investigar os clientes de outras cidades para preparar uma ação de atendimento. Como procurar só as linhas necessárias e apresentá-las em uma ordem útil?
+Você já consegue escolher colunas. Agora a equipe da loja precisa encontrar certos clientes e organizar os registros. Vamos acrescentar condições e ordenação às consultas.
 
-Abra **Dados disponíveis** e veja os registros de `customers`. O dataset é o mesmo da lição anterior, recriado do início nesta sessão. Ainda não vamos relacionar tabelas nem alterar dados.
+O dataset é o mesmo da lição anterior, carregado do início. Abra **Dados disponíveis** para investigar `customers`. Ainda não vamos relacionar tabelas nem alterar registros.
 
 ## WHERE escolhe linhas
 
-`SELECT` escolhe colunas; `WHERE` acrescenta uma condição para selecionar linhas. Por exemplo, esta consulta procura o registro de um identificador específico:
+`SELECT` escolhe colunas; `WHERE` acrescenta uma condição para selecionar linhas. Esta consulta procura os nomes e as cidades dos clientes de Olinda:
 
 ```sql
-SELECT name, city FROM customers WHERE id = 3;
+SELECT name, city FROM customers WHERE city = 'Olinda';
 ```
 
-Experimente trocar o identificador. Se nenhuma linha satisfizer a condição, o resultado fica vazio, mas mantém suas colunas: isso não significa que ocorreu um erro SQL.
+Textos usam aspas simples. O valor deve corresponder ao cadastro: `'Recife'` e `'recife'` são textos diferentes nessa comparação. Números, como em `WHERE id > 2`, não precisam de aspas.
 
-A comparação depende do tipo do valor. Números, como `3`, não precisam de aspas. Textos, como `'Olinda'`, usam aspas simples. Nomes de cidades precisam corresponder ao cadastro; `'recife'` e `'Recife'` são textos diferentes nesta comparação.
+- `=`: igual ao valor.
+- `<>`: diferente do valor.
+- `>` e `<`: maior ou menor.
+- `>=` e `<=`: maior/menor ou igual.
 
-- `=`: é igual a esse valor?
-- `<>`: é diferente desse valor?
-- `>` e `<`: é maior ou menor?
-- `>=` e `<=`: é maior/menor ou igual?
+Uma consulta sem linhas pode estar correta como SQL: significa que nenhum registro satisfez a condição. Confira a pergunta da tarefa antes de interpretar esse resultado como resposta certa.
 
-Por exemplo, `WHERE id > 2` procura identificadores maiores que dois. A condição vem depois do nome da tabela. Investigue o resultado antes de mudar a pergunta.
+## ORDER BY organiza as linhas
 
-## ORDER BY organiza o resultado
-
-A ordem de linhas sem `ORDER BY` não é uma promessa do banco. Para pedir nomes em ordem crescente:
+Sem `ORDER BY`, a ordem das linhas não é uma promessa do banco. Podemos pedir uma ordem explicitamente:
 
 ```sql
-SELECT name FROM customers ORDER BY name ASC;
+SELECT city FROM customers ORDER BY city DESC;
 ```
 
-`ASC` significa ordem crescente: de A a Z para esses nomes. `DESC` inverte a direção: de Z a A. A ordenação não muda os dados armazenados, só a apresentação do resultado.
+`ASC` pede ordem crescente; `DESC`, decrescente. Para os nomes deste dataset, isso corresponde a A–Z e Z–A. A ordenação muda a apresentação, não os registros armazenados.
 
-É possível combinar um filtro com uma ordenação. A estrutura fica: `SELECT` com as colunas, `FROM` com a tabela, `WHERE` com a condição e `ORDER BY` com a coluna e a direção. Uma condição reduz as linhas; uma ordenação organiza as que restaram.
+Para combinar os conceitos, coloque `WHERE` depois da tabela e `ORDER BY` depois da condição. Primeiro escolha as linhas necessárias; depois defina como apresentá-las.
 
-## Desafio: olhar para fora de Recife
+## Três tarefas para investigar
 
-A equipe quer uma lista de clientes que **não moram em Recife**. Retorne apenas **nome e cidade**, nessa ordem de colunas, e organize pelo **nome em ordem decrescente**, de Z a A.
-
-Observe as cidades reais no explorador. Monte sua condição de diferença e escolha a direção da ordenação. Um resultado com as pessoas certas, mas sem a ordem solicitada, ainda não atende ao relatório.
+Filtre os clientes de uma cidade, organize todos os registros por nome e, por fim, combine um filtro com ordem decrescente. Na última tarefa, as pessoas certas na ordem errada ainda não atendem ao pedido.
 
 ```bunker-sql
-{"kind":"sql","exerciseId":"store-filter-sort","version":2}
+{"kind":"sql-task-sequence","tasks":[{"taskId":"filter-customers-by-city","exerciseId":"store-customers-recife","version":2},{"taskId":"sort-customer-records","exerciseId":"store-sort-customers","version":1},{"taskId":"combine-filter-and-sort","exerciseId":"store-filter-sort","version":2}]}
 ```
 
-**Executar consulta** mostra os dados e compara automaticamente o resultado neste navegador, mesmo sem conta. Confira tanto o filtro quanto a ordem das linhas. O resultado esperado é material didático público; acertar localmente não salva progresso. **Submit · concluir lição** avalia independentemente no servidor e registra a conclusão quando aprovada. Se esse serviço estiver indisponível, a prática local continua disponível.
+**Executar consulta** verifica a tarefa ativa neste navegador. Não é preciso entrar na conta nem esperar uma avaliação remota. Acertar mantém a tarefa concluída nesta sessão e prepara a próxima; esses acertos não registram conclusão verificada da lição. Ao terminar, volte ao curso para revisar seu percurso.
 
-Depois do desafio, explique: o que mudaria se você removesse `WHERE`? E se trocasse apenas `DESC` por `ASC`? Registre sua justificativa, em vez de guardar somente uma consulta que passou.
+Depois, explique: o que muda ao remover `WHERE`? E ao trocar somente `DESC` por `ASC`? Registre sua justificativa, além da consulta que funcionou.
 
 ## Para consultar depois
 
-[Consulta e filtro no PostgreSQL](https://www.postgresql.org/docs/current/tutorial-select.html) e [ordenação de linhas](https://www.postgresql.org/docs/current/queries-order.html). Esta lição trabalha com valores preenchidos; comparações com `NULL` serão outro assunto, e não devem ser presumidas a partir do operador de diferença.
+[Consulta e filtro no PostgreSQL](https://www.postgresql.org/docs/current/tutorial-select.html) e [ordenação de linhas](https://www.postgresql.org/docs/current/queries-order.html). Aqui trabalhamos com cidades preenchidas. Comparações com `NULL` exigem outro raciocínio e não devem ser presumidas a partir de `<>`.

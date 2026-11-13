@@ -1,12 +1,14 @@
 import {
   expectRenderedContrast,
   selectReadingTone,
+  selectSiteTheme,
 } from "./reading-theme-checks";
 import { test as authenticatedTest } from "./auth-fixture";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { studioView } from "./studio-controls";
 import { expect, test } from "@playwright/test";
+import { setLessonSqlPlacement } from "@bunkercode/content";
 
 test("SQL laboratory executes, verifies, recovers and resets without application SQL requests", async ({
   page,
@@ -566,9 +568,9 @@ authenticatedTest(
   "read-only demonstration collection switches activities and grades progressive real queries",
   async ({ page }) => {
     test.setTimeout(220000);
-    const { sqlExercises } = await import("./sql-fixtures");
+    const { laboratoryExercises } = await import("./sql-fixtures");
     await page.goto("/sql");
-    for (const exercise of sqlExercises) {
+    for (const exercise of laboratoryExercises) {
       if (exercise.mode !== "query") continue;
       await page
         .getByLabel("Atividade demonstrativa")
@@ -627,106 +629,144 @@ test("real Worker failure discards the session and the next action recovers", as
 });
 
 authenticatedTest(
-  "canonical SQL course verifies, submits, reopens approved source and navigates lessons",
+  "legacy single SQL lessons verify, submit, reopen approved source and navigate lessons",
   async ({ page, context }) => {
     authenticatedTest.setTimeout(180000);
-    await page.goto("/courses");
-    await page.getByRole("link", { name: /SQL na Prática/ }).click();
-    await page
-      .getByRole("link", { name: /Seu primeiro contato com um banco de dados/ })
-      .first()
-      .click();
-    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
-    const status = page.locator(".sql-workspace [role=status]");
-    await expect(editor).toBeVisible();
-    await editor.fill("SELECT name FROM customers");
-    await page.getByRole("button", { name: "Submit · concluir lição" }).click();
-    await expect(status).toContainText("Ainda não corresponde", {
-      timeout: 45000,
-    });
-    await expect(
-      page.getByText("Lição concluída", { exact: true }),
-    ).toHaveCount(0);
-    await editor.fill("SELECT id,name FROM customers ORDER BY id DESC");
-    await page.getByRole("button", { name: "Executar consulta" }).click();
-    await expect(status).toContainText("Resposta correta nesta prática!", {
-      timeout: 45000,
-    });
-    await expect(
-      page.getByText("Lição concluída", { exact: true }),
-    ).toHaveCount(0);
-    await page.getByRole("button", { name: "Submit · concluir lição" }).click();
-    await expect(status).toContainText("Conclusão da lição registrada", {
-      timeout: 45000,
-    });
-    await expect(
-      page.getByText("Lição concluída", { exact: true }),
-    ).toBeVisible();
-    await editor.fill("SELECT 1");
-    await expect(
-      page.getByText("Lição concluída", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Carregar solução aprovada" }),
-    ).toBeVisible();
-    await page.reload();
-    await page
-      .getByRole("button", { name: "Carregar solução aprovada" })
-      .click();
-    await expect(editor).toHaveText(
-      "SELECT id,name FROM customers ORDER BY id DESC",
+    const content = process.env.BUNKERCODE_BROWSER_CONTENT_DIR;
+    if (!content) throw new Error("Missing supervisor-owned content fixture");
+    const fixtures = [
+      ["seu-primeiro-contato-com-um-banco-de-dados", "store-select-columns"],
+      ["encontrando-o-que-importa", "store-filter-sort"],
+    ].map(([slug, exerciseId]) => ({
+      path: join(content, "courses/sql-na-pratica/lessons", slug!, "lesson.md"),
+      exerciseId: exerciseId!,
+    }));
+    const originals = await Promise.all(
+      fixtures.map((fixture) => readFile(fixture.path, "utf8")),
     );
-    await page.screenshot({
-      path: test.info().outputPath("sql-course-approved-dark.png"),
-      fullPage: true,
-    });
-    await page.goto(
-      "/courses/sql-na-pratica/lessons/encontrando-o-que-importa",
-    );
-    await expect(page.locator(".lesson-heading h1")).toHaveText(
-      "Encontrando o que importa",
-    );
-    await editor.fill(
-      "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
-    );
-    await page.getByRole("button", { name: "Submit · concluir lição" }).click();
-    await expect(status).toContainText("Conclusão da lição registrada", {
-      timeout: 45000,
-    });
+    try {
+      for (const [index, fixture] of fixtures.entries()) {
+        await writeFile(
+          fixture.path,
+          setLessonSqlPlacement(originals[index]!, {
+            kind: "sql",
+            exerciseId: fixture.exerciseId,
+            version: 2,
+          }),
+        );
+      }
+      await page.goto("/courses");
+      await page.getByRole("link", { name: /SQL na Prática/ }).click();
+      await page
+        .getByRole("link", {
+          name: /Seu primeiro contato com um banco de dados/,
+        })
+        .first()
+        .click();
+      const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+      const status = page.locator(".sql-workspace [role=status]");
+      await expect(editor).toBeVisible();
+      await editor.fill("SELECT name FROM customers");
+      await page
+        .getByRole("button", { name: "Submit · concluir lição" })
+        .click();
+      await expect(status).toContainText("Ainda não corresponde", {
+        timeout: 45000,
+      });
+      await expect(
+        page.getByText("Lição concluída", { exact: true }),
+      ).toHaveCount(0);
+      await editor.fill("SELECT id,name FROM customers ORDER BY id DESC");
+      await page.getByRole("button", { name: "Executar consulta" }).click();
+      await expect(status).toContainText("Resposta correta nesta prática!", {
+        timeout: 45000,
+      });
+      await expect(
+        page.getByText("Lição concluída", { exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Submit · concluir lição" })
+        .click();
+      await expect(status).toContainText("Conclusão da lição registrada", {
+        timeout: 45000,
+      });
+      await expect(
+        page.getByText("Lição concluída", { exact: true }),
+      ).toBeVisible();
+      await editor.fill("SELECT 1");
+      await expect(
+        page.getByText("Lição concluída", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Carregar solução aprovada" }),
+      ).toBeVisible();
+      await page.reload();
+      await page
+        .getByRole("button", { name: "Carregar solução aprovada" })
+        .click();
+      await expect(editor).toHaveText(
+        "SELECT id,name FROM customers ORDER BY id DESC",
+      );
+      await page.screenshot({
+        path: test.info().outputPath("sql-course-approved-dark.png"),
+        fullPage: true,
+      });
+      await page.goto(
+        "/courses/sql-na-pratica/lessons/encontrando-o-que-importa",
+      );
+      await expect(page.locator(".lesson-heading h1")).toHaveText(
+        "Encontrando o que importa",
+      );
+      await editor.fill(
+        "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+      );
+      await page
+        .getByRole("button", { name: "Submit · concluir lição" })
+        .click();
+      await expect(status).toContainText("Conclusão da lição registrada", {
+        timeout: 45000,
+      });
 
-    let release!: () => void, arrived!: () => void, finished!: () => void;
-    const hold = new Promise<void>((resolve) => (release = resolve)),
-      ready = new Promise<void>((resolve) => (arrived = resolve)),
-      delivered = new Promise<void>((resolve) => (finished = resolve));
-    await page.route(
-      "**/api/learning/courses/sql-na-pratica/lessons/encontrando-o-que-importa/solution",
-      async (route) => {
-        const response = await route.fetch();
-        arrived();
-        await hold;
-        try {
-          await route.fulfill({ response });
-        } catch (error) {
-          if (!route.request().failure()) throw error;
-        } finally {
-          finished();
-        }
-      },
-    );
-    await page.reload();
-    await ready;
-    const other = await context.newPage();
-    await other.goto("/");
-    await other.getByRole("button", { name: "Sair", exact: true }).click();
-    await expect(
-      page.getByRole("link", { name: "Entrar", exact: true }),
-    ).toBeVisible();
-    release();
-    await delivered;
-    await expect(
-      page.getByRole("button", { name: "Carregar solução aprovada" }),
-    ).toHaveCount(0);
-    await other.close();
+      let release!: () => void, arrived!: () => void, finished!: () => void;
+      const hold = new Promise<void>((resolve) => (release = resolve)),
+        ready = new Promise<void>((resolve) => (arrived = resolve)),
+        delivered = new Promise<void>((resolve) => (finished = resolve));
+      await page.route(
+        "**/api/learning/courses/sql-na-pratica/lessons/encontrando-o-que-importa/solution",
+        async (route) => {
+          const response = await route.fetch();
+          arrived();
+          await hold;
+          try {
+            await route.fulfill({ response });
+          } catch (error) {
+            if (!route.request().failure()) throw error;
+          } finally {
+            finished();
+          }
+        },
+      );
+      await page.reload();
+      await ready;
+      const other = await context.newPage();
+      await other.goto("/");
+      await other.getByRole("button", { name: "Sair", exact: true }).click();
+      await expect(
+        page.getByRole("link", { name: "Entrar", exact: true }),
+      ).toBeVisible();
+      release();
+      await delivered;
+      await expect(
+        page.getByRole("button", { name: "Carregar solução aprovada" }),
+      ).toHaveCount(0);
+      await other.close();
+    } finally {
+      await Promise.all(
+        fixtures.map((fixture, index) =>
+          writeFile(fixture.path, originals[index]!),
+        ),
+      );
+    }
   },
 );
 
@@ -906,6 +946,15 @@ authenticatedTest(
       exact: true,
     });
     const original = await source.inputValue();
+    // This existing scenario covers single-exercise replacement and publication.
+    // Canonical lessons now start as sequences, whose selector adds a task.
+    await source.fill(
+      setLessonSqlPlacement(original, {
+        kind: "sql",
+        exerciseId: "store-select-columns",
+        version: 2,
+      }),
+    );
     await page
       .getByLabel("Atividade SQL publicada", { exact: true })
       .selectOption(exerciseId + "/1");
@@ -948,7 +997,10 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
     window.Worker = class extends Original {
       private measured: boolean;
       private created = performance.timeOrigin + performance.now();
-      private requests = new Map<number, number>();
+      private requests = new Map<
+        number,
+        { started: number; operation: unknown; sql?: string }
+      >();
       constructor(url: string | URL, options?: WorkerOptions) {
         super(url, options);
         this.measured = String(url).includes("sql.worker");
@@ -958,7 +1010,9 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
             samples.push({
               type: event.data.type,
               created: this.created,
-              started: this.requests.get(event.data.id),
+              started: this.requests.get(event.data.id)?.started,
+              operation: this.requests.get(event.data.id)?.operation,
+              sql: this.requests.get(event.data.id)?.sql,
               received,
               diagnostics: event.data.diagnostics,
             });
@@ -978,10 +1032,13 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
           "id" in message &&
           typeof message.id === "number"
         ) {
-          this.requests.set(
-            message.id,
-            performance.timeOrigin + performance.now(),
-          );
+          this.requests.set(message.id, {
+            started: performance.timeOrigin + performance.now(),
+            operation: "type" in message ? message.type : "unknown",
+            ...("sql" in message && typeof message.sql === "string"
+              ? { sql: message.sql }
+              : {}),
+          });
           super.postMessage({ ...message, measure: true }, transferable);
         } else super.postMessage(message, transferable);
       }
@@ -989,13 +1046,21 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
     document.addEventListener(
       "click",
       (event) => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest("button");
         if (
-          !(event.target instanceof Element) ||
-          !event.target
-            .closest("button")
-            ?.textContent?.includes("Executar consulta")
-        )
-          return;
+          button?.closest(".sql-task-list") &&
+          button.getAttribute("aria-current") !== "step"
+        ) {
+          const started = performance.now();
+          requestAnimationFrame(() =>
+            samples.push({
+              type: "transition",
+              frameMs: performance.now() - started,
+            }),
+          );
+        }
+        if (!button?.textContent?.includes("Executar consulta")) return;
         const started = performance.now();
         const sql = document.querySelector(".cm-content")?.textContent;
         const status = document.querySelector(".sql-workspace [role=status]");
@@ -1011,7 +1076,7 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
             return;
           }
           if (
-            !/Resposta correta nesta prática|Consulta executada|Erro SQL/.test(
+            !/Resposta correta nesta prática|Consulta executada|Erro SQL|Tarefa \d+ concluída|Todas as tarefas foram concluídas/.test(
               message,
             )
           )
@@ -1042,9 +1107,9 @@ async function captureSqlTimings(page: import("@playwright/test").Page) {
 for (const loggedIn of [false, true]) {
   const practiceTest = loggedIn ? authenticatedTest : test;
   practiceTest(
-    `canonical formative loop is local for ${loggedIn ? "authenticated" : "anonymous"} learners, with recoverable errors and measured feedback`,
+    `canonical SQL task sequences are local for ${loggedIn ? "authenticated" : "anonymous"} learners, with recoverable errors and measured feedback`,
     async ({ page }) => {
-      practiceTest.setTimeout(150000);
+      practiceTest.setTimeout(180000);
       await captureSqlTimings(page);
       const writes: string[] = [];
       page.on("request", (request) => {
@@ -1059,111 +1124,210 @@ for (const loggedIn of [false, true]) {
       const lessons = [
         {
           slug: "seu-primeiro-contato-com-um-banco-de-dados",
-          correct: "SELECT id,name FROM customers ORDER BY id DESC",
-          wrong: "SELECT name FROM customers",
-          equivalent: "SELECT id,name FROM customers WHERE true",
-          secondWrong: "SELECT name,id FROM customers",
+          tasks: [
+            {
+              correct: "SELECT * FROM customers",
+              equivalent: "SELECT id,name,city FROM customers ORDER BY id DESC",
+              wrong: "SELECT name FROM customers",
+            },
+            {
+              correct: "SELECT name FROM customers",
+              equivalent: "SELECT c.name FROM customers AS c ORDER BY id DESC",
+              wrong: "SELECT name,id FROM customers",
+            },
+            {
+              correct: "SELECT id,name FROM customers ORDER BY id DESC",
+              equivalent: "SELECT id,name FROM customers WHERE true",
+              wrong: "SELECT name,id FROM customers",
+            },
+          ],
         },
         {
           slug: "encontrando-o-que-importa",
-          correct:
-            "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
-          wrong:
-            "SELECT name,city FROM customers WHERE city = 'Recife' ORDER BY name DESC",
-          equivalent:
-            "SELECT name,city FROM customers WHERE NOT(city = 'Recife') ORDER BY name DESC",
-          secondWrong:
-            "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+          tasks: [
+            {
+              correct: "SELECT * FROM customers WHERE city = 'Recife'",
+              equivalent:
+                "SELECT id,name,city FROM customers WHERE city IN ('Recife') ORDER BY id DESC",
+              wrong: "SELECT * FROM customers WHERE city = 'Olinda'",
+            },
+            {
+              correct: "SELECT id,name,city FROM customers ORDER BY name ASC",
+              equivalent: "SELECT id,name,city FROM customers ORDER BY 2",
+              wrong: "SELECT id,name,city FROM customers ORDER BY name DESC",
+            },
+            {
+              correct:
+                "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+              equivalent:
+                "SELECT name,city FROM customers WHERE NOT(city = 'Recife') ORDER BY name DESC",
+              wrong:
+                "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name ASC",
+            },
+          ],
         },
       ];
       for (const [index, lesson] of lessons.entries()) {
         await page.goto(`/courses/sql-na-pratica/lessons/${lesson.slug}`);
-        const editor = page.getByRole("textbox", { name: "Consulta SQL" }),
-          execute = page.getByRole("button", { name: "Executar consulta" }),
-          status = page.locator(".sql-workspace [role=status]");
-        await expect(editor).toBeVisible();
+        const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+        const execute = page.getByRole("button", { name: "Executar consulta" });
+        const status = page.locator(".sql-workspace [role=status]");
+        const list = page.getByRole("region", { name: "Tarefas da lição" });
+        const rows = list.locator(".sql-task-list button");
+        await expect(rows).toHaveCount(3);
+        await expect(list).toContainText("0 de 3 concluídas");
         await expect(
-          page.getByRole("button", { name: "Verificar resposta" }),
+          page.getByRole("button", {
+            name: /Verificar resposta|Submit · concluir lição/,
+          }),
         ).toHaveCount(0);
-        await expect(
-          page.getByRole("button", { name: "Submit · concluir lição" }),
-        ).toHaveCount(loggedIn ? 1 : 0);
-        // First action initializes the actual Worker and PGlite, including real data exploration.
+        // Cold first execution is real PGlite, before inspecting the same shared dataset.
+        await editor.fill(lesson.tasks[0]!.correct);
+        await execute.click();
+        await expect(list).toContainText("1 de 3 concluídas", {
+          timeout: 65000,
+        });
+        await expect(status).toContainText("Tarefa 1 concluída");
         await page.locator(".sql-schema summary").click();
         await page.getByRole("button", { name: "Ver registros" }).click();
         await expect(
           page.getByRole("region", { name: "Registros de customers" }),
-        ).toBeVisible({ timeout: 65000 });
-        const queries = [
-          lesson.wrong,
-          lesson.correct,
-          lesson.secondWrong,
-          "SELECT missing FROM customers",
-          lesson.equivalent,
+        ).toBeVisible();
+        for (const [position, task] of lesson.tasks.entries()) {
+          await rows.nth(position).click();
+          await editor.fill(task.wrong);
+          await execute.click();
+          await expect(status).toContainText("Ainda não corresponde");
+          await expect(rows.nth(position)).toHaveAttribute(
+            "aria-current",
+            "step",
+          );
+          await expect(list).toContainText(
+            `${Math.max(1, position)} de 3 concluídas`,
+          );
+          await editor.fill("SELECT missing FROM customers");
+          await execute.click();
+          await expect(status).toContainText("Erro SQL");
+          await editor.fill(task.correct);
+          await execute.click();
+          await expect(list).toContainText(
+            `${Math.max(1, position + 1)} de 3 concluídas`,
+          );
+          await expect(status).toContainText(
+            position === 2
+              ? "Todas as tarefas foram concluídas"
+              : `Tarefa ${position + 1} concluída`,
+          );
+          await rows.nth(position).click();
+          await editor.fill(task.equivalent);
+          await execute.click();
+          await expect(status).toContainText(
+            position === 2
+              ? "Todas as tarefas foram concluídas"
+              : `Tarefa ${position + 1} concluída`,
+          );
+          await expect(list).toContainText(
+            `${Math.max(1, position + 1)} de 3 concluídas`,
+          );
+        }
+        for (let visit = 0; visit < 12; visit += 1) {
+          await rows.nth(visit % 3).click();
+          await expect(rows.nth(visit % 3)).toHaveAttribute(
+            "aria-current",
+            "step",
+          );
+        }
+        const final = lesson.tasks[2]!;
+        const attempts = [
+          final.wrong,
           "SELECT * FROM customers WHERE false",
           "SELECT * FROM customers",
           "SELECT c.name,o.total FROM customers c JOIN orders o ON c.id=o.customer_id",
           "SELECT count(*) FROM orders",
-          ...Array<string>(12).fill(lesson.correct),
+          ...(index === 0
+            ? [
+                "SELECT id,name FROM customers UNION ALL SELECT id,name FROM customers",
+                "SELECT id,NULL::text AS name FROM customers",
+              ]
+            : [
+                "SELECT name,NULL::text AS city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+              ]),
+          ...Array<string>(20).fill(final.correct),
         ];
-        for (const [queryIndex, sql] of queries.entries()) {
+        for (const [attempt, sql] of attempts.entries()) {
           const previous = await editor.textContent();
           await editor.fill(sql);
           if (previous !== sql)
-            await expect(status).not.toContainText(
-              "Resposta correta nesta prática!",
-            );
+            await expect(status).toContainText("Consulta alterada");
           await execute.click();
-          await expect(execute).toBeEnabled();
           await expect(status).toContainText(
-            sql === "SELECT missing FROM customers"
-              ? "Erro SQL"
-              : [1, 4].includes(queryIndex) || queryIndex >= 9
-                ? "Resposta correta nesta prática!"
-                : "Ainda não corresponde",
-            { timeout: 65000 },
+            attempt >= attempts.length - 20
+              ? "Todas as tarefas foram concluídas"
+              : "Ainda não corresponde",
           );
+          await expect(list).toContainText("3 de 3 concluídas");
           await expect(
             page.getByText("Lição concluída", { exact: true }),
           ).toHaveCount(0);
         }
-        // An obsolete result is discarded even when it would have matched the oracle.
         await editor.fill(
-          lesson.correct.replace(
+          final.correct.replace(
             "FROM customers",
             "FROM customers CROSS JOIN (SELECT pg_sleep(0.3)) AS delay",
           ),
         );
         await execute.click();
-        await editor.fill(lesson.wrong);
+        await editor.fill(final.wrong);
         await expect(status).toContainText("A consulta mudou durante", {
           timeout: 10000,
         });
-        await expect(status).not.toContainText(
-          "Resposta correta nesta prática!",
-        );
         await execute.click();
         await expect(status).toContainText("Ainda não corresponde");
-        await page.getByRole("button", { name: "Reiniciar banco" }).click();
+        expect(
+          await page.evaluate(
+            () =>
+              (
+                (window as Window & { __sqlMeasurements?: { type: string }[] })
+                  .__sqlMeasurements ?? []
+              ).filter((sample) => sample.type === "ready").length,
+          ),
+        ).toBe(1);
+        await page
+          .getByRole("button", { name: "Reiniciar banco", exact: true })
+          .click();
         await expect(status).toContainText("Banco descartado");
-        await editor.fill(lesson.correct);
+        await expect(list).toContainText("3 de 3 concluídas");
+        await editor.fill(final.correct);
         await execute.click();
-        await expect(status).toContainText("Resposta correta nesta prática!", {
-          timeout: 65000,
+        await expect(status).toContainText(
+          "Todas as tarefas foram concluídas",
+          { timeout: 65000 },
+        );
+        await page.locator(".sql-schema summary").click();
+        await page.locator(".sql-lesson-workspace").evaluate((element) => {
+          element.scrollTop = 0;
         });
-        await status.scrollIntoViewIfNeeded();
         await page.screenshot({
-          path: test
+          path: practiceTest
             .info()
             .outputPath(
               `canonical-${loggedIn ? "account" : "anonymous"}-${index + 1}.png`,
             ),
           fullPage: true,
         });
-        await page.waitForTimeout(30); // allow the diagnostic frame callback to complete
-        const timingFile = test
+        expect(
+          await page.evaluate(
+            () =>
+              (
+                (window as Window & { __sqlMeasurements?: { type: string }[] })
+                  .__sqlMeasurements ?? []
+              ).filter((sample) => sample.type === "ready").length,
+          ),
+        ).toBe(2);
+        await page.waitForTimeout(30);
+        const timingFile = practiceTest
           .info()
-          .outputPath(`sql-timings-${index + 1}.json`);
+          .outputPath(`sql-task-timings-${index + 1}.json`);
         await writeFile(
           timingFile,
           JSON.stringify(
@@ -1181,22 +1345,731 @@ for (const loggedIn of [false, true]) {
                   duration: entry.duration,
                   bytes: (entry as PerformanceResourceTiming).transferSize,
                 })),
-              navigation: performance
-                .getEntriesByType("navigation")
-                .map((entry) => entry.toJSON()),
             })),
             null,
             2,
           ),
         );
-        await test
-          .info()
-          .attach(`sql-timings-${index + 1}.json`, {
-            path: timingFile,
-            contentType: "application/json",
-          });
+        await practiceTest.info().attach(`sql-task-timings-${index + 1}.json`, {
+          path: timingFile,
+          contentType: "application/json",
+        });
+        const continueLink = list.getByRole("link", {
+          name:
+            index === 0 ? "Continuar para a próxima lição" : "Voltar ao curso",
+        });
+        await continueLink.click();
+        await expect(page).toHaveURL(
+          index === 0
+            ? /encontrando-o-que-importa$/
+            : /\/courses\/sql-na-pratica$/,
+        );
       }
       expect(writes).toEqual([]);
     },
   );
 }
+
+test("SQL sequence advances three tasks locally, preserves historical success and separates database, editor and sequence reset", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await captureSqlTimings(page);
+  const file = join(
+    process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+    "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+  );
+  const original = await readFile(file, "utf8");
+  const tasks = [
+    { taskId: "columns", exerciseId: "store-select-columns", version: 2 },
+    { taskId: "customers", exerciseId: "store-customers-recife", version: 2 },
+    { taskId: "filtered-order", exerciseId: "store-filter-sort", version: 2 },
+  ];
+  await writeFile(
+    file,
+    setLessonSqlPlacement(original, { kind: "sql-task-sequence", tasks }),
+  );
+  const grading: string[] = [];
+  page.on("request", (request) => {
+    if (/\/api\/sql\/(check|submit)|\/api\/learning\//.test(request.url()))
+      grading.push(request.method() + " " + request.url());
+  });
+  try {
+    await page.goto(
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados",
+    );
+    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+    const execute = page.getByRole("button", { name: "Executar consulta" });
+    const status = page.locator(".sql-workspace [role=status]");
+    const list = page.getByRole("region", { name: "Tarefas da lição" });
+    const active = list.locator('[aria-current="step"]');
+    await expect(active).toContainText("Escolher colunas dos clientes");
+    await expect(list).toContainText("0 de 3 concluídas");
+    await expect(
+      page.getByRole("button", { name: /Verificar resposta|Submit/ }),
+    ).toHaveCount(0);
+    await editor.fill("SELECT id,name FROM customers");
+    await execute.click();
+    await expect(active).toContainText("Clientes de Recife", {
+      timeout: 65000,
+    });
+    await expect(status).toContainText("Tarefa 1 concluída");
+    await expect(execute).toBeFocused();
+    await expect(list).toContainText("1 de 3 concluídas");
+    await expect(page.locator(".sql-executed-task")).toContainText(
+      "Resultado da tarefa 1",
+    );
+    await editor.fill("SELECT * FROM customers");
+    await execute.click();
+    await expect(status).toContainText("Ainda não corresponde");
+    await expect(active).toContainText("Clientes de Recife");
+    await editor.fill("SELECT missing FROM customers");
+    await execute.click();
+    await expect(status).toContainText("Erro SQL");
+    await expect(list).toContainText("1 de 3 concluídas");
+    await editor.fill("SELECT * FROM customers WHERE city = 'Recife'");
+    await execute.click();
+    await expect(status).toContainText("Tarefa 2 concluída");
+    await expect(list).toContainText("2 de 3 concluídas");
+    await editor.fill(
+      "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+    );
+    await execute.click();
+    await expect(status).toContainText("Todas as tarefas foram concluídas");
+    await expect(list).toContainText("3 de 3 concluídas");
+    await expect(
+      list.getByRole("link", { name: "Continuar para a próxima lição" }),
+    ).toBeVisible();
+    await list
+      .getByRole("button", { name: /Escolher colunas dos clientes/ })
+      .click();
+    await expect(editor).toHaveText("SELECT id,name FROM customers");
+    await editor.fill("SELECT 1");
+    await expect(status).toContainText("Consulta alterada");
+    await expect(list).toContainText("3 de 3 concluídas");
+    await page
+      .getByRole("button", { name: "Limpar consulta", exact: true })
+      .click();
+    await expect(editor).toHaveText("");
+    await expect(status).toContainText("acertos anteriores foram preservados");
+    const beforeReset = await page.evaluate(
+      () =>
+        (
+          window as Window & { __sqlMeasurements?: { type: string }[] }
+        ).__sqlMeasurements?.filter((item) => item.type === "ready").length,
+    );
+    expect(beforeReset).toBe(1);
+    await page
+      .getByRole("button", { name: "Reiniciar banco", exact: true })
+      .click();
+    await expect(list).toContainText("3 de 3 concluídas");
+    await expect(editor).toHaveText("");
+    await page.getByRole("button", { name: "Recomeçar tarefas" }).click();
+    await expect(list).toContainText("0 de 3 concluídas");
+    await expect(
+      list.getByRole("link", { name: "Continuar para a próxima lição" }),
+    ).toHaveCount(0);
+    await expect(active).toContainText("Escolher colunas dos clientes");
+    expect(grading).toEqual([]);
+  } finally {
+    await writeFile(file, original);
+  }
+});
+
+declare global {
+  interface Window {
+    __sqlTaskRace: {
+      holdNext: boolean;
+      held: boolean;
+      queries: number;
+      release?: () => void;
+    };
+  }
+}
+
+test("SQL sequence ignores real late results after task switches, edits, reset and a published version change", async ({
+  page,
+}) => {
+  test.setTimeout(100000);
+  await page.addInitScript(() => {
+    const Original = window.Worker;
+    window.__sqlTaskRace = { holdNext: false, held: false, queries: 0 };
+    window.Worker = class extends Original {
+      private sqlWorker: boolean;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.sqlWorker = String(url).includes("sql.worker");
+      }
+      override get onmessage() {
+        return super.onmessage;
+      }
+      override set onmessage(handler: Worker["onmessage"]) {
+        super.onmessage = (event) => {
+          const state = window.__sqlTaskRace;
+          const data: unknown = event.data;
+          if (
+            this.sqlWorker &&
+            data &&
+            typeof data === "object" &&
+            "type" in data &&
+            data.type === "result" &&
+            state.holdNext
+          ) {
+            state.holdNext = false;
+            state.held = true;
+            state.release = () => {
+              state.held = false;
+              handler?.call(this, event);
+            };
+          } else handler?.call(this, event);
+        };
+      }
+      override postMessage(
+        message: unknown,
+        transfer?: Transferable[] | StructuredSerializeOptions,
+      ) {
+        if (
+          this.sqlWorker &&
+          message &&
+          typeof message === "object" &&
+          "type" in message &&
+          message.type === "query"
+        )
+          window.__sqlTaskRace.queries++;
+        super.postMessage(
+          message,
+          Array.isArray(transfer) ? transfer : (transfer?.transfer ?? []),
+        );
+      }
+    };
+  });
+  const file = join(
+    process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+    "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+  );
+  const original = await readFile(file, "utf8");
+  const tasks = [
+    { taskId: "columns", exerciseId: "store-select-columns", version: 2 },
+    { taskId: "customers", exerciseId: "store-customers-recife", version: 2 },
+    { taskId: "filtered-order", exerciseId: "store-filter-sort", version: 2 },
+  ];
+  await writeFile(
+    file,
+    setLessonSqlPlacement(original, { kind: "sql-task-sequence", tasks }),
+  );
+  const holdNext = async () =>
+    page.evaluate(() => {
+      window.__sqlTaskRace.holdNext = true;
+    });
+  const awaitHeld = async () =>
+    expect
+      .poll(() => page.evaluate(() => window.__sqlTaskRace.held))
+      .toBe(true);
+  const release = async () =>
+    page.evaluate(() => window.__sqlTaskRace.release?.());
+  try {
+    const url =
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
+    await page.goto(url);
+    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+    const execute = page.getByRole("button", { name: "Executar consulta" });
+    const status = page.locator(".sql-workspace [role=status]");
+    const list = page.getByRole("region", { name: "Tarefas da lição" });
+    await editor.fill("SELECT id,name FROM customers");
+    await holdNext();
+    await execute.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement))
+        throw new Error("Expected Execute button");
+      button.click();
+      button.click();
+    });
+    await awaitHeld();
+    expect(await page.evaluate(() => window.__sqlTaskRace.queries)).toBe(1);
+    await list.getByRole("button", { name: /Clientes de Recife/ }).click();
+    await release();
+    await expect(execute).toBeEnabled();
+    await expect(list).toContainText("0 de 3 concluídas");
+    await expect(list.locator('[aria-current="step"]')).toContainText(
+      "Clientes de Recife",
+    );
+    await expect(status).toContainText("Tarefa selecionada");
+    await list
+      .getByRole("button", { name: /Escolher colunas dos clientes/ })
+      .click();
+    await execute.click();
+    await expect(list).toContainText("1 de 3 concluídas");
+    await editor.fill("SELECT * FROM customers WHERE city = 'Recife'");
+    await holdNext();
+    await execute.click();
+    await awaitHeld();
+    await editor.fill("SELECT 1");
+    await release();
+    await expect(status).toContainText("A consulta mudou durante");
+    await expect(list).toContainText("1 de 3 concluídas");
+    await editor.fill("SELECT * FROM customers WHERE city = 'Recife'");
+    await execute.click();
+    await expect(list).toContainText("2 de 3 concluídas");
+    await editor.fill(
+      "SELECT name,city FROM customers WHERE city <> 'Recife' ORDER BY name DESC",
+    );
+    await holdNext();
+    await execute.click();
+    await awaitHeld();
+    await page
+      .getByRole("button", { name: "Reiniciar banco", exact: true })
+      .click();
+    await release();
+    await expect(list).toContainText("2 de 3 concluídas");
+    await expect(status).toContainText("Banco descartado");
+    await execute.click();
+    await expect(list).toContainText("3 de 3 concluídas", { timeout: 65000 });
+    await holdNext();
+    await execute.click();
+    await awaitHeld();
+    await list
+      .getByRole("link", { name: "Continuar para a próxima lição" })
+      .click();
+    await expect(page.locator(".lesson-heading h1")).toHaveText(
+      "Encontrando o que importa",
+    );
+    await release();
+    await expect(status).toContainText("Os dados iniciais");
+    await page
+      .getByRole("link", { name: "Lição anterior", exact: true })
+      .click();
+    await expect(list).toContainText("0 de 3 concluídas");
+    await editor.fill("SELECT id,name FROM customers");
+    await execute.click();
+    await expect(list).toContainText("1 de 3 concluídas", { timeout: 65000 });
+    // Publish a real immutable new version only inside this supervisor-owned fixture.
+    const { SqlContent } = await import("../../backend/src/sql/content");
+    const { generateFormativeOracle } =
+      await import("@bunkercode/content/sql-grading");
+    const store = new SqlContent(
+      join(process.env.BUNKERCODE_BROWSER_CONTENT_DIR!, "sql"),
+    );
+    const definition = {
+      ...store.definition("store-select-columns", 2),
+      version: 3,
+      status: "draft" as const,
+      formative: { kind: "public-result" as const },
+    };
+    const saved = store.saveDraft(definition, null);
+    const oracle = await generateFormativeOracle(
+      definition,
+      store.dataset("store", 1),
+    );
+    store.publish(definition.id, saved.revision, oracle);
+    await writeFile(
+      file,
+      setLessonSqlPlacement(original, {
+        kind: "sql-task-sequence",
+        tasks: [{ ...tasks[0]!, version: 3 }, ...tasks.slice(1)],
+      }),
+    );
+    const loaded = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .endsWith("/content/sql/exercises/store-select-columns/3") &&
+        response.ok(),
+    );
+    await page.reload();
+    await loaded;
+    await expect(list).toContainText("0 de 3 concluídas");
+    await expect(list.locator('[aria-current="step"]')).toContainText(
+      "Escolher colunas dos clientes",
+    );
+    await expect(status).not.toContainText("Todas as tarefas");
+    await editor.fill("SELECT id,name FROM customers");
+    await execute.click();
+    await expect(list).toContainText("1 de 3 concluídas", { timeout: 65000 });
+  } finally {
+    await writeFile(file, original);
+  }
+});
+
+test("SQL task list preserves reading themes, keyboard controls and narrow viewport layout", async ({
+  page,
+}, info) => {
+  test.setTimeout(90000);
+  const file = join(
+    process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+    "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+  );
+  const original = await readFile(file, "utf8");
+  await writeFile(
+    file,
+    setLessonSqlPlacement(original, {
+      kind: "sql-task-sequence",
+      tasks: [
+        { taskId: "columns", exerciseId: "store-select-columns", version: 2 },
+        {
+          taskId: "customers",
+          exerciseId: "store-customers-recife",
+          version: 2,
+        },
+        {
+          taskId: "filtered-order",
+          exerciseId: "store-filter-sort",
+          version: 2,
+        },
+      ],
+    }),
+  );
+  try {
+    await page.setViewportSize({ width: 1440, height: 960 });
+    await page.goto(
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados",
+    );
+    const list = page.getByRole("region", { name: "Tarefas da lição" });
+    const editor = page.getByRole("textbox", { name: "Consulta SQL" });
+    await editor.fill("SELECT id,name FROM customers");
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    await expect(list).toContainText("1 de 3 concluídas", { timeout: 65000 });
+    for (const [theme, tone] of [
+      ["dark", 0],
+      ["light", 3],
+    ] as const) {
+      await selectSiteTheme(page, theme);
+      await selectReadingTone(page, tone);
+      const settings = page.getByRole("button", {
+        name: "Ajustar lição",
+        exact: true,
+      });
+      if ((await settings.getAttribute("aria-expanded")) === "true")
+        await settings.click();
+      await expectRenderedContrast(
+        list.locator(
+          "button, .sql-task-state, .sql-local-feedback, .sql-task-notice",
+        ),
+      );
+      await page.locator(".sql-lesson-workspace").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.screenshot({
+        path: info.outputPath(`tasks-desktop-${theme}.png`),
+        fullPage: true,
+      });
+    }
+    const task = list.getByRole("button", {
+      name: /Escolher colunas dos clientes/,
+    });
+    await task.focus();
+    await page.keyboard.press("Enter");
+    await expect(task).toHaveAttribute("aria-current", "step");
+    await expect(task).toBeFocused();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 812, height: 375 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.getByRole("button", { name: "Código", exact: true }).click();
+      await expect(list).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+      ).toBe(true);
+      const targets = await list
+        .locator("button")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getBoundingClientRect().height),
+        );
+      expect(targets.every((height) => height >= 44)).toBe(true);
+      await page.locator(".sql-lesson-workspace").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await page.screenshot({
+        path: info.outputPath(`tasks-${viewport.width}x${viewport.height}.png`),
+        fullPage: true,
+      });
+    }
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.locator(".sql-schema summary").click();
+    await page.getByRole("button", { name: "Ver registros" }).click();
+    await expect(
+      page.getByRole("region", { name: "Registros de customers" }),
+    ).toBeVisible();
+    await editor.fill(
+      "SELECT name, city, id, city AS another_city FROM customers",
+    );
+    await page.getByRole("button", { name: "Executar consulta" }).click();
+    const table = page.getByRole("region", { name: "Resultado da consulta" });
+    await expect(table).toBeVisible();
+    await table.focus();
+    await expect(table).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await expect(list).toContainText("1 de 3 concluídas");
+  } finally {
+    await writeFile(file, original);
+  }
+});
+
+authenticatedTest(
+  "Studio assembles, validates, reorders, previews and saves SQL task sequences without authorizing progress",
+  async ({ page }) => {
+    authenticatedTest.setTimeout(150000);
+    const root = process.env.BUNKERCODE_BROWSER_CONTENT_DIR!;
+    const file = join(
+      root,
+      "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    const { SqlContent } = await import("../../backend/src/sql/content");
+    const { generateFormativeOracle } =
+      await import("@bunkercode/content/sql-grading");
+    const store = new SqlContent(join(root, "sql"));
+    const dataset = {
+      ...store.dataset("store", 1),
+      id: "incompatible-dataset",
+    };
+    store.saveDataset(dataset);
+    const definition = {
+      ...store.definition("store-select-columns", 2),
+      id: "incompatible-exercise",
+      version: 1,
+      status: "draft" as const,
+      dataset: { id: dataset.id, version: 1 },
+      formative: { kind: "public-result" as const },
+    };
+    const draft = store.saveDraft(definition, null);
+    store.publish(
+      definition.id,
+      draft.revision,
+      await generateFormativeOracle(definition, dataset),
+    );
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (
+        /\/api\/sql\/(check|submit)|\/api\/learning\/.*\/(complete|solution)/.test(
+          request.url(),
+        )
+      )
+        writes.push(request.url());
+    });
+    try {
+      const initialMarkdown = setLessonSqlPlacement(original, {
+        kind: "sql",
+        exerciseId: "store-select-columns",
+        version: 2,
+      });
+      await writeFile(file, initialMarkdown);
+      await page.goto(
+        "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/edit",
+      );
+      await studioView(page, "Editar fonte Markdown");
+      const picker = page.getByRole("region", {
+        name: "Vincular atividade SQL",
+      });
+      await picker
+        .getByRole("button", { name: "Criar sequência de tarefas" })
+        .click();
+      await picker
+        .getByLabel("ID da tarefa 1", { exact: true })
+        .fill("identify-customers");
+      await picker
+        .getByLabel("Atividade SQL publicada", { exact: true })
+        .selectOption("store-customers-recife/2");
+      await picker
+        .getByLabel("ID da tarefa 2", { exact: true })
+        .fill("identify-customers");
+      await picker
+        .getByLabel("Atividade SQL publicada", { exact: true })
+        .selectOption("store-filter-sort/2");
+      await picker
+        .getByLabel("ID da tarefa 3", { exact: true })
+        .fill("combined-report");
+      const apply = picker.getByRole("button", {
+        name: "Aplicar tarefas ao rascunho",
+      });
+      const save = page.getByRole("button", {
+        name: "Salvar alterações",
+        exact: true,
+      });
+      await expect(save).toBeDisabled();
+      await apply.click();
+      await expect(picker.getByRole("alert")).toContainText(
+        "IDs de tarefa SQL duplicados",
+      );
+      expect(await readFile(file, "utf8")).toBe(initialMarkdown);
+      await picker
+        .getByLabel("ID da tarefa 2", { exact: true })
+        .fill("customers-in-recife");
+      await picker
+        .getByLabel("Exercício da tarefa 3", { exact: true })
+        .selectOption("incompatible-exercise/1");
+      await apply.click();
+      await expect(picker.getByRole("alert")).toContainText("mesmo dataset");
+      await expect(save).toBeDisabled();
+      await picker
+        .getByLabel("Exercício da tarefa 3", { exact: true })
+        .selectOption("store-filter-sort/2");
+      await picker
+        .getByRole("button", { name: "Subir tarefa 3", exact: true })
+        .click();
+      await expect(
+        picker.getByLabel("ID da tarefa 2", { exact: true }),
+      ).toHaveValue("combined-report");
+      await picker
+        .getByRole("button", { name: "Remover tarefa 2", exact: true })
+        .click();
+      await expect(
+        picker.getByLabel("ID da tarefa 3", { exact: true }),
+      ).toHaveCount(0);
+      await picker
+        .getByLabel("Atividade SQL publicada", { exact: true })
+        .selectOption("store-filter-sort/2");
+      await picker
+        .getByLabel("ID da tarefa 3", { exact: true })
+        .fill("combined-report");
+      await picker
+        .getByRole("button", { name: "Subir tarefa 3", exact: true })
+        .click();
+      let releaseValidation!: () => void;
+      let validationArrived!: () => void;
+      const heldValidation = new Promise<void>(
+        (resolve) => (releaseValidation = resolve),
+      );
+      const arrivedValidation = new Promise<void>(
+        (resolve) => (validationArrived = resolve),
+      );
+      await page.route(
+        "**/api/content/sql/exercises/store-select-columns/2",
+        async (route) => {
+          const response = await route.fetch();
+          validationArrived();
+          await heldValidation;
+          await route.fulfill({ response });
+        },
+      );
+      await apply.click();
+      await arrivedValidation;
+      const editedMarkdown =
+        initialMarkdown + "\nTexto editorial preservado durante a validação.\n";
+      await page.getByLabel("Markdown completo").fill(editedMarkdown);
+      releaseValidation();
+      await expect(picker.getByRole("alert")).toContainText(
+        "O Markdown mudou durante a validação",
+      );
+      await expect(page.getByLabel("Markdown completo")).toHaveValue(
+        editedMarkdown,
+      );
+      await page.unroute("**/api/content/sql/exercises/store-select-columns/2");
+      await apply.click();
+      await expect(save).toBeEnabled();
+      await studioView(page, "Prévia");
+      const preview = page.getByRole("region", { name: "Prévia da lição" });
+      const tasks = preview.locator(".sql-task-list button");
+      await expect(tasks.nth(0)).toContainText("Escolher colunas dos clientes");
+      await expect(tasks.nth(1)).toContainText("Filtrar e ordenar clientes");
+      await expect(tasks.nth(2)).toContainText("Clientes de Recife");
+      await preview
+        .getByRole("textbox", { name: "Consulta SQL" })
+        .fill("SELECT id,name FROM customers");
+      await preview.getByRole("button", { name: "Executar consulta" }).click();
+      await expect(preview.locator(".sql-task-summary")).toContainText(
+        "1 de 3 concluídas",
+        { timeout: 65000 },
+      );
+      await expect(preview.locator('[aria-current="step"]')).toContainText(
+        "Filtrar e ordenar clientes",
+      );
+      await expect(preview.getByRole("button", { name: /Submit/ })).toHaveCount(
+        0,
+      );
+      await page.screenshot({
+        path: authenticatedTest
+          .info()
+          .outputPath("studio-sql-sequence-preview.png"),
+        fullPage: true,
+      });
+      await save.click();
+      await expect(page.locator(".studio-status")).toContainText(
+        "Salvo no arquivo",
+      );
+      const savedMarkdown = await readFile(file, "utf8");
+      expect(savedMarkdown).toContain(
+        "Texto editorial preservado durante a validação.",
+      );
+      const { lessonSqlPlacement } = await import("@bunkercode/content");
+      const savedPlacement = lessonSqlPlacement(savedMarkdown);
+      expect(savedPlacement).toEqual({
+        kind: "sql-task-sequence",
+        tasks: [
+          {
+            taskId: "identify-customers",
+            exerciseId: "store-select-columns",
+            version: 2,
+          },
+          {
+            taskId: "combined-report",
+            exerciseId: "store-filter-sort",
+            version: 2,
+          },
+          {
+            taskId: "customers-in-recife",
+            exerciseId: "store-customers-recife",
+            version: 2,
+          },
+        ],
+      });
+      await page.reload();
+      await expect(
+        picker.getByLabel("ID da tarefa 1", { exact: true }),
+      ).toHaveValue("identify-customers");
+      await expect(
+        picker.getByLabel("ID da tarefa 2", { exact: true }),
+      ).toHaveValue("combined-report");
+      await expect(
+        picker.getByLabel("ID da tarefa 3", { exact: true }),
+      ).toHaveValue("customers-in-recife");
+      for (const position of [3, 2, 1])
+        await picker
+          .getByRole("button", {
+            name: `Remover tarefa ${position}`,
+            exact: true,
+          })
+          .click();
+      await apply.click();
+      await expect(picker.getByRole("alert")).toContainText(
+        "de 1 a 12 tarefas",
+      );
+      await picker
+        .getByRole("button", { name: "Descartar mudanças nas tarefas" })
+        .click();
+      await expect(
+        picker.getByLabel("ID da tarefa 3", { exact: true }),
+      ).toHaveValue("customers-in-recife");
+      await studioView(page, "Editar fonte Markdown");
+      const source = page.getByLabel("Markdown completo");
+      await source.fill(
+        setLessonSqlPlacement(savedMarkdown, {
+          kind: "sql-task-sequence",
+          tasks: [
+            {
+              taskId: "unknown-version",
+              exerciseId: "store-select-columns",
+              version: 999,
+            },
+          ],
+        }),
+      );
+      await save.click();
+      await expect(page.locator(".studio-error")).toContainText(
+        "não encontrada",
+      );
+      expect(await readFile(file, "utf8")).toBe(savedMarkdown);
+      await source.fill(savedMarkdown);
+      expect(writes).toEqual([]);
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);

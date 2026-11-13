@@ -10,7 +10,7 @@ As lições combinam texto, exemplos de código, perguntas com feedback e, quand
 
 O leitor pode ajustar a aparência da lição e o tamanho do texto. Nos exercícios, o rascunho fica neste navegador. A leitura publicada é aberta; uma conta permite guardar progresso, retomar estudos e sincronizar preferências. A conclusão de uma lição com exercício depende de uma solução aprovada pelos testes configurados, não apenas de abrir a página ou responder um quiz.
 
-O ambiente local de autoria também oferece compilação, execução isolada quando disponível e avaliação dos exercícios configurados. No perfil público, a prática JavaScript permite escrever e formatar, sem execução remota. SQL oferece experimentação local sem conta e, quando o runner isolado está configurado, verificação e Submit autenticados. Essas diferenças e os limites da recuperação de soluções estão no [guia da jornada de aprendizagem](docs/learning-state.md).
+O ambiente local de autoria também oferece compilação, execução isolada quando disponível e avaliação dos exercícios configurados. No perfil público, a prática JavaScript permite escrever e formatar, sem execução remota. SQL oferece tarefas progressivas com feedback local sem conta nas duas lições piloto. A conclusão dessas sequências é formativa; atividades únicas preservam verificação e Submit autenticados quando o runner isolado está configurado. Essas diferenças e os limites da recuperação de soluções estão no [guia da jornada de aprendizagem](docs/learning-state.md).
 
 ## Estado e direção
 

@@ -26,3 +26,11 @@ O filtro inclui o limite ou o exclui? A ordem é suficiente para o uso pretendid
 
 ## Referência
 [PostgreSQL — Querying a Table](https://www.postgresql.org/docs/current/tutorial-select.html)
+
+## Fixture de compatibilidade SQL
+
+Atividade única usada pelos testes do perfil público; não integra o conteúdo canônico do produto.
+
+```bunker-sql
+{"kind":"sql","exerciseId":"store-select-columns","version":2}
+```

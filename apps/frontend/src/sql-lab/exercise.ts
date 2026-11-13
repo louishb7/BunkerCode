@@ -1,12 +1,19 @@
-import type { PublicSqlExercise } from "@bunkercode/content/sql";
+import type {
+  PublicSqlExercise,
+  SqlFormativeOracle,
+} from "@bunkercode/content/sql";
 export type SqlExercise = PublicSqlExercise;
+export interface SqlLessonTask {
+  taskId: string;
+  exercise: SqlExercise;
+}
 export type { SqlResult } from "@bunkercode/content/sql-engine";
 import type { SqlResult } from "@bunkercode/content/sql-engine";
 
 export type SqlRequest = (
   | { type: "initialize"; id: number; exercise: SqlExercise }
   | { type: "preview"; id: number; table: string }
-  | { type: "query"; id: number; sql: string }
+  | { type: "query"; id: number; sql: string; formative?: SqlFormativeOracle }
 ) & { measure?: boolean };
 
 export type SqlResponse = (

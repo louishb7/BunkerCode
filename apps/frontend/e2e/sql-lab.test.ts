@@ -528,7 +528,10 @@ test("catalog exercises share the engine and reject incorrect results including 
         assert.equal(
           (
             await instance.execute(
-              exercise.expectedQuery.replace("DESC", "ASC"),
+              exercise.expectedQuery.replace(
+                /\b(?:ASC|DESC)\b/g,
+                (direction) => (direction === "ASC" ? "DESC" : "ASC"),
+              ),
               true,
             )
           ).correct,

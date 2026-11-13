@@ -1,0 +1,24 @@
+{
+  "formative": {
+    "kind": "public-result"
+  },
+  "format": 1,
+  "id": "store-customer-names",
+  "version": 1,
+  "status": "draft",
+  "title": "Selecionar os nomes dos clientes",
+  "objective": "Escolher uma coluna sem descartar registros.",
+  "instructions": "Retorne apenas a coluna name de todos os clientes. Preserve o nome da coluna e não deixe clientes de fora. A ordem das linhas não importa.",
+  "starterSql": "SELECT * FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT name FROM customers"
+    ],
+    "orderMatters": false
+  }
+}

@@ -1,6 +1,7 @@
 import { Controller, Get, Header, Inject, Param } from "@nestjs/common";
 import { SqlService, sqlInput } from "./sql.service";
 import { RequireIdentity } from "../auth/auth.guard";
+import type { SqlReferenceSummary } from "@bunkercode/content/sql";
 @Controller("content/sql")
 export class SqlController {
   constructor(@Inject(SqlService) private readonly sql: SqlService) {}
@@ -12,11 +13,19 @@ export class SqlController {
   @Header("Cache-Control", "no-store")
   references() {
     return sqlInput(() =>
-      this.sql.content.versions().map(({ id, version }) => ({
-        id,
-        version,
-        title: this.sql.content.public(id, version).title,
-      })),
+      this.sql.content
+        .versions()
+        .map(({ id, version }): SqlReferenceSummary => {
+          const exercise = this.sql.content.public(id, version);
+          return {
+            id,
+            version,
+            title: exercise.title,
+            mode: exercise.mode,
+            formative: !!exercise.formative,
+            dataset: exercise.dataset,
+          };
+        }),
     );
   }
   @Get("exercises/:id/:version") @Header("Cache-Control", "no-store") get(

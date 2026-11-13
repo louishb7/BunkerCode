@@ -18,6 +18,15 @@ export const sqlExercises = readdirSync(join(root, "exercises")).map((id) =>
     dataset,
   ),
 );
+// The laboratory is explicitly curated; newly published lesson tasks are not added.
+const laboratory = read(join(root, "laboratory.json")) as {
+  exercises: { id: string }[];
+};
+export const laboratoryExercises = laboratory.exercises.map(({ id }) => {
+  const exercise = sqlExercises.find((entry) => entry.id === id);
+  if (!exercise) throw new Error("Curated SQL fixture is missing: " + id);
+  return exercise;
+});
 export const storeExercise = sqlExercises.find(
   (e): e is Extract<TrustedSqlExercise, { mode: "query" }> =>
     e.id === "store-customers-recife" && e.mode === "query",

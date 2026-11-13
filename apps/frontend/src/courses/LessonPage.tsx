@@ -3,7 +3,11 @@ import { learningRequest, learningLessonPath } from "../learning/api";
 import { useAuth } from "../auth/Auth";
 import { FilePenLine } from "lucide-react";
 import { capabilities } from "../capabilities";
-import { validateEditorial, lessonSqlPlacement } from "@bunkercode/content";
+import {
+  validateEditorial,
+  lessonSqlPlacement,
+  type SqlLessonPlacement,
+} from "@bunkercode/content";
 import { LessonAppearance, ReadingArticle, StudySplit } from "./ReadingTools";
 import { recordActivity } from "../product/activity-store";
 import { memo, lazy, Suspense, useEffect, useMemo, useState } from "react";
@@ -22,7 +26,7 @@ import { useLessonNavigation } from "../product/SiteHeader";
 import { LessonNavigation } from "./LessonNavigation";
 import { Markdown, lessonBody } from "./Markdown";
 
-import { useSqlExercise } from "../sql-lab/api";
+import { useSqlActivity } from "../sql-lab/api";
 import type { SqlExercise } from "../sql-lab/exercise";
 const SqlInteraction = lazy(() =>
   import("../sql-lab/SqlInteraction").then((module) => ({
@@ -128,7 +132,7 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     };
   }, [id, slug]);
   const body = lessonBody(lesson.markdown, lesson.title);
-  let sqlReference: { exerciseId: string; version: number } | null = null;
+  let sqlReference: SqlLessonPlacement | null = null;
   let sqlError = "";
   let hasSql = false;
   try {
@@ -146,8 +150,9 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
     sqlError =
       error instanceof Error ? error.message : "Atividade SQL inválida.";
   }
-  const sqlContent = useSqlExercise(sqlReference);
-  const sqlExercise: SqlExercise | undefined = sqlContent.data;
+  const sqlContent = useSqlActivity(sqlReference);
+  const sqlExercise: SqlExercise | undefined = sqlContent.data?.exercise;
+  const sqlSequence = sqlReference?.kind === "sql-task-sequence";
   sqlError ||= sqlContent.error ?? "";
   const interactive = !!exercise || hasSql;
   const lessonNumber =
@@ -257,8 +262,9 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                         <p role="alert">{sqlError}</p>
                       ) : sqlExercise ? (
                         <aside className="editorial-note">
-                          Pratique “{sqlExercise.title}” na área de código. O
-                          banco é local; a verificação é feita no servidor.
+                          {sqlSequence
+                            ? "Resolva as tarefas em ordem na área de código. Cada execução recebe feedback neste navegador; os acertos são formativos."
+                            : `Pratique “${sqlExercise.title}” na área de código. Executar usa o banco local; Submit faz uma avaliação independente.`}
                         </aside>
                       ) : hasSql ? (
                         <p role="status">Carregando atividade SQL…</p>
@@ -284,7 +290,11 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
               {user && published && (
                 <div className="lesson-progress">
                   {completed ? (
-                    <p role="status">Lição concluída</p>
+                    <p role="status">
+                      {sqlSequence
+                        ? "Conclusão histórica registrada · a sequência atual é formativa"
+                        : "Lição concluída"}
+                    </p>
                   ) : practice &&
                     !exercise &&
                     !hasSql &&
@@ -301,7 +311,9 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                     <p className="text-sm text-subtle">
                       Em andamento
                       {hasSql
-                        ? " · conclusão por Submit SQL aprovado"
+                        ? sqlSequence
+                          ? " · tarefas formativas; conclusão verificada ainda indisponível"
+                          : " · conclusão por Submit SQL aprovado"
                         : exercise
                           ? " · conclusão por Submit aprovado"
                           : ""}
@@ -338,9 +350,20 @@ function LessonWorkspace({ lesson }: { lesson: import("./api").Lesson }) {
                 >
                   <SqlInteraction
                     exercise={sqlExercise}
+                    tasks={sqlContent.data?.tasks}
+                    continuation={
+                      sqlSequence
+                        ? lesson.next
+                          ? {
+                              to: lessonPath(id, lesson.next.slug),
+                              label: "Continuar para a próxima lição",
+                            }
+                          : { to: `/courses/${id}`, label: "Voltar ao curso" }
+                        : undefined
+                    }
                     lessonAppearance
                     lesson={
-                      user?.role === "ADMIN" && !published
+                      sqlSequence || (user?.role === "ADMIN" && !published)
                         ? undefined
                         : {
                             courseId: id,

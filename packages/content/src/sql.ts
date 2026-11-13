@@ -68,6 +68,36 @@ export interface PublicSqlExercise {
   }[];
   limits: { maxRows: number; initializationMs: number; queryMs: number };
 }
+export interface SqlReferenceSummary {
+  id: string;
+  version: number;
+  title: string;
+  mode: "query" | "mutation";
+  formative: boolean;
+  dataset: { id: string; version: number };
+}
+export function parseSqlReferenceSummary(value: unknown): SqlReferenceSummary {
+  const entry = sqlObject(value, [
+    "id",
+    "version",
+    "title",
+    "mode",
+    "formative",
+    "dataset",
+  ]);
+  const dataset = sqlObject(entry.dataset, ["id", "version"]);
+  if (entry.mode !== "query" && entry.mode !== "mutation")
+    throw new Error("Modo SQL inválido.");
+  return {
+    id: sqlId(entry.id),
+    version: sqlVersion(entry.version),
+    title: text(entry.title, 160),
+    mode: entry.mode,
+    formative: boolean(entry.formative),
+    dataset: { id: sqlId(dataset.id), version: sqlVersion(dataset.version) },
+  };
+}
+export const SQL_TASK_LIMIT = 12;
 export const SQL_LIMITS = {
   maxRows: 100,
   initializationMs: 60000,
@@ -76,6 +106,31 @@ export const SQL_LIMITS = {
   sqlBytes: 16384,
   datasetBytes: 131072,
 } as const;
+/** One read-only database may serve every task; no cross-task mutations. */
+export function validateSqlSequenceExercises(
+  exercises: readonly PublicSqlExercise[],
+) {
+  if (!exercises.length || exercises.length > SQL_TASK_LIMIT)
+    throw new Error("Uma sequência SQL deve ter de 1 a 12 tarefas.");
+  const session = (exercise: PublicSqlExercise) =>
+    JSON.stringify([
+      exercise.dataset,
+      exercise.setupSql,
+      exercise.schema,
+      exercise.limits,
+    ]);
+  const baseline = session(exercises[0]!);
+  for (const exercise of exercises) {
+    if (exercise.mode !== "query" || !exercise.formative)
+      throw new Error(
+        `A tarefa ${exercise.id} exige consulta SELECT com resultado formativo público publicado.`,
+      );
+    if (session(exercise) !== baseline)
+      throw new Error(
+        "Todas as tarefas devem usar o mesmo dataset, versão e preparação de leitura.",
+      );
+  }
+}
 function fail(message: string): never {
   throw new Error(message);
 }

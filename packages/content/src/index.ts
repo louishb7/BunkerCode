@@ -1,3 +1,5 @@
+import { SQL_TASK_LIMIT } from "./sql";
+export { SQL_TASK_LIMIT } from "./sql";
 export {
   parseCourse,
   validSlug,
@@ -100,13 +102,61 @@ export interface SqlPlacement {
   exerciseId: string;
   version: number;
 }
-export function parseSqlPlacement(value: unknown): SqlPlacement {
+export interface SqlTaskReference {
+  taskId: string;
+  exerciseId: string;
+  version: number;
+}
+export interface SqlTaskSequence {
+  kind: "sql-task-sequence";
+  tasks: SqlTaskReference[];
+}
+export type SqlLessonPlacement = SqlPlacement | SqlTaskSequence;
+export function parseSqlPlacement(value: unknown): SqlLessonPlacement {
   const block = object(value);
+  if (block.kind === "sql-task-sequence") {
+    fields(block, ["kind", "tasks"]);
+    if (
+      !Array.isArray(block.tasks) ||
+      !block.tasks.length ||
+      block.tasks.length > SQL_TASK_LIMIT
+    )
+      throw new Error(
+        `Uma sequência SQL deve ter de 1 a ${SQL_TASK_LIMIT} tarefas.`,
+      );
+    const tasks = block.tasks.map((value): SqlTaskReference => {
+      const task = object(value);
+      fields(task, ["taskId", "exerciseId", "version"]);
+      const reference = parseSqlPlacement({
+        kind: "sql",
+        exerciseId: task.exerciseId,
+        version: task.version,
+      });
+      if (reference.kind !== "sql") throw new Error("Referência SQL inválida.");
+      return {
+        taskId: id(task.taskId),
+        exerciseId: reference.exerciseId,
+        version: reference.version,
+      };
+    });
+    if (new Set(tasks.map((task) => task.taskId)).size !== tasks.length)
+      throw new Error(
+        "IDs de tarefa SQL duplicados. Escolha um ID estável para cada tarefa.",
+      );
+    if (
+      new Set(
+        tasks.map((task) => JSON.stringify([task.exerciseId, task.version])),
+      ).size !== tasks.length
+    )
+      throw new Error("Exercício e versão repetidos na sequência SQL.");
+    return { kind: "sql-task-sequence", tasks };
+  }
   fields(block, ["kind", "exerciseId", "version"]);
   if (
     block.kind !== "sql" ||
     !Number.isSafeInteger(block.version) ||
-    Number(block.version) < 1
+    Number(block.version) < 1 ||
+    Number(block.version) > 1000000
   )
     throw new Error(
       "Referência SQL inválida: use kind sql e versão inteira positiva.",
@@ -117,10 +167,13 @@ export function parseSqlPlacement(value: unknown): SqlPlacement {
     version: Number(block.version),
   };
 }
+export function sqlExerciseReferences(placement: SqlLessonPlacement) {
+  return placement.kind === "sql" ? [placement] : placement.tasks;
+}
 export function parseEditorial(
   language: string,
   source: string,
-): Quiz | Note | ExercisePlacement | SqlPlacement {
+): Quiz | Note | ExercisePlacement | SqlLessonPlacement {
   if (source.length > 32768)
     throw new Error("Bloco editorial excede o limite.");
   const value: unknown = JSON.parse(source);
@@ -138,7 +191,7 @@ export function parseEditorial(
 /** Special blocks are top-level fenced JSON; ordinary code fences remain inert. */
 function scanEditorial(source: string) {
   let exercise = false;
-  let sql: SqlPlacement | null = null;
+  let sql: SqlLessonPlacement | null = null;
   let sqlRange: { start: number; end: number } | null = null;
   let offset = 0;
   let fence:
@@ -179,7 +232,10 @@ function scanEditorial(source: string) {
           if (exercise) throw new Error("Marcador de exercício duplicado.");
           exercise = true;
         }
-        if ("kind" in block && block.kind === "sql") {
+        if (
+          "kind" in block &&
+          (block.kind === "sql" || block.kind === "sql-task-sequence")
+        ) {
           if (sql) throw new Error("Atividade SQL duplicada.");
           sql = block;
           sqlRange = { start: fence.start, end: offset };
@@ -202,14 +258,14 @@ function scanEditorial(source: string) {
 export function validateEditorial(source: string): boolean {
   return scanEditorial(source).exercise;
 }
-export function lessonSqlPlacement(source: string): SqlPlacement | null {
+export function lessonSqlPlacement(source: string): SqlLessonPlacement | null {
   return scanEditorial(source).sql;
 }
 
 /** Replace only a recognized top-level SQL fence, preserving surrounding Markdown. */
 export function setLessonSqlPlacement(
   source: string,
-  value: SqlPlacement,
+  value: SqlLessonPlacement,
 ): string {
   const reference = parseSqlPlacement(value);
   const { exercise, sqlRange } = scanEditorial(source);

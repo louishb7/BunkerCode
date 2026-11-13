@@ -46,7 +46,7 @@ O host observado possui daemon rootful e grupo `docker`; não possui socket root
 Base primária: [Docker rootless](https://docs.docker.com/engine/security/rootless/), [limites e delegação](https://docs.docker.com/engine/security/rootless/tips/#limiting-resources) e [OWASP DoS](https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html). Rootless reduz autoridade sobre o host; ainda requer cgroup v2, systemd com delegação de CPU/memória/pids e proteção da identidade do serviço. Cotas de aplicação não substituem proteção de borda nem garantem disponibilidade do PostgreSQL.
 
 
-## ADR — Evolution 05: feedback formativo público (2026-11-12)
+## ADR — Evolution 05 / Sprint 01: feedback formativo público (2026-11-12)
 
 **DECIDIDO/IMPLEMENTADO:** consultas podem aderir a `formative: {kind: "public-result"}` no rascunho. Testar/publicar gera duas execuções da referência em bancos independentes no runner isolado existente, com a mesma admissão, cleanup e limites de recursos. Divergências observadas, truncamento ou resultado excessivo impedem publicação. Executar duas vezes não demonstra determinismo absoluto: o autor continua responsável por evitar aleatoriedade, relógio e empates sem desempate.
 
@@ -57,3 +57,11 @@ A versão publicada armazena o oráculo derivado no mesmo arquivo exclusivo da d
 O Worker reutiliza o comparador semântico da avaliação privada, sem importar o módulo de avaliação/referências. Executar retorna dados reais e `correct` formativo, sem HTTP de avaliação, sem Docker por tentativa e sem exigir conta. Editar invalida feedback; geração/revisão da sessão e IDs de requests descartam respostas obsoletas. Read-only, permissões e sessões por identidade/versão conservam o dataset de consulta. Submit permanece explícito, autenticado e independente; corpo do cliente nunca pode conter passed/oráculo como prova.
 
 **DESCARTADO:** expor SQL privado, duplicar respostas editadas à mão, trocar PGlite, comparar texto SQL, criar pool de runner ou tarefas múltiplas neste sprint. **PENDENTE:** sistema de tarefas e eventual envio em lote; orientações limitadas estão em `docs/sql-practice.md`. A indisponibilidade de Check remoto anônimo continua distinta da prática formativa anônima, que não consome infraestrutura do servidor por execução.
+
+## ADR — Evolution 05 / Sprint 02: tarefas progressivas (2026-11-12)
+
+**DECIDIDO/IMPLEMENTADO:** uma lição compõe 1–12 referências `{taskId, exerciseId, version}` em um único bloco `sql-task-sequence`. A ordem é editorial, identidade é estável e versões publicadas são exatas. Não há registry paralelo nem cópia de definições. Salvamento, publicação e leitor resolvem referências e exigem consultas com resultado esperado explicitamente público e dataset/versão/preparação/schema/limites iguais. O runtime é compartilhado somente para leitura; mutações em sequência são recusadas.
+
+Acertos, consultas e tarefa ativa são locais em memória. Navegação e continuação não autorizam progresso. A guarda de vínculo do backend recusa Submit individual para sequência, inclusive na revalidação anterior à transação existente; recuperação de solução única retorna null. Conclusões históricas permanecem, sem aprovar a nova sequência. Autenticação, cotas, admissão e runner não mudam. **PENDENTE:** contrato confiável de envio da lição inteira e avaliação atômica, descritos como handoff em [prática SQL](../sql-practice.md). A pendência de tarefas registrada na ADR da Sprint 01 acima é histórica; apenas avaliação em lote continua pendente.
+
+**DESCARTADO neste escopo:** novas tabelas de progresso, comparação por palavras SQL, recriar PGlite a cada SELECT compatível e estado de mutação compartilhado.

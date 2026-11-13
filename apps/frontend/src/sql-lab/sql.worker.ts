@@ -50,14 +50,20 @@ self.onmessage = async (event: MessageEvent<SqlRequest>) => {
           : await engine.execute(request.sql);
       timings.executionMs = performance.now() - started;
       const comparison = performance.now();
+      const formative =
+        request.type === "query"
+          ? (request.formative ?? exercise?.formative)
+          : undefined;
       if (
-        request.type === "query" &&
-        exercise?.mode === "query" &&
-        exercise.formative
+        formative &&
+        (formative.dataset.id !== exercise?.dataset.id ||
+          formative.dataset.version !== exercise.dataset.version)
       )
+        throw new Error("A tarefa não corresponde ao dataset desta sessão.");
+      if (request.type === "query" && exercise?.mode === "query" && formative)
         result = {
           ...result,
-          correct: matchesFormative(result, exercise.formative),
+          correct: matchesFormative(result, formative),
         };
       timings.comparisonMs = performance.now() - comparison;
       if (request.measure) {

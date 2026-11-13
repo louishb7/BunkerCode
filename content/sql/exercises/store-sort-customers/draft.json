@@ -1,0 +1,24 @@
+{
+  "formative": {
+    "kind": "public-result"
+  },
+  "format": 1,
+  "id": "store-sort-customers",
+  "version": 1,
+  "status": "draft",
+  "title": "Ordenar clientes pelo nome",
+  "objective": "Apresentar os registros em ordem crescente de nome.",
+  "instructions": "Retorne id, name e city de todos os clientes, nessa ordem de colunas. Organize as linhas pelo nome em ordem crescente, de A a Z.",
+  "starterSql": "SELECT name FROM customers;",
+  "mode": "query",
+  "dataset": {
+    "id": "store",
+    "version": 1
+  },
+  "assessment": {
+    "reference": [
+      "SELECT id, name, city FROM customers ORDER BY name ASC"
+    ],
+    "orderMatters": true
+  }
+}

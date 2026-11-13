@@ -4,6 +4,7 @@ import type {
   SqlResponse,
   SqlResult,
 } from "./exercise";
+import type { SqlFormativeOracle } from "@bunkercode/content/sql";
 
 export interface SqlWorker {
   postMessage(message: SqlRequest): void;
@@ -84,8 +85,15 @@ export class SqlRuntime {
     });
   }
 
-  execute(sql: string): Promise<SqlResult> {
-    return this.perform({ type: "query", sql });
+  execute(
+    sql: string,
+    formative: SqlFormativeOracle | undefined = this.exercise.formative,
+  ): Promise<SqlResult> {
+    return this.perform({
+      type: "query",
+      sql,
+      ...(formative ? { formative } : {}),
+    });
   }
 
   preview(table: string): Promise<SqlResult> {
@@ -93,7 +101,9 @@ export class SqlRuntime {
   }
 
   private async perform(
-    action: { type: "query"; sql: string } | { type: "preview"; table: string },
+    action:
+      | { type: "query"; sql: string; formative?: SqlFormativeOracle }
+      | { type: "preview"; table: string },
   ): Promise<SqlResult> {
     if (this.operation)
       throw new SqlRuntimeError("Já existe uma consulta em execução.", false);

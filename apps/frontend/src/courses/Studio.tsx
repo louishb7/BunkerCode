@@ -142,6 +142,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
   );
   const [saved, setSaved] = useState(false);
   const [pendingNotes, setPendingNotes] = useState(false);
+  const [pendingSql, setPendingSql] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [current, setCurrent] = useState<MarkdownRevision | null>(null);
@@ -206,6 +207,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
     }
   }
   async function save() {
+    if (pendingSql) return;
     setSaving(true);
     setError("");
     setNotice("");
@@ -259,15 +261,17 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         : "Versão do arquivo carregada. Nenhuma gravação foi feita.",
     );
   }
-  const status = pendingNotes
-    ? "Nota em edição: aplique ou cancele antes de salvar."
-    : saving
-      ? "Salvando…"
-      : saved
-        ? "Salvo no arquivo."
-        : dirty
-          ? "Alterações não salvas."
-          : "Sem alterações.";
+  const status = pendingSql
+    ? "Tarefas em edição: aplique ou descarte antes de salvar."
+    : pendingNotes
+      ? "Nota em edição: aplique ou cancele antes de salvar."
+      : saving
+        ? "Salvando…"
+        : saved
+          ? "Salvo no arquivo."
+          : dirty
+            ? "Alterações não salvas."
+            : "Sem alterações.";
   return (
     <Page
       title={`Studio · ${lesson.title} · ${lesson.course.title}`}
@@ -316,7 +320,9 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         </button>
         <p
           className={
-            dirty || pendingNotes ? "studio-status pending" : "studio-status"
+            dirty || pendingNotes || pendingSql
+              ? "studio-status pending"
+              : "studio-status"
           }
           role="status"
         >
@@ -339,7 +345,10 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
               aria-label={label}
               title={label}
               aria-pressed={view === mode}
-              disabled={pendingNotes && mode !== "visual"}
+              disabled={
+                (pendingNotes && mode !== "visual") ||
+                (pendingSql && mode !== view)
+              }
               onClick={() => changeView(mode)}
             >
               {caption}
@@ -348,7 +357,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
         </div>
         <button
           className="studio-save"
-          disabled={!dirty || saving || conflict || pendingNotes}
+          disabled={!dirty || saving || conflict || pendingNotes || pendingSql}
           onClick={() => void save()}
         >
           {saving ? "Salvando…" : "Salvar alterações"}
@@ -356,6 +365,8 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
       </header>
       <SqlExercisePicker
         disabled={saving || pendingNotes}
+        source={buffer.markdown}
+        onPendingChange={setPendingSql}
         onSelect={(reference) => {
           try {
             changeBuffer({
@@ -366,12 +377,14 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
               "Referência SQL alterada no rascunho. Confira a prévia e salve explicitamente.",
             );
             setError("");
+            return true;
           } catch (error) {
             setError(
               error instanceof Error
                 ? error.message
                 : "Não foi possível inserir a atividade SQL.",
             );
+            return false;
           }
         }}
       />

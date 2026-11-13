@@ -146,10 +146,7 @@ export function selectedPublicationFiles(
       if (reference && loadExercise(id, lesson.slug, root))
         throw new Error("Publication cannot mix SQL and JavaScript activities");
       if (reference)
-        new SqlContent(join(source, "sql")).public(
-          reference.exerciseId,
-          reference.version,
-        );
+        new SqlContent(join(source, "sql")).resolvePlacement(reference);
       files.push(`courses/${id}/lessons/${lesson.slug}/lesson.md`);
       if (loadExercise(id, lesson.slug, root))
         files.push(`courses/${id}/lessons/${lesson.slug}/exercise.json`);

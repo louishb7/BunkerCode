@@ -21,6 +21,10 @@ import {
 } from "@nestjs/common";
 import { readManifestSource } from "@bunkercode/content/manifest";
 import {
+  sqlExerciseReferences,
+  type SqlLessonPlacement,
+} from "@bunkercode/content";
+import {
   parseSqlDataset,
   parseSqlDefinition,
   parsePublicSqlExercise,
@@ -29,6 +33,7 @@ import {
   sqlVersion,
   sqlObject,
   sqlFormativeSource,
+  validateSqlSequenceExercises,
   type SqlDefinition,
   type SqlFormativeOracle,
   type SqlDataset,
@@ -38,6 +43,21 @@ export const sqlRevision = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export class SqlContent {
   constructor(readonly root: string) {}
+  resolvePlacement(placement: SqlLessonPlacement): PublicSqlExercise[] {
+    const exercises = sqlExerciseReferences(placement).map((reference) =>
+      this.public(reference.exerciseId, reference.version),
+    );
+    if (placement.kind === "sql-task-sequence") {
+      try {
+        validateSqlSequenceExercises(exercises);
+      } catch (error) {
+        throw new BadRequestException(
+          error instanceof Error ? error.message : "Sequência SQL inválida.",
+        );
+      }
+    }
+    return exercises;
+  }
   private path(parts: string[], create = false): string {
     const absolute = resolve(this.root);
     const chain: string[] = [];

@@ -84,10 +84,7 @@ export function saveLesson(
       "Uma lição não pode misturar atividades SQL e JavaScript.",
     );
   if (reference)
-    new SqlContent(join(dirname(root), "sql")).public(
-      reference.exerciseId,
-      reference.version,
-    );
+    new SqlContent(join(dirname(root), "sql")).resolvePlacement(reference);
   const location = lessonLocation(id, slug, root);
   const directory = dirname(location.path);
   const lockPath = join(directory, ".studio-save.lock");
