@@ -14,7 +14,11 @@ import {
 import { SqlRuntime, SqlRuntimeError, sqlRuntimeFeedback } from "./sql-runtime";
 import { SqlTable } from "./SqlTable";
 import { useSqlTasks } from "./useSqlTasks";
-import { SqlTaskProgress, type SqlContinuation } from "./SqlTaskProgress";
+import {
+  SqlTaskProgress,
+  SqlTaskInstruction,
+  type SqlContinuation,
+} from "./SqlTaskProgress";
 import "./sql-lab.css";
 
 // Public formative feedback never authorizes persistent completion.
@@ -590,10 +594,10 @@ function InteractionSession({
             compact
           />
         )}
-        <div className="sql-current-task">
-          <h3>{exercise.title}</h3>
-          <p>{exercise.instructions}</p>
-        </div>
+        <SqlTaskInstruction
+          title={exercise.title}
+          instructions={exercise.instructions}
+        />
         <p className="sql-practice-scope">
           Prática desta sessão; os acertos não registram conclusão na conta.
         </p>

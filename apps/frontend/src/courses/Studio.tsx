@@ -552,9 +552,7 @@ function LessonEditor({ lesson }: { lesson: EditableLesson }) {
               markdown: setLessonSqlPlacement(buffer.markdown, reference),
               removeSqlActivity: reference ? undefined : true,
             });
-            setNotice(
-              "Prática atualizada no rascunho. Confira a prévia e salve a lição.",
-            );
+            setNotice("");
             setError("");
             return true;
           } catch (error) {

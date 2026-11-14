@@ -393,6 +393,10 @@
   border: 1px solid var(--color-line);
   border-radius: 50%;
 }
+.sql-task-list button[data-completed] .sql-task-number {
+  color: var(--status-success);
+  border-color: var(--success-border);
+}
 .sql-task-state {
   max-width: 10ch;
   text-align: right;

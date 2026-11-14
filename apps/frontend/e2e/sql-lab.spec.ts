@@ -2209,7 +2209,7 @@ authenticatedTest(
 authenticatedTest(
   "Studio authors durable lesson task drafts and previews without bypassing blocked publication",
   async ({ page }) => {
-    authenticatedTest.setTimeout(90000);
+    authenticatedTest.setTimeout(240000);
     const path = "/courses/sql-na-pratica/lessons/encontrando-o-que-importa";
     await page.goto(path + "/edit");
     const section = page.getByRole("region", {
@@ -2284,7 +2284,7 @@ authenticatedTest(
     );
     await page.reload();
     await section
-      .getByText("Rascunhos salvos desta lição", { exact: true })
+      .getByText("Rascunhos e publicações desta lição", { exact: true })
       .click();
     await section
       .getByRole("button", {
@@ -2299,24 +2299,88 @@ authenticatedTest(
       }),
     ).toHaveValue("SELECT name FROM customers ORDER BY name ASC;");
     await section
-      .getByRole("button", { name: "Prévia da tarefa", exact: true })
-      .last()
+      .getByRole("button", { name: "Testar consultas", exact: true })
       .click();
     const preview = section.getByRole("region", {
-      name: "Prévia da tarefa SQL",
+      name: "Teste local da tarefa SQL",
       exact: true,
     });
     await preview
-      .getByRole("button", { name: "Executar consulta", exact: true })
+      .getByRole("button", { name: "Testar consulta esperada", exact: true })
       .click();
+    await expect(preview.getByRole("status")).toContainText(
+      "executada com sucesso",
+      { timeout: 65000 },
+    );
     await expect(
       preview.getByRole("cell", { name: "Ana Lima", exact: true }),
-    ).toBeVisible({ timeout: 65000 });
-    await expect(
-      preview.getByRole("button", { name: /Verificar resposta|Submit/ }),
-    ).toHaveCount(0);
+    ).toBeVisible();
+    await preview
+      .getByRole("textbox", { name: "Consulta candidata", exact: true })
+      .fill("SELECT name FROM customers WHERE false;");
+    await preview
+      .getByRole("button", {
+        name: "Comparar com resultado esperado",
+        exact: true,
+      })
+      .click();
+    await expect(preview.getByRole("status")).toContainText(
+      "resultado difere",
+      { timeout: 65000 },
+    );
+    await preview
+      .getByRole("textbox", { name: "Consulta candidata", exact: true })
+      .fill("SELECT name FROM customers ORDER BY name ASC;");
+    await preview
+      .getByRole("button", {
+        name: "Comparar com resultado esperado",
+        exact: true,
+      })
+      .click();
+    await expect(preview.getByRole("status")).toContainText(
+      "retornou o resultado esperado",
+      { timeout: 65000 },
+    );
+    await preview
+      .getByRole("textbox", { name: "Consulta candidata", exact: true })
+      .fill("DELETE FROM customers;");
+    await preview
+      .getByRole("button", {
+        name: "Comparar com resultado esperado",
+        exact: true,
+      })
+      .click();
+    await expect(preview.getByRole("alert")).toContainText("Erro SQL", {
+      timeout: 65000,
+    });
+    await preview
+      .getByRole("textbox", { name: "Consulta candidata", exact: true })
+      .fill("SELECT pg_sleep(3);");
+    await preview
+      .getByRole("button", {
+        name: "Comparar com resultado esperado",
+        exact: true,
+      })
+      .click();
+    await preview
+      .getByRole("button", { name: "Cancelar teste", exact: true })
+      .click();
+    await expect(preview.getByRole("status")).toContainText("Teste cancelado");
+    await preview
+      .getByRole("textbox", { name: "Consulta candidata", exact: true })
+      .fill("SELECT name FROM customers ORDER BY name ASC;");
+    await preview
+      .getByRole("button", {
+        name: "Comparar com resultado esperado",
+        exact: true,
+      })
+      .click();
+    await expect(preview.getByRole("status")).toContainText(
+      "retornou o resultado esperado",
+      { timeout: 65000 },
+    );
     await section
-      .getByRole("button", { name: "Fechar prévia da tarefa", exact: true })
+      .getByRole("button", { name: "Fechar teste local", exact: true })
       .click();
     // The disabled runner must reject real publication, preserving the saved draft.
     await section
@@ -2329,13 +2393,6 @@ authenticatedTest(
     await expect(
       section.getByRole("textbox", { name: "Título da tarefa 4", exact: true }),
     ).toHaveValue("Clientes por nome no Studio");
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({
-      path: authenticatedTest
-        .info()
-        .outputPath("studio-task-draft-preserved.png"),
-      fullPage: true,
-    });
     await page.goto(path);
     await expect(
       page.getByRole("region", { name: "Tarefas da lição", exact: true }),
@@ -2558,6 +2615,12 @@ authenticatedTest(
       await section
         .getByRole("button", { name: "Adicionar tarefa SQL", exact: true })
         .click();
+      await section
+        .getByRole("button", { name: "Salvar tarefa", exact: true })
+        .click();
+      await expect(section.getByRole("alert")).toContainText(
+        "vazio, inválido ou excessivo",
+      );
       const fillTask = async (index: number, title: string) => {
         await section
           .getByRole("textbox", {
@@ -2588,7 +2651,7 @@ authenticatedTest(
       await expect(dataset).toHaveValue("store/1");
       await page.reload();
       await section
-        .getByText("Rascunhos salvos desta lição", { exact: true })
+        .getByText("Rascunhos e publicações desta lição", { exact: true })
         .click();
       await section
         .getByRole("button", {
@@ -2632,6 +2695,384 @@ authenticatedTest(
         version: 1,
       });
       await expect(dataset).toHaveValue("store/1");
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);
+
+authenticatedTest(
+  "Studio previews the actual task sequence and canonical tables, preserves identity when reordering and explicitly unlinks",
+  async ({ page }) => {
+    authenticatedTest.setTimeout(120000);
+    const { lessonSqlPlacement } = await import("@bunkercode/content");
+    const path =
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
+    const file = join(
+      process.env.BUNKERCODE_BROWSER_CONTENT_DIR!,
+      "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    const initial = lessonSqlPlacement(original);
+    expect(initial?.kind).toBe("sql-task-sequence");
+    if (initial?.kind !== "sql-task-sequence")
+      throw new Error("Sequence fixture required");
+    const { SqlContent } = await import("../../backend/src/sql/content");
+    const store = new SqlContent(
+      join(process.env.BUNKERCODE_BROWSER_CONTENT_DIR!, "sql"),
+    );
+    const before = store.definition(
+      initial.tasks[0]!.exerciseId,
+      initial.tasks[0]!.version,
+    );
+    try {
+      await page.goto(path + "/edit");
+      const section = page.getByRole("region", {
+        name: "Prática SQL da lição",
+        exact: true,
+      });
+      await expect(section.locator(".studio-sql-task-editor > li")).toHaveCount(
+        3,
+      );
+      await expect(
+        section.getByRole("textbox", {
+          name: "Título da tarefa 1",
+          exact: true,
+        }),
+      ).toBeHidden();
+      await section
+        .getByRole("button", { name: "Inspecionar dados", exact: true })
+        .click();
+      const data = section.getByRole("region", {
+        name: "Dados da prática SQL",
+        exact: true,
+      });
+      await expect(
+        data
+          .getByRole("region", { name: "Tabela customers", exact: true })
+          .getByRole("cell", { name: "Ana Lima", exact: true }),
+      ).toBeVisible({ timeout: 65000 });
+      await expect(
+        data
+          .getByRole("region", { name: "Tabela orders", exact: true })
+          .getByRole("columnheader", { name: "customer_id", exact: true }),
+      ).toBeVisible({ timeout: 65000 });
+      await expect(data).toContainText("customer_id → customers.id");
+      await section
+        .getByRole("button", { name: "Fechar dados", exact: true })
+        .click();
+      await section
+        .getByRole("button", { name: "Prévia da sequência", exact: true })
+        .click();
+      const preview = section.getByRole("region", {
+        name: "Prévia da sequência SQL",
+        exact: true,
+      });
+      const tasks = preview.getByRole("region", {
+        name: "Tarefas da lição",
+        exact: true,
+      });
+      await expect(tasks).toContainText("0 de 3 concluídas");
+      await preview
+        .getByRole("checkbox", {
+          name: "Simular tarefa ativa concluída",
+          exact: true,
+        })
+        .check();
+      await expect(tasks).toContainText("1 de 3 concluídas");
+      await expect(tasks.locator("[data-completed]")).toHaveCount(1);
+      await tasks.getByRole("button").nth(1).click();
+      await expect(tasks.locator('[aria-current="step"]')).toContainText(
+        "Ativa",
+      );
+      await expect(tasks).toContainText("Pendente");
+      await expect(preview.locator(".sql-current-task p")).not.toBeEmpty();
+      await selectSiteTheme(page, "light");
+      await section.evaluate((node) =>
+        window.scrollTo(
+          0,
+          window.scrollY + node.getBoundingClientRect().top - 120,
+        ),
+      );
+      await page.screenshot({
+        path: authenticatedTest.info().outputPath("studio-sql-desktop.png"),
+        fullPage: false,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await section
+        .locator("summary")
+        .filter({ hasText: /^Tarefa 1:/ })
+        .click();
+      const title = section.getByRole("textbox", {
+        name: "Título da tarefa 1",
+        exact: true,
+      });
+      await title.focus();
+      await title.press("End");
+      await expect(title).toBeFocused();
+      await selectSiteTheme(page, "dark");
+      await section
+        .locator(".studio-sql-task-editor")
+        .evaluate((node) =>
+          window.scrollTo(
+            0,
+            window.scrollY + node.getBoundingClientRect().top - 230,
+          ),
+        );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: authenticatedTest.info().outputPath("studio-sql-mobile.png"),
+        fullPage: false,
+      });
+      await section
+        .getByRole("button", { name: "Descer tarefa 1", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.getByRole("status").first()).toHaveText(
+        "Salvo no arquivo.",
+      );
+      const reordered = lessonSqlPlacement(await readFile(file, "utf8"));
+      expect(reordered).toEqual({
+        ...initial,
+        tasks: [initial.tasks[1], initial.tasks[0], initial.tasks[2]],
+      });
+      await page.reload();
+      await expect(
+        section.locator(".studio-sql-task-editor > li").first(),
+      ).toContainText("Selecionar os nomes dos clientes");
+      await section
+        .locator("summary")
+        .filter({ hasText: /^Tarefa 2:/ })
+        .click();
+      page.once("dialog", (dialog) => dialog.dismiss());
+      await section
+        .getByRole("button", { name: "Retirar tarefa", exact: true })
+        .click();
+      await expect(section.locator(".studio-sql-task-editor > li")).toHaveCount(
+        3,
+      );
+      page.once("dialog", (dialog) => dialog.accept());
+      await section
+        .getByRole("button", { name: "Retirar tarefa", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.getByRole("status").first()).toHaveText(
+        "Salvo no arquivo.",
+      );
+      expect(store.definition(before.id, before.version)).toEqual(before);
+      await page.goto(path);
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição", exact: true }),
+      ).toContainText("0 de 2 concluídas");
+      // Simulated completion in Studio never becomes learner progress.
+    } finally {
+      await writeFile(file, original);
+    }
+  },
+);
+
+authenticatedTest(
+  "Studio recovers an existing immutable publication without republishing and rejects stale task drafts",
+  async ({ page, request }) => {
+    authenticatedTest.setTimeout(90000);
+    const { lessonSqlPlacement } = await import("@bunkercode/content");
+    const { SqlContent } = await import("../../backend/src/sql/content");
+    const { generateFormativeOracle } =
+      await import("@bunkercode/content/sql-grading");
+    const root = process.env.BUNKERCODE_BROWSER_CONTENT_DIR!;
+    const store = new SqlContent(join(root, "sql"));
+    const path =
+      "/courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados";
+    const file = join(
+      root,
+      "courses/sql-na-pratica/lessons/seu-primeiro-contato-com-um-banco-de-dados/lesson.md",
+    );
+    const original = await readFile(file, "utf8");
+    const definition = store.definition("store-all-customers", 1);
+    const oldBytes = JSON.stringify(definition);
+    const nextVersion =
+      Math.max(
+        ...store
+          .versions()
+          .map((entry) => store.definition(entry.id, entry.version))
+          .filter((entry) => entry.id === definition.id)
+          .map((entry) => entry.version),
+      ) + 1;
+    const next = {
+      ...definition,
+      version: nextVersion,
+      status: "draft" as const,
+      title: "Clientes com publicação recuperável",
+      formative: { kind: "public-result" as const },
+    };
+    // Canonical file fixture, not proof of remote runner publication.
+    const previousDraft = store
+      .drafts()
+      .find((entry) => entry.definition.id === next.id);
+    const saved = store.saveDraft(next, previousDraft?.revision ?? null);
+    store.publish(
+      next.id,
+      saved.revision,
+      await generateFormativeOracle(next, store.dataset("store", 1)),
+    );
+    let publishRequests = 0;
+    page.on("request", (req) => {
+      if (req.method() === "POST" && req.url().includes("/publish"))
+        publishRequests++;
+    });
+    try {
+      await page.goto(path + "/edit");
+      await studioView(page, "Editar fonte Markdown");
+      const section = page.getByRole("region", {
+        name: "Prática SQL da lição",
+        exact: true,
+      });
+      await section
+        .locator("summary")
+        .filter({ hasText: /^Tarefa 1:/ })
+        .click();
+      await expect(
+        section.locator(".studio-sql-task-editor > li").first(),
+      ).toContainText("vínculo pendente");
+      // First linking attempt fails after publication, without losing the durable version.
+      await page.route(
+        `**/api/content/sql/exercises/${next.id}/${next.version}`,
+        (route) => route.abort(),
+      );
+      await section
+        .getByRole("button", {
+          name: "Vincular publicação à lição",
+          exact: true,
+        })
+        .click();
+      await expect(section.getByRole("alert")).toBeVisible();
+      await expect(
+        section.getByRole("button", {
+          name: "Vincular publicação à lição",
+          exact: true,
+        }),
+      ).toBeEnabled();
+      await page.unroute(
+        `**/api/content/sql/exercises/${next.id}/${next.version}`,
+      );
+      let resume: (() => void) | undefined;
+      const held = new Promise<void>((resolve) => {
+        resume = resolve;
+      });
+      let requested: (() => void) | undefined;
+      const started = new Promise<void>((resolve) => {
+        requested = resolve;
+      });
+      await page.route(
+        `**/api/content/sql/exercises/${next.id}/${next.version}`,
+        async (route) => {
+          requested?.();
+          await held;
+          await route.continue();
+        },
+      );
+      await section
+        .getByRole("button", {
+          name: "Vincular publicação à lição",
+          exact: true,
+        })
+        .click();
+      await started;
+      const markdown = page.getByRole("textbox", {
+        name: "Markdown completo",
+        exact: true,
+      });
+      await markdown.fill(
+        (await markdown.inputValue()) +
+          "\n\nTexto escrito durante o vínculo.\n",
+      );
+      resume?.();
+      await expect(section.getByRole("alert")).toContainText("lição mudou");
+      await expect(markdown).toHaveValue(/Texto escrito durante o vínculo/);
+      await page.unroute(
+        `**/api/content/sql/exercises/${next.id}/${next.version}`,
+      );
+      await section
+        .getByRole("button", {
+          name: "Vincular publicação à lição",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByRole("button", { name: "Salvar alterações", exact: true })
+        .click();
+      await expect(page.getByRole("status").first()).toHaveText(
+        "Salvo no arquivo.",
+      );
+      expect(await readFile(file, "utf8")).toContain(
+        "Texto escrito durante o vínculo.",
+      );
+      const linked = lessonSqlPlacement(await readFile(file, "utf8"));
+      expect(
+        linked?.kind === "sql-task-sequence" && linked.tasks[0]?.version,
+      ).toBe(nextVersion);
+      expect(publishRequests).toBe(0);
+      expect(
+        JSON.stringify(store.definition(definition.id, definition.version)),
+      ).toBe(oldBytes);
+      const title = section.getByRole("textbox", {
+        name: "Título da tarefa 1",
+        exact: true,
+      });
+      await title.fill("Minha edição local");
+      await section
+        .getByRole("button", { name: "Salvar tarefa", exact: true })
+        .click();
+      const durable = store.draft(definition.id);
+      // Another ADMIN saves the same canonical draft first.
+      const concurrent = await request.put(
+        "/api/content/sql/authoring/drafts",
+        {
+          headers: {
+            Origin: "http://127.0.0.1:5184",
+            "X-Bunkercode-Client": "local",
+          },
+          data: {
+            definition: {
+              ...durable.definition,
+              instructions: "Alteração concorrente preservada",
+            },
+            revision: durable.revision,
+          },
+        },
+      );
+      expect(concurrent.ok()).toBe(true);
+      await title.fill("Edição com revisão obsoleta");
+      await section
+        .getByRole("button", { name: "Salvar tarefa", exact: true })
+        .click();
+      await expect(section.getByRole("alert")).toContainText(
+        /revisão|rascunho|mudou|outro/i,
+      );
+      await expect(title).toHaveValue("Edição com revisão obsoleta");
+      expect(store.draft(definition.id).definition.instructions).toBe(
+        "Alteração concorrente preservada",
+      );
+      expect(store.draft(definition.id).definition.version).toBe(
+        nextVersion + 1,
+      );
+      page.once("dialog", (dialog) => dialog.accept());
+      await section
+        .getByRole("button", { name: "Descartar edição", exact: true })
+        .click();
+      await page.goto(path);
+      await expect(page.locator(".sql-current-task")).toContainText(next.title);
+      await expect(
+        page.getByRole("region", { name: "Tarefas da lição", exact: true }),
+      ).toContainText("0 de 3 concluídas");
     } finally {
       await writeFile(file, original);
     }

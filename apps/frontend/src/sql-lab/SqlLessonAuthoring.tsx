@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   lessonSqlPlacement,
   validateEditorial,
@@ -16,10 +16,13 @@ import {
   type SqlDefinition,
   type SqlDataset,
 } from "@bunkercode/content/sql";
-import type { PublicSqlExercise } from "@bunkercode/content/sql";
 import { sqlRequest } from "./api";
 import { SqlExercisePicker } from "./SqlExercisePicker";
-import { SqlInteraction } from "./SqlInteraction";
+import {
+  SqlDatasetPreview,
+  SqlQueryPreview,
+  SqlSequencePreview,
+} from "./SqlAuthoringPreview";
 
 interface Inventory {
   published: SqlDefinition[];
@@ -59,14 +62,15 @@ function editable(definition: SqlDefinition, data: Inventory): SqlDefinition {
   return {
     ...definition,
     status: "draft",
-    version:
-      definition.status === "published"
-        ? Math.max(
-            ...data.published
-              .filter((entry) => entry.id === definition.id)
-              .map((entry) => entry.version),
-          ) + 1
-        : definition.version,
+    version: Math.max(
+      definition.version,
+      Math.max(
+        0,
+        ...data.published
+          .filter((entry) => entry.id === definition.id)
+          .map((entry) => entry.version),
+      ) + 1,
+    ),
     ...(definition.formative ? { formative: { kind: "public-result" } } : {}),
   };
 }
@@ -93,8 +97,18 @@ export function SqlLessonAuthoring({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState<PublicSqlExercise | null>(null);
   const [advancedPending, setAdvancedPending] = useState(false);
+  const [openTask, setOpenTask] = useState<string | null>(null);
+  const [showData, setShowData] = useState(false);
+  const [showSequence, setShowSequence] = useState(false);
+  const [testingTask, setTestingTask] = useState<string | null>(null);
+  const [feedbackTask, setFeedbackTask] = useState<string | null>(null);
+  const currentSource = useRef(source);
+  const actionRunning = useRef(false);
+  const pendingOrder = useRef<string[] | null>(null);
+  useLayoutEffect(() => {
+    currentSource.current = source;
+  }, [source]);
   let placement: SqlLessonPlacement | null = null;
   let contentError = "";
   try {
@@ -126,7 +140,7 @@ export function SqlLessonAuthoring({
     onPendingChange(pending || advancedPending || busy);
   }, [pending, advancedPending, busy, onPendingChange]);
   useEffect(() => {
-    if (!pending && !busy) return;
+    if (!pending && !advancedPending && !busy) return;
     const protect = (event: BeforeUnloadEvent) => event.preventDefault();
     const protectLink = (event: MouseEvent) => {
       const link =
@@ -141,6 +155,7 @@ export function SqlLessonAuthoring({
         return;
       event.preventDefault();
       event.stopPropagation();
+      setFeedbackTask(null);
       setError(
         busy
           ? "Aguarde a operação da tarefa terminar."
@@ -153,7 +168,7 @@ export function SqlLessonAuthoring({
       window.removeEventListener("beforeunload", protect);
       document.removeEventListener("click", protectLink, true);
     };
-  }, [pending, busy]);
+  }, [pending, advancedPending, busy]);
   useEffect(() => {
     const abort = new AbortController();
     void Promise.all([
@@ -196,10 +211,14 @@ export function SqlLessonAuthoring({
               entry.version === reference.version,
           );
           if (!published) return [];
+          const latest =
+            data.published
+              .filter((entry) => entry.id === published.id)
+              .sort((a, b) => b.version - a.version)[0] ?? published;
           const draft = data.drafts.find(
             (entry) =>
               entry.definition.id === reference.exerciseId &&
-              entry.definition.version > published.version,
+              entry.definition.version > latest.version,
           );
           return [
             {
@@ -207,29 +226,43 @@ export function SqlLessonAuthoring({
                 placement.kind === "sql-task-sequence"
                   ? placement.tasks[index]!.taskId
                   : reference.exerciseId,
-              definition: editable(draft?.definition ?? published, data),
-              revision: draft?.revision ?? null,
+              definition: editable(draft?.definition ?? latest, data),
+              revision:
+                data.drafts.find(
+                  (entry) => entry.definition.id === reference.exerciseId,
+                )?.revision ?? null,
               dirty: false,
               attached: true,
             },
           ];
         })
       : [];
-    setRows((current) =>
-      current.some((row) => row.dirty)
-        ? current
-        : [
-            ...attached,
-            ...current.filter(
-              (row) =>
-                !row.attached &&
-                !attached.some(
-                  (entry) => entry.definition.id === row.definition.id,
-                ),
+    const order = pendingOrder.current;
+    pendingOrder.current = null;
+    setRows((current) => {
+      if (current.some((row) => row.dirty)) return current;
+      const next = [
+        ...attached,
+        ...current.filter(
+          (row) =>
+            !row.attached &&
+            !attached.some(
+              (entry) => entry.definition.id === row.definition.id,
             ),
-          ],
-    );
-    const dataset = attached[0]?.definition.dataset;
+        ),
+      ];
+      return order
+        ? next.sort((a, b) => order.indexOf(a.taskId) - order.indexOf(b.taskId))
+        : next;
+    });
+    const firstReference = placement && sqlExerciseReferences(placement)[0];
+    const dataset =
+      firstReference &&
+      data.published.find(
+        (entry) =>
+          entry.id === firstReference.exerciseId &&
+          entry.version === firstReference.version,
+      )?.dataset;
     if (dataset) setDatasetKey(dataset.id + "/" + dataset.version);
     else
       setDatasetKey((current) =>
@@ -260,6 +293,7 @@ export function SqlLessonAuthoring({
     );
     if (!dataset || !prefix) return;
     const id = prefix + crypto.randomUUID().replaceAll("-", "").slice(0, 20);
+    setOpenTask(id);
     setRows((current) => [
       ...current,
       {
@@ -282,8 +316,17 @@ export function SqlLessonAuthoring({
         },
       },
     ]);
+    requestAnimationFrame(() =>
+      document.getElementById(`sql-task-title-${id}`)?.focus(),
+    );
   }
-  async function action(work: () => Promise<void>) {
+  async function action(
+    work: () => Promise<void>,
+    taskId: string | null = null,
+  ) {
+    if (actionRunning.current) return;
+    actionRunning.current = true;
+    setFeedbackTask(taskId);
     setBusy(true);
     setError("");
     setMessage("");
@@ -296,6 +339,7 @@ export function SqlLessonAuthoring({
           : "Não foi possível concluir a operação. Seu texto foi preservado.",
       );
     } finally {
+      actionRunning.current = false;
       setBusy(false);
     }
   }
@@ -336,89 +380,239 @@ export function SqlLessonAuthoring({
       "Tarefa salva como rascunho. Publique para usar as alterações na lição.",
     );
   }
+  function lessonTasks() {
+    return placement
+      ? sqlExerciseReferences(placement).map((reference, index) => ({
+          taskId:
+            placement.kind === "sql-task-sequence"
+              ? placement.tasks[index]!.taskId
+              : reference.exerciseId,
+          ...reference,
+        }))
+      : [];
+  }
+  function tasksWithPublication(row: EditingTask, published: SqlDefinition) {
+    const existing = lessonTasks();
+    if (
+      existing.some(
+        (task) => !rows.some((entry) => entry.taskId === task.taskId),
+      )
+    )
+      throw new Error(
+        "Os vínculos da lição mudaram durante a edição. Preserve seu texto e atualize o estado salvo antes de aplicar a publicação.",
+      );
+    return rows.flatMap((entry) => {
+      if (entry.taskId === row.taskId)
+        return [
+          {
+            taskId: row.taskId,
+            exerciseId: published.id,
+            version: published.version,
+          },
+        ];
+      const reference = existing.find((task) => task.taskId === entry.taskId);
+      return reference ? [reference] : [];
+    });
+  }
+  function assertCompatible(
+    tasks: ReturnType<typeof lessonTasks>,
+    inventory: Inventory,
+  ) {
+    validateSqlSequenceExercises(
+      tasks.map((task) => {
+        const definition = inventory.published.find(
+          (entry) =>
+            entry.id === task.exerciseId && entry.version === task.version,
+        );
+        const dataset =
+          definition &&
+          inventory.datasets.find(
+            (entry) =>
+              entry.id === definition.dataset.id &&
+              entry.version === definition.dataset.version,
+          );
+        if (!definition || !dataset)
+          throw new Error(
+            "Dados da tarefa indisponíveis. Atualize o estado salvo.",
+          );
+        return publicSqlExercise(definition, dataset);
+      }),
+    );
+  }
+  async function linkPublication(
+    index: number,
+    published: SqlDefinition,
+    inventory: Inventory,
+  ) {
+    const originalSource = source;
+    if (currentSource.current !== originalSource)
+      throw new Error(
+        "A lição mudou. A publicação foi preservada; tente vincular novamente.",
+      );
+    const tasks = tasksWithPublication(rows[index]!, published);
+    assertCompatible(tasks, inventory);
+    const exercises = await Promise.all(
+      tasks.map(async (task) => {
+        const exercise = parsePublicSqlExercise(
+          await sqlRequest(`/exercises/${task.exerciseId}/${task.version}`),
+        );
+        if (
+          exercise.id !== task.exerciseId ||
+          exercise.version !== task.version
+        )
+          throw new Error("A versão recebida não corresponde à tarefa.");
+        return exercise;
+      }),
+    );
+    validateSqlSequenceExercises(exercises);
+    if (currentSource.current !== originalSource)
+      throw new Error(
+        "A lição mudou. Use Vincular publicação à lição para recuperar.",
+      );
+    pendingOrder.current = rows.map((row) => row.taskId);
+    if (!onSelect({ kind: "sql-task-sequence", tasks }))
+      throw new Error(
+        "Tarefa publicada; o vínculo não foi aplicado porque a lição mudou. Use Vincular publicação à lição para recuperar.",
+      );
+    setRows((current) =>
+      current.map((row) => ({
+        ...row,
+        attached: tasks.some((task) => task.taskId === row.taskId),
+      })),
+    );
+    setMessage(
+      "Tarefa publicada e aplicada ao rascunho da lição. Salve a lição para concluir.",
+    );
+  }
   async function publishTask(index: number) {
     const row = rows[index]!;
-    if (
-      !row.attached &&
-      placement &&
-      sqlExerciseReferences(placement).length >= 12
-    )
-      throw new Error("A lição já possui o limite de 12 tarefas.");
-    if (!row.revision || row.dirty)
+    if (!row.revision || row.dirty || !hasSavedDraft(row))
       throw new Error("Salve a tarefa antes de publicar.");
     if (!row.definition.formative)
       throw new Error(
         "Para usar esta tarefa na sequência, autorize explicitamente o resultado esperado público e salve a tarefa.",
       );
-    // Check the lesson boundary before the irreversible version publication.
-    setLessonSqlPlacement(
-      source,
-      placement ?? {
-        kind: "sql",
-        exerciseId: row.definition.id,
-        version: row.definition.version,
-      },
+    const definition = parseSqlDefinition(row.definition);
+    if (!data) throw new Error("Inventário indisponível.");
+    // Check integrity before publishing, then recheck the live lesson before linking.
+    const planned = { ...definition, status: "published" as const };
+    const selectedDataset = data.datasets.find(
+      (entry) =>
+        entry.id === definition.dataset.id &&
+        entry.version === definition.dataset.version,
     );
-    const published = parseSqlDefinition(
-      await sqlRequest(
-        `/authoring/drafts/${row.definition.id}/publish`,
-        "POST",
-        { revision: row.revision },
-      ),
-    );
-    const references = placement ? sqlExerciseReferences(placement) : [];
-    const tasks = references.map((reference, position) => ({
-      taskId:
-        placement?.kind === "sql-task-sequence"
-          ? placement.tasks[position]!.taskId
-          : reference.exerciseId,
-      exerciseId: reference.exerciseId,
-      version:
-        (placement?.kind === "sql-task-sequence"
-          ? placement.tasks[position]!.taskId
-          : reference.exerciseId) === row.taskId
-          ? published.version
-          : reference.version,
-    }));
-    if (!tasks.some((task) => task.taskId === row.taskId))
-      tasks.push({
-        taskId: row.taskId,
-        exerciseId: published.id,
-        version: published.version,
-      });
-    const exercises = await Promise.all(
-      tasks.map(async (task) =>
-        parsePublicSqlExercise(
-          await sqlRequest(`/exercises/${task.exerciseId}/${task.version}`),
-        ),
-      ),
-    );
-    validateSqlSequenceExercises(exercises);
-    if (!onSelect({ kind: "sql-task-sequence", tasks }))
+    if (!selectedDataset) throw new Error("Dataset indisponível.");
+    // Drafts have no canonical oracle yet: check mode/dataset without manufacturing one.
+    if (definition.mode !== "query")
       throw new Error(
-        "A tarefa foi publicada, mas o vínculo não pôde ser aplicado. Seu rascunho foi preservado.",
+        "Use a biblioteca avançada para atividades de alteração.",
       );
-    setData(parseInventory(await sqlRequest("/authoring")));
-    setMessage(
-      "Tarefa publicada e aplicada ao rascunho da lição. Salve a lição para concluir.",
-    );
-  }
-  function previewTask(index: number) {
-    try {
-      const definition = parseSqlDefinition(rows[index]!.definition);
-      const dataset = data?.datasets.find(
+    for (const reference of lessonTasks()) {
+      if (reference.taskId === row.taskId) continue;
+      const other = data.published.find(
         (entry) =>
-          entry.id === definition.dataset.id &&
-          entry.version === definition.dataset.version,
+          entry.id === reference.exerciseId &&
+          entry.version === reference.version,
       );
-      if (!dataset) throw new Error("Dados da tarefa indisponíveis.");
-      setPreview(publicSqlExercise(definition, dataset));
-      setError("");
+      if (
+        !other ||
+        other.dataset.id !== definition.dataset.id ||
+        other.dataset.version !== definition.dataset.version
+      )
+        throw new Error(
+          "Todas as tarefas devem usar o mesmo dataset e versão. O rascunho foi preservado.",
+        );
+    }
+    setLessonSqlPlacement(source, {
+      kind: "sql-task-sequence",
+      tasks: tasksWithPublication(row, planned),
+    });
+    let published: SqlDefinition;
+    try {
+      published = parseSqlDefinition(
+        await sqlRequest(
+          `/authoring/drafts/${row.definition.id}/publish`,
+          "POST",
+          { revision: row.revision },
+        ),
+      );
     } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "Prévia indisponível.",
+      throw new Error(
+        `Não foi possível confirmar a publicação. O rascunho foi preservado; use Atualizar estado salvo antes de tentar novamente. ${failure instanceof Error ? failure.message : "Serviço indisponível."}`,
       );
     }
+    if (
+      published.status !== "published" ||
+      published.id !== definition.id ||
+      published.version !== definition.version
+    )
+      throw new Error(
+        "Publicação sem confirmação válida. Atualize o estado salvo antes de tentar novamente.",
+      );
+    const next = {
+      ...data,
+      published: [...data.published, published],
+      drafts: data.drafts,
+    };
+    // Record the durable version before any subsequent request can fail.
+    setData(next);
+    setRows((current) =>
+      current.map((entry) =>
+        entry.taskId === row.taskId
+          ? {
+              ...entry,
+              definition: editable(published, next),
+              revision: row.revision,
+              dirty: false,
+            }
+          : entry,
+      ),
+    );
+    try {
+      await linkPublication(index, published, next);
+    } catch (failure) {
+      throw new Error(
+        `Tarefa publicada, mas o vínculo ficou pendente. ${failure instanceof Error ? failure.message : "Use Vincular publicação à lição para recuperar."}`,
+      );
+    }
+  }
+  function move(index: number, offset: number) {
+    const next = [...rows];
+    const other = index + offset;
+    if (
+      other < 0 ||
+      other >= next.length ||
+      busy ||
+      disabled ||
+      advancedPending
+    )
+      return;
+    [next[index], next[other]] = [next[other]!, next[index]!];
+    const existing = lessonTasks();
+    if (
+      existing.some((task) => !next.some((row) => row.taskId === task.taskId))
+    ) {
+      setFeedbackTask(null);
+      setError(
+        "Os vínculos da lição mudaram. Preserve sua edição e atualize o estado salvo antes de reordenar.",
+      );
+      return;
+    }
+    const tasks = next.flatMap((row) => {
+      const reference = existing.find((task) => task.taskId === row.taskId);
+      return reference ? [reference] : [];
+    });
+    pendingOrder.current = next.map((row) => row.taskId);
+    if (tasks.length && !onSelect({ kind: "sql-task-sequence", tasks })) {
+      pendingOrder.current = null;
+      return;
+    }
+    setRows(next);
+    setFeedbackTask(null);
+    setError("");
+    setMessage(
+      "Ordem atualizada no rascunho. Salve a lição; tarefas ainda não publicadas serão vinculadas nessa ordem ao publicar.",
+    );
   }
   function discardEdit(index: number) {
     const row = rows[index]!;
@@ -483,20 +677,73 @@ export function SqlLessonAuthoring({
         return;
     }
     setRows((current) => current.filter((_, position) => position !== index));
+    setFeedbackTask(null);
+    setError("");
+    setMessage(
+      "Tarefa retirada do rascunho; o conteúdo reutilizável foi preservado. Salve a lição.",
+    );
   }
   const looseDrafts =
-    data?.drafts.filter(
-      (draft) =>
-        draft.definition.id.startsWith(prefix) &&
-        prefix &&
-        !rows.some((row) => row.definition.id === draft.definition.id),
-    ) ?? [];
+    data && prefix
+      ? [
+          ...data.drafts,
+          ...data.published
+            .filter(
+              (entry) =>
+                entry.id.startsWith(prefix) &&
+                !data.drafts.some(
+                  (draft) => draft.definition.id === entry.id,
+                ) &&
+                !data.published.some(
+                  (other) =>
+                    other.id === entry.id && other.version > entry.version,
+                ),
+            )
+            .map((definition) => ({
+              definition: editable(definition, data),
+              revision: null,
+            })),
+        ].filter(
+          (draft) =>
+            draft.definition.id.startsWith(prefix) &&
+            prefix &&
+            !rows.some((row) => row.definition.id === draft.definition.id),
+        )
+      : [];
+  const dataset = data?.datasets.find(
+    (entry) => entry.id + "/" + entry.version === datasetKey,
+  );
+  const latestPublished = (id: string) =>
+    data?.published
+      .filter((entry) => entry.id === id)
+      .sort((a, b) => b.version - a.version)[0];
+  const hasSavedDraft = (row: EditingTask) =>
+    data?.drafts.some(
+      (entry) =>
+        entry.definition.id === row.definition.id &&
+        entry.definition.version === row.definition.version,
+    ) ?? false;
+  const taskStatus = (row: EditingTask) => {
+    if (row.dirty) return "alterações não salvas";
+    const published = latestPublished(row.definition.id);
+    const linked = lessonTasks().find((task) => task.taskId === row.taskId);
+    if (published && (!linked || published.version > linked.version))
+      return hasSavedDraft(row)
+        ? "rascunho salvo · publicação anterior sem vínculo"
+        : "publicada · vínculo pendente";
+    if (hasSavedDraft(row))
+      return row.attached
+        ? "rascunho salvo · lição usa publicação anterior"
+        : "rascunho salvo";
+    return row.attached ? "publicada e vinculada" : "nova";
+  };
   return (
     <section className="studio-sql-authoring" aria-label="Prática SQL da lição">
       <header>
         <h2>Prática SQL</h2>
         <p>
-          Crie tarefas para esta lição. Salvar a explicação preserva a prática.
+          Defina as tarefas e confira o que o aluno verá. A publicação é uma
+          ação explícita.
         </p>
       </header>
       {data && (
@@ -506,7 +753,14 @@ export function SqlLessonAuthoring({
             <select
               aria-label="Dados da prática"
               value={datasetKey}
-              disabled={disabled || busy || !!placement || !!rows.length}
+              disabled={
+                disabled ||
+                busy ||
+                advancedPending ||
+                !!contentError ||
+                !!placement ||
+                !!rows.length
+              }
               onChange={(event) => setDatasetKey(event.target.value)}
             >
               {data.datasets.map((dataset) => (
@@ -519,25 +773,59 @@ export function SqlLessonAuthoring({
               ))}
             </select>
           </label>
+          <p className="studio-caption">
+            Todas as tarefas usam os mesmos dados. Para trocar o dataset, retire
+            os vínculos e tarefas desta prática; rascunhos salvos e publicações
+            continuam na biblioteca.
+          </p>
+          <div className="studio-sql-task-actions">
+            <button
+              type="button"
+              aria-expanded={showData}
+              disabled={!dataset}
+              onClick={() => setShowData(!showData)}
+            >
+              {showData ? "Fechar dados" : "Inspecionar dados"}
+            </button>
+            <button
+              type="button"
+              aria-expanded={showSequence}
+              disabled={!rows.length}
+              onClick={() => setShowSequence(!showSequence)}
+            >
+              {showSequence ? "Fechar sequência" : "Prévia da sequência"}
+            </button>
+          </div>
+          {showData && dataset && (
+            <SqlDatasetPreview key={datasetKey} dataset={dataset} />
+          )}
+          {showSequence && <SqlSequencePreview tasks={rows} />}
           <ol className="studio-sql-task-editor">
             {rows.map((row, index) => (
               <li key={row.taskId}>
-                <details open={!row.attached}>
-                  <summary>
+                <details open={openTask === row.taskId}>
+                  <summary
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setOpenTask(openTask === row.taskId ? null : row.taskId);
+                    }}
+                  >
                     Tarefa {index + 1}: {row.definition.title || "Nova tarefa"}
-                    {row.dirty
-                      ? " · alterações não salvas"
-                      : row.revision
-                        ? " · rascunho salvo"
-                        : row.attached
-                          ? " · publicada"
-                          : " · nova"}
+                    <span className="studio-sql-task-status">
+                      {taskStatus(row)}
+                    </span>
                   </summary>
-                  {row.definition.mode === "query" ? (
-                    <fieldset disabled={disabled || busy || !!contentError}>
+                  {row.definition.mode === "query" &&
+                  row.definition.assessment.reference.length === 1 ? (
+                    <fieldset
+                      disabled={
+                        disabled || busy || advancedPending || !!contentError
+                      }
+                    >
                       <label>
                         Título
                         <input
+                          id={`sql-task-title-${row.taskId}`}
                           aria-label={`Título da tarefa ${index + 1}`}
                           value={row.definition.title}
                           onChange={(event) =>
@@ -624,22 +912,37 @@ export function SqlLessonAuthoring({
                         <button
                           type="button"
                           disabled={!row.dirty}
-                          onClick={() => void action(() => saveTask(index))}
+                          className="studio-sql-save"
+                          onClick={() =>
+                            void action(() => saveTask(index), row.taskId)
+                          }
                         >
                           Salvar tarefa
                         </button>
                         <button
                           type="button"
-                          disabled={row.dirty || !row.revision}
-                          onClick={() => void action(() => publishTask(index))}
+                          disabled={
+                            row.dirty || !row.revision || !hasSavedDraft(row)
+                          }
+                          className="studio-sql-publish"
+                          onClick={() =>
+                            void action(() => publishTask(index), row.taskId)
+                          }
                         >
                           Publicar tarefa
                         </button>
                         <button
                           type="button"
-                          onClick={() => previewTask(index)}
+                          aria-expanded={testingTask === row.taskId}
+                          onClick={() =>
+                            setTestingTask(
+                              testingTask === row.taskId ? null : row.taskId,
+                            )
+                          }
                         >
-                          Prévia da tarefa
+                          {testingTask === row.taskId
+                            ? "Fechar teste local"
+                            : "Testar consultas"}
                         </button>
                         <button
                           type="button"
@@ -652,21 +955,103 @@ export function SqlLessonAuthoring({
                           Retirar tarefa
                         </button>
                       </div>
+                      {latestPublished(row.definition.id) &&
+                        latestPublished(row.definition.id)!.version !==
+                          lessonTasks().find(
+                            (task) => task.taskId === row.taskId,
+                          )?.version && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void action(
+                                () =>
+                                  linkPublication(
+                                    index,
+                                    latestPublished(row.definition.id)!,
+                                    data!,
+                                  ),
+                                row.taskId,
+                              )
+                            }
+                          >
+                            Vincular publicação à lição
+                          </button>
+                        )}
+                      {openTask === row.taskId &&
+                        testingTask === row.taskId &&
+                        (() => {
+                          const taskDataset = data.datasets.find(
+                            (entry) =>
+                              entry.id === row.definition.dataset.id &&
+                              entry.version === row.definition.dataset.version,
+                          );
+                          return taskDataset ? (
+                            <SqlQueryPreview
+                              key={JSON.stringify(row.definition)}
+                              definition={row.definition}
+                              dataset={taskDataset}
+                            />
+                          ) : (
+                            <p role="alert">Dataset da tarefa indisponível.</p>
+                          );
+                        })()}
                     </fieldset>
                   ) : (
                     <p>
-                      Esta atividade de alteração é mantida na{" "}
-                      <a href="/studio/sql">biblioteca avançada</a>.
+                      Esta atividade exige o contrato completo e pode ser
+                      editada na <a href="/studio/sql">biblioteca avançada</a>.
                     </p>
                   )}
+                  {feedbackTask === row.taskId && (
+                    <>
+                      {busy && <p role="status">Processando tarefa…</p>}
+                      {message && <p role="status">{message}</p>}
+                      {error && <p role="alert">{error}</p>}
+                    </>
+                  )}
                 </details>
+                <div className="studio-sql-task-actions studio-sql-row-actions">
+                  <button
+                    type="button"
+                    aria-label={`Subir tarefa ${index + 1}`}
+                    disabled={
+                      disabled ||
+                      busy ||
+                      advancedPending ||
+                      !!contentError ||
+                      index === 0
+                    }
+                    onClick={() => move(index, -1)}
+                  >
+                    Subir
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Descer tarefa ${index + 1}`}
+                    disabled={
+                      disabled ||
+                      busy ||
+                      advancedPending ||
+                      !!contentError ||
+                      index === rows.length - 1
+                    }
+                    onClick={() => move(index, 1)}
+                  >
+                    Descer
+                  </button>
+                </div>
               </li>
             ))}
           </ol>
           <button
             type="button"
             disabled={
-              disabled || busy || !!contentError || rows.length >= 12 || !prefix
+              disabled ||
+              busy ||
+              advancedPending ||
+              !!contentError ||
+              rows.length >= 12 ||
+              !prefix
             }
             onClick={add}
           >
@@ -674,7 +1059,7 @@ export function SqlLessonAuthoring({
           </button>
           {!!looseDrafts.length && (
             <details>
-              <summary>Rascunhos salvos desta lição</summary>
+              <summary>Rascunhos e publicações desta lição</summary>
               {looseDrafts.map((draft) => (
                 <button
                   type="button"
@@ -690,6 +1075,7 @@ export function SqlLessonAuthoring({
                           draft.definition.dataset.version))
                   }
                   onClick={() => {
+                    setOpenTask(draft.definition.id);
                     setDatasetKey(
                       draft.definition.dataset.id +
                         "/" +
@@ -699,6 +1085,7 @@ export function SqlLessonAuthoring({
                       ...current,
                       {
                         ...draft,
+                        definition: editable(draft.definition, data),
                         taskId: draft.definition.id,
                         dirty: false,
                         attached: false,
@@ -713,26 +1100,33 @@ export function SqlLessonAuthoring({
           )}
         </>
       )}
-      {busy && <p role="status">Processando tarefa…</p>}
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
+      {!feedbackTask && (
+        <>
+          {busy && <p role="status">Processando tarefa…</p>}
+          {message && <p role="status">{message}</p>}
+          {error && <p role="alert">{error}</p>}
+        </>
+      )}
+      {error && (
+        <button
+          type="button"
+          disabled={busy || disabled || pending}
+          onClick={() =>
+            void action(async () => {
+              setData(parseInventory(await sqlRequest("/authoring")));
+              setMessage(
+                "Estado salvo atualizado. Confira rascunhos e publicações pendentes antes de tentar publicar novamente.",
+              );
+            })
+          }
+        >
+          Atualizar estado salvo
+        </button>
+      )}
       {contentError && (
         <p role="alert">
           {contentError} Revise a fonte Markdown antes de alterar as tarefas.
         </p>
-      )}
-      {preview && (
-        <section aria-label="Prévia da tarefa SQL">
-          <h3>Prévia do rascunho</h3>
-          <p>
-            Execute para inspecionar os dados. Esta prévia não avalia a resposta
-            nem publica a tarefa.
-          </p>
-          <button type="button" onClick={() => setPreview(null)}>
-            Fechar prévia da tarefa
-          </button>
-          <SqlInteraction exercise={preview} previewOnly />
-        </section>
       )}
       <details>
         <summary>Biblioteca e vínculos avançados</summary>

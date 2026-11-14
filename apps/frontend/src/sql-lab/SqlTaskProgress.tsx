@@ -1,6 +1,25 @@
 import { Check, ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import type { SqlLessonTask } from "./exercise";
+type TaskPresentation = {
+  taskId: string;
+  exercise: Pick<SqlLessonTask["exercise"], "title">;
+};
+
+export function SqlTaskInstruction({
+  title,
+  instructions,
+}: {
+  title: string;
+  instructions: string;
+}) {
+  return (
+    <div className="sql-current-task">
+      <h3>{title}</h3>
+      <p>{instructions}</p>
+    </div>
+  );
+}
 export interface SqlContinuation {
   to: string;
   label: string;
@@ -14,7 +33,7 @@ export function SqlTaskProgress({
   continuation,
   compact = false,
 }: {
-  tasks: readonly SqlLessonTask[];
+  tasks: readonly TaskPresentation[];
   activeId: string;
   completed: ReadonlySet<string>;
   notice: string;
@@ -36,6 +55,7 @@ export function SqlTaskProgress({
           <li key={task.taskId}>
             <button
               type="button"
+              data-completed={completed.has(task.taskId) || undefined}
               aria-current={task.taskId === activeId ? "step" : undefined}
               onClick={() => onSelect(task.taskId)}
             >

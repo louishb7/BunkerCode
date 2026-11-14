@@ -1124,7 +1124,60 @@
   cursor: pointer;
   align-content: center;
 }
+.studio-sql-task-status {
+  display: block;
+  margin: 4px 0 0 18px;
+  color: var(--color-subtle);
+  font-size: 12px;
+  font-weight: 400;
+}
+.studio-sql-row-actions {
+  margin-top: 8px;
+}
+.studio-sql-task-editor details[open] summary {
+  margin-bottom: 12px;
+}
+.studio-sql-authoring
+  :is(.studio-sql-preview, .studio-sql-data, .studio-sql-query-preview) {
+  min-width: 0;
+  grid-column: 1 / -1;
+  padding: 14px 0;
+  border-block: 1px solid var(--color-line);
+  margin: 12px 0;
+}
+.studio-sql-preview {
+  --reading-text: var(--color-text);
+  --reading-muted: var(--color-subtle);
+}
+.studio-sql-authoring :is(.studio-sql-data, .studio-sql-query-preview) p {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.studio-sql-query-preview > label {
+  margin: 12px 0;
+}
+.studio-sql-save {
+  border-color: var(--color-text);
+  font-weight: 600;
+}
+.studio-sql-publish {
+  border-color: var(--color-gold);
+}
+.studio-sql-authoring
+  :is(button, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+.studio-sql-authoring [role="alert"] {
+  color: var(--status-error);
+}
+.studio-sql-authoring :is(button, summary, input, select, textarea) {
+  scroll-margin-top: 140px;
+}
 @media (max-width: 700px) {
+  .studio-sql-authoring :is(button, summary, input, select, textarea) {
+    scroll-margin-top: 220px;
+  }
   .studio-sql-authoring {
     padding: 14px;
   }
