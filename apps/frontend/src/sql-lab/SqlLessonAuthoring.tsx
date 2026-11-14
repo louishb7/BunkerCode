@@ -17,6 +17,7 @@ import {
   type SqlDataset,
 } from "@bunkercode/content/sql";
 import { sqlRequest } from "./api";
+import { editableSqlDraft, hasSavedSqlDraft } from "./sql-authoring-draft";
 import { SqlExercisePicker } from "./SqlExercisePicker";
 import {
   SqlDatasetPreview,
@@ -56,22 +57,6 @@ function parseInventory(value: unknown): Inventory {
         revision: draft.revision,
       };
     }),
-  };
-}
-function editable(definition: SqlDefinition, data: Inventory): SqlDefinition {
-  return {
-    ...definition,
-    status: "draft",
-    version: Math.max(
-      definition.version,
-      Math.max(
-        0,
-        ...data.published
-          .filter((entry) => entry.id === definition.id)
-          .map((entry) => entry.version),
-      ) + 1,
-    ),
-    ...(definition.formative ? { formative: { kind: "public-result" } } : {}),
   };
 }
 
@@ -226,7 +211,10 @@ export function SqlLessonAuthoring({
                 placement.kind === "sql-task-sequence"
                   ? placement.tasks[index]!.taskId
                   : reference.exerciseId,
-              definition: editable(draft?.definition ?? latest, data),
+              definition: editableSqlDraft(
+                draft?.definition ?? latest,
+                data.published,
+              ),
               revision:
                 data.drafts.find(
                   (entry) => entry.definition.id === reference.exerciseId,
@@ -561,7 +549,7 @@ export function SqlLessonAuthoring({
         entry.taskId === row.taskId
           ? {
               ...entry,
-              definition: editable(published, next),
+              definition: editableSqlDraft(published, next.published),
               revision: row.revision,
               dirty: false,
             }
@@ -643,7 +631,7 @@ export function SqlLessonAuthoring({
             position === index
               ? {
                   ...entry,
-                  definition: editable(definition, data),
+                  definition: editableSqlDraft(definition, data.published),
                   revision: draft?.revision ?? null,
                   dirty: false,
                 }
@@ -700,7 +688,7 @@ export function SqlLessonAuthoring({
                 ),
             )
             .map((definition) => ({
-              definition: editable(definition, data),
+              definition: editableSqlDraft(definition, data.published),
               revision: null,
             })),
         ].filter(
@@ -718,11 +706,7 @@ export function SqlLessonAuthoring({
       .filter((entry) => entry.id === id)
       .sort((a, b) => b.version - a.version)[0];
   const hasSavedDraft = (row: EditingTask) =>
-    data?.drafts.some(
-      (entry) =>
-        entry.definition.id === row.definition.id &&
-        entry.definition.version === row.definition.version,
-    ) ?? false;
+    hasSavedSqlDraft(row.definition, data?.drafts ?? []);
   const taskStatus = (row: EditingTask) => {
     if (row.dirty) return "alterações não salvas";
     const published = latestPublished(row.definition.id);
@@ -1085,7 +1069,10 @@ export function SqlLessonAuthoring({
                       ...current,
                       {
                         ...draft,
-                        definition: editable(draft.definition, data),
+                        definition: editableSqlDraft(
+                          draft.definition,
+                          data.published,
+                        ),
                         taskId: draft.definition.id,
                         dirty: false,
                         attached: false,

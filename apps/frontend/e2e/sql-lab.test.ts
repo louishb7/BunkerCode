@@ -885,3 +885,190 @@ test("runtime feedback distinguishes concurrent and worker errors from SQL diagn
   assert.deepEqual((await recovered).rows, [[1]]);
   runtime.dispose();
 });
+
+// Authoring recovery exercises the production helper and canonical files together.
+async function draftRecoveryFixture(context: import("node:test").TestContext) {
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join, resolve } = await import("node:path");
+  const { SqlContent } = await import("../../backend/src/sql/content");
+  const root = mkdtempSync(join(tmpdir(), "bunkercode-draft-recovery-"));
+  context.after(() => rmSync(root, { recursive: true }));
+  const canonical = new SqlContent(resolve("../../content/sql"));
+  const store = new SqlContent(join(root, "sql"));
+  store.saveDataset(canonical.dataset("store", 1));
+  const definition = {
+    ...canonical.definition("store-select-columns", 1),
+    id: "recovery-fixture",
+    status: "draft" as const,
+  };
+  const published = () =>
+    store.versions().map((entry) => store.definition(entry.id, entry.version));
+  const publishFirst = () => {
+    const saved = store.saveDraft(definition, null);
+    return store.publish(definition.id, saved.revision);
+  };
+  return { store, definition, published, publishFirst };
+}
+
+test("draft recovery: published v1 prepares v2 without changing immutable content", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const before = JSON.stringify(first);
+  const editing = editableSqlDraft(first, published());
+  assert.equal(editing.version, 2);
+  assert.equal(editing.status, "draft");
+  assert.equal(hasSavedSqlDraft(editing, store.drafts()), false);
+  assert.equal(JSON.stringify(store.definition(first.id, 1)), before);
+});
+
+test("draft recovery: saved v2 survives reload and repeated restoration with its revision", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const retained = store.draft(first.id);
+  const saved = store.saveDraft(
+    editableSqlDraft(first, published()),
+    retained.revision,
+  );
+  const loaded = store.draft(first.id);
+  const recovered = {
+    ...loaded,
+    definition: editableSqlDraft(loaded.definition, published()),
+  };
+  assert.equal(recovered.definition.version, 2);
+  assert.equal(recovered.revision, saved.revision);
+  assert.equal(editableSqlDraft(recovered.definition, published()).version, 2);
+  assert.equal(hasSavedSqlDraft(recovered.definition, store.drafts()), true);
+});
+
+test("draft recovery: a new unpublished saved v1 remains publishable v1 after reload", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, definition, published } = await draftRecoveryFixture(context);
+  const saved = store.saveDraft(definition, null);
+  const loaded = store.draft(definition.id);
+  const editing = editableSqlDraft(loaded.definition, published());
+  assert.equal(editing.version, 1);
+  assert.equal(loaded.revision, saved.revision);
+  assert.equal(hasSavedSqlDraft(editing, store.drafts()), true);
+});
+
+test("draft recovery: published v2 with an older retained draft prepares v3 using that storage revision", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const second = store.saveDraft(
+    editableSqlDraft(first, published()),
+    store.draft(first.id).revision,
+  );
+  store.publish(first.id, second.revision);
+  // A stale draft file can survive an interrupted external restore.
+  const { writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  writeFileSync(
+    join(store.root, "exercises", first.id, "draft.json"),
+    JSON.stringify({ ...first, status: "draft" }),
+  );
+  const older = store.draft(first.id);
+  assert.equal(older.definition.version, 1);
+  const editing = editableSqlDraft(older.definition, published());
+  assert.equal(editing.version, 3);
+  assert.equal(hasSavedSqlDraft(editing, store.drafts()), false);
+  assert.equal(
+    store.saveDraft({ ...editing, title: "Third version" }, older.revision)
+      .definition.version,
+    3,
+  );
+  assert.equal(store.definition(first.id, 2).version, 2);
+});
+
+test("draft recovery: restored draft can be edited saved and reloaded without a version jump", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const saved = store.saveDraft(
+    editableSqlDraft(first, published()),
+    store.draft(first.id).revision,
+  );
+  const restored = editableSqlDraft(
+    store.draft(first.id).definition,
+    published(),
+  );
+  const updated = store.saveDraft(
+    { ...restored, instructions: "An author edit retained on reload" },
+    saved.revision,
+  );
+  const reloaded = store.draft(first.id);
+  assert.equal(reloaded.definition.version, 2);
+  assert.equal(
+    reloaded.definition.instructions,
+    "An author edit retained on reload",
+  );
+  assert.equal(reloaded.revision, updated.revision);
+  assert.equal(
+    hasSavedSqlDraft(
+      editableSqlDraft(reloaded.definition, published()),
+      store.drafts(),
+    ),
+    true,
+  );
+});
+
+test("draft recovery: concurrent revision conflict preserves both local text and canonical winner", async (context) => {
+  const { editableSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const saved = store.saveDraft(
+    editableSqlDraft(first, published()),
+    store.draft(first.id).revision,
+  );
+  const local = {
+    ...editableSqlDraft(saved.definition, published()),
+    instructions: "Local unsaved explanation",
+  };
+  const winner = store.saveDraft(
+    { ...saved.definition, instructions: "Concurrent author" },
+    saved.revision,
+  );
+  assert.throws(() => store.saveDraft(local, saved.revision), /Rascunho mudou/);
+  assert.equal(local.instructions, "Local unsaved explanation");
+  assert.deepEqual(store.draft(first.id), winner);
+});
+
+test("draft recovery: publication without a lesson link remains recoverable without another publication", async (context) => {
+  const { editableSqlDraft, hasSavedSqlDraft } =
+    await import("../src/sql-lab/sql-authoring-draft");
+  const { store, published, publishFirst } =
+    await draftRecoveryFixture(context);
+  const first = publishFirst();
+  const saved = store.saveDraft(
+    editableSqlDraft(first, published()),
+    store.draft(first.id).revision,
+  );
+  const second = store.publish(first.id, saved.revision);
+  const versions = JSON.stringify(store.versions());
+  const loaded = store.draft(first.id);
+  assert.equal(editableSqlDraft(loaded.definition, published()).version, 3);
+  assert.equal(
+    hasSavedSqlDraft(
+      editableSqlDraft(loaded.definition, published()),
+      store.drafts(),
+    ),
+    false,
+  );
+  assert.equal(store.public(second.id, second.version).version, 2);
+  assert.equal(JSON.stringify(store.versions()), versions);
+  assert.throws(() => store.publish(first.id, saved.revision));
+});
