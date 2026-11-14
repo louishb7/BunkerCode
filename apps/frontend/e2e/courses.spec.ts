@@ -197,7 +197,7 @@ test("Markdown stays inert and missing/invalid/empty content has readable states
   }
 });
 
-test("navigation exposes Home, Courses, Tactics and SQL while retired execution routes remain absent", async ({
+test("navigation exposes Home, Courses and Tactics and redirects retired SQL while execution routes remain absent", async ({
   page,
 }) => {
   await page.goto("/courses/typescript/lessons/union-types");
@@ -220,11 +220,30 @@ test("navigation exposes Home, Courses, Tactics and SQL while retired execution 
     page
       .getByRole("navigation", { name: "Navegação principal" })
       .getByRole("link"),
-  ).toHaveText(["Início", "Cursos", "Táticas", "SQL"]);
+  ).toHaveText(["Início", "Cursos", "Táticas"]);
   await expect(page.locator(".optional-practice")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Prática opcional", exact: true }),
   ).toHaveCount(0);
+  await page.goto("/sql?source=legacy#practice");
+  await expect(page).toHaveURL(/\/courses\?source=legacy#practice$/);
+  await expect(
+    page.getByRole("heading", { name: "Cursos", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/sql"], .sql-exercise-selector'),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(page).toHaveURL(/\/courses\?source=legacy#practice$/);
+  await page.screenshot({
+    path: test.info().outputPath("sql-retired-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: test.info().outputPath("sql-retired-mobile.png"),
+    fullPage: true,
+  });
   for (const route of ["/learn", "/learn/reserve-stock"]) {
     await page.goto(route);
     await expect(

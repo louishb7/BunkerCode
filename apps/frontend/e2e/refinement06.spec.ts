@@ -28,7 +28,6 @@ for (const viewport of [
       "Início",
       "Cursos",
       "Táticas",
-      "SQL",
     ]);
     await expect(
       nav.getByRole("link", { name: "Início", exact: true }),

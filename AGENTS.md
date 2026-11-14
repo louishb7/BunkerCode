@@ -76,7 +76,7 @@ Apenas o supervisor `scripts/browser-backend.mjs` cria e limpa a fixture de cont
 
 - SQL de aluno nunca executa no PostgreSQL principal nem no processo HTTP NestJS. Usar somente runner SQL descartável e isolado, sem credenciais do produto, com limites explícitos e recuperação verificada.
 - Check SQL nunca persiste progresso; somente Submit autenticado e avaliado independentemente pode concluir. Avaliação anônima exige fronteira operacional e cotas por cliente/instalação verificadas; permanece bloqueada enquanto isso não for demonstrado. Isolamento e autorização nunca dependem só da UI.
-- Publicar exercício não o seleciona na vitrine `/sql`: usar curadoria explícita em `content/sql/laboratory.json`. Não confundir ausência na lista com confidencialidade de uma projeção pública.
+- A prática SQL fica nas lições; `/sql` redireciona para `/courses`. Publicar exercício não o seleciona na lista legada da API: a curadoria explícita permanece em `content/sql/laboratory.json`. Não confundir ausência na lista com confidencialidade de uma projeção pública.
 - Feedback/snapshot/hash do cliente nunca autoriza progresso. Submit SQL deve ser avaliado independentemente e usar autorização e progresso existentes.
 - Oráculos e casos privados nunca entram em bundles, sourcemaps, manifests ou respostas públicas. Resultado esperado formativo só pode ser público por adesão editorial explícita, gerado no runner e vinculado à versão; é material didático inspecionável, sem autoridade sobre progresso. Projeções públicas devem ser explícitas e testadas.
 - Definições/datasets usam validação canônica e versões publicadas imutáveis. Não manter catálogo TypeScript paralelo nem substituir versões históricas; mudanças de comportamento exigem nova versão.

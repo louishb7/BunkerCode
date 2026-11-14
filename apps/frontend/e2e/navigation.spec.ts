@@ -56,7 +56,6 @@ test("thirty-lesson dropdown supports keyboard, current order, dismissal and sel
     "Início",
     "Cursos",
     "Táticas",
-    "SQL",
   ]);
   await expect(
     page.locator(".lesson-nav-course, footer.learning-footer"),

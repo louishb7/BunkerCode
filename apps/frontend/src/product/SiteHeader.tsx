@@ -85,7 +85,6 @@ export function SiteHeader() {
               </NavLink>
               <NavLink to="/courses">Cursos</NavLink>
               <NavLink to="/tactics">Táticas</NavLink>
-              <NavLink to="/sql">SQL</NavLink>
             </>
           )}
         </nav>

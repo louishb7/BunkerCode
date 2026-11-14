@@ -472,6 +472,14 @@ anonymousTest(
         sqlRequests.push(request.url());
     });
     await page.goto("/sql");
+    await expect(page).toHaveURL(/\/courses$/);
+    await expect(page.locator('a[href="/sql"]')).toHaveCount(0);
+    await page.goto(
+      "/courses/sql-na-pratica/lessons/encontrando-o-que-importa",
+    );
+    await expect(
+      page.getByRole("region", { name: "Registros de customers", exact: true }),
+    ).toBeVisible({ timeout: 65000 });
     await expect(
       page.getByRole("link", { name: "Entrar", exact: true }),
     ).toBeVisible();
@@ -480,14 +488,14 @@ anonymousTest(
       .fill("SELECT * FROM customers WHERE city = 'Recife'");
     await page.getByRole("button", { name: "Executar consulta" }).click();
     await expect(page.locator(".sql-workspace [role=status]")).toContainText(
-      "Resposta correta nesta prática!",
+      "Tarefa 1 concluída",
       { timeout: 65000 },
     );
     await expect(page.locator(".sql-workspace tbody tr")).toHaveCount(2);
     await expect(
       page.getByRole("button", { name: "Verificar resposta" }),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Ver registros" }).click();
+    await page.getByRole("button", { name: "Dados", exact: true }).click();
     await expect(
       page
         .getByRole("region", { name: "Registros de customers" })

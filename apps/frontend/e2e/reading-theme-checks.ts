@@ -435,7 +435,6 @@ export async function checkGlobalAppearance(
           "Início",
           "Cursos",
           "Táticas",
-          "SQL",
         ]);
         await expect(page.locator(".lesson-nav-course")).toHaveCount(0);
         const bar = (await page
@@ -865,7 +864,6 @@ export async function checkPublicShell(page: Page, info: TestInfo) {
       "Início",
       "Cursos",
       "Táticas",
-      "SQL",
     ]);
     await expect(
       page

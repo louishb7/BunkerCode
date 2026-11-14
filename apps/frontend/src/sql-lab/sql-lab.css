@@ -1,12 +1,3 @@
-.sql-lab {
-  max-width: 1200px;
-  margin: auto;
-  padding: 28px 24px 60px;
-}
-.sql-lab h1 {
-  font-size: 28px;
-  margin: 0 0 8px;
-}
 .sql-interaction h2 {
   font-size: 18px;
   margin: 0 0 10px;
@@ -17,9 +8,6 @@
 }
 .sql-interaction p {
   line-height: 1.55;
-}
-.sql-lab > header {
-  margin-bottom: 24px;
 }
 .sql-layout {
   display: grid;
@@ -102,9 +90,6 @@
   background: var(--color-surface);
 }
 @media (max-width: 700px) {
-  .sql-lab {
-    padding: 20px 16px 40px;
-  }
   .sql-layout {
     grid-template-columns: 1fr;
   }
@@ -221,21 +206,6 @@
 }
 .sql-lesson .sql-workspace {
   gap: 16px;
-}
-.sql-exercise-selector {
-  display: block;
-  margin-bottom: 20px;
-}
-.sql-exercise-selector select {
-  display: block;
-  max-width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  padding: 8px;
-  border: 1px solid var(--color-line);
-  border-radius: 5px;
-  color: var(--color-text);
-  background: var(--color-surface);
 }
 .sql-lesson {
   --color-subtle: var(--reading-muted);

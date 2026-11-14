@@ -30,7 +30,6 @@ const StudioPage = __BUNKERCODE_AUTHORING__
 const SqlAuthoring = __BUNKERCODE_AUTHORING__
   ? lazy(() => import("./sql-lab/SqlAuthoring"))
   : undefined;
-const SqlLab = lazy(() => import("./sql-lab/SqlLab"));
 const TacticsLab = lazy(() => import("./tactics/TacticsLab"));
 
 class RouteBoundary extends Component<
@@ -73,7 +72,12 @@ function AppRoutes() {
               }
             />
           )}
-          <Route path="/sql" element={<SqlLab />} />
+          <Route
+            path="/sql"
+            element={
+              <Navigate replace to={{ pathname: "/courses", search, hash }} />
+            }
+          />
           <Route
             path="/lab/tactics"
             element={

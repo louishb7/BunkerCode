@@ -561,21 +561,23 @@ function InteractionSession({
     const showingResult = visualization === "result" && !!result;
     const feedback = busy
       ? "Executando…"
-      : message.startsWith("Tarefa ") && message.includes("concluída")
-        ? message.split(" ativa;")[0] + " ativa. Execute a nova consulta."
-        : message.startsWith("Todas as tarefas")
-          ? "Todas as tarefas foram concluídas nesta prática."
-          : message.startsWith("Consulta alterada")
-            ? "Consulta alterada. Execute para atualizar."
-            : message.startsWith("Tarefa selecionada")
-              ? "Tarefa selecionada."
-              : message.startsWith("Os dados iniciais")
-                ? "Escreva uma consulta e execute."
-                : message.startsWith("Resposta correta")
-                  ? "Consulta correta."
-                  : message.startsWith("Consulta executada. Ainda")
-                    ? "Ainda não corresponde à tarefa. Confira colunas, linhas e ordem."
-                    : message;
+      : exercise.mode === "mutation"
+        ? message
+        : message.startsWith("Tarefa ") && message.includes("concluída")
+          ? message.split(" ativa;")[0] + " ativa. Execute a nova consulta."
+          : message.startsWith("Todas as tarefas")
+            ? "Todas as tarefas foram concluídas nesta prática."
+            : message.startsWith("Consulta alterada")
+              ? "Consulta alterada. Execute para atualizar."
+              : message.startsWith("Tarefa selecionada")
+                ? "Tarefa selecionada."
+                : message.startsWith("Os dados iniciais")
+                  ? "Escreva uma consulta e execute."
+                  : message.startsWith("Resposta correta")
+                    ? "Consulta correta."
+                    : message.startsWith("Consulta executada. Ainda")
+                      ? "Ainda não corresponde à tarefa. Confira colunas, linhas e ordem."
+                      : message;
     const select = (taskId: string) => {
       selectTask(taskId);
       if (window.matchMedia("(max-width: 999px)").matches)
@@ -698,7 +700,11 @@ function InteractionSession({
                 revision.current++;
                 setSql(value);
                 progress.remember(value);
-                setMessage("Consulta alterada. Execute para atualizar.");
+                setMessage(
+                  exercise.mode === "mutation"
+                    ? "Texto alterado e ainda não executado. O banco mantém os comandos já executados; verificar considera esse estado, sem aprovar o novo texto."
+                    : "Consulta alterada. Execute para atualizar.",
+                );
               }}
               formatRequest={0}
               onFormatState={() => undefined}
